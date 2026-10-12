@@ -26,21 +26,15 @@ jobs:
       
       - name: Configurar Android SDK
         uses: android-actions/setup-android@v3
-
-      - name: Verificar Android SDK
-        run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "PATH=$PATH"
-          which sdkmanager
-          sdkmanager --version
+        with:
+          packages: platform-tools
 
       - name: Instalar componentes Android
         run: |
           yes | sdkmanager --licenses
-          sdkmanager \
-            "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0"
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          
+      
             
 
       - name: Configurar Gradle

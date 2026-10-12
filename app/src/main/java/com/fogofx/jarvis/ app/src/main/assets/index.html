@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS AI</title>
+<style>
+:root {
+  --blue: #00d9ff;
+  --bg: #050b14;
+  --panel: #0b1726;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at top, #102b43, var(--bg) 65%);
+  color: #e7faff;
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+}
+header {
+  text-align: center;
+  padding: 24px 12px 12px;
+}
+h1 {
+  color: var(--blue);
+  letter-spacing: 7px;
+  margin-bottom: 6px;
+  text-shadow: 0 0 18px #00bfff80;
+}
+#status { color: #8aaaba; font-size: 13px; }
+.core {
+  width: 130px;
+  height: 130px;
+  border: 2px solid var(--blue);
+  border-radius: 50%;
+  margin: 18px auto;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 24px #00cfff50, inset 0 0 24px #00cfff30;
+  animation: pulse 3s infinite;
+}
+.core span { font-size: 48px; color: var(--blue); }
+@keyframes pulse {
+  50% { box-shadow: 0 0 38px #00cfff90, inset 0 0 30px #00cfff50; }
+}
+main {
+  max-width: 650px;
+  margin: auto;
+  padding: 12px;
+}
+#chat {
+  background: #07111dcc;
+  border: 1px solid #17415a;
+  border-radius: 14px;
+  height: 310px;
+  overflow-y: auto;
+  padding: 14px;
+}
+.msg {
+  padding: 11px 13px;
+  margin: 9px 0;
+  border-radius: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+.jarvis { background: #10283a; border-left: 3px solid var(--blue); }
+.user { background: #172437; border-left: 3px solid #9a8cff; }
+.controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+input {
+  min-width: 0;
+  flex: 1;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid #20506a;
+  background: var(--panel);
+  color: white;
+  font-size: 16px;
+}
+button {
+  border: 1px solid #087b9b;
+  background: #0c2c40;
+  color: #dffaff;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: pointer;
+}
+button:active { background: #14516b; }
+#send { background: #007c9e; }
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.tools button { flex: 1; min-width: 100px; }
+.note {
+  color: #8aaaba;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 15px 2px;
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>JARVIS</h1>
+  <div>ASSISTENTE PESSOAL</div>
+  <div class="core"><span>◉</span></div>
+  <div id="status">SISTEMA ONLINE · MODO LOCAL</div>
+</header>
+
+<main>
+  <div id="chat" aria-live="polite"></div>
+
+  <div class="controls">
+    <input id="message" placeholder="Fala comigo, chefe..."
+      autocomplete="off">
+    <button id="send">Enviar</button>
+  </div>
+
+  <div class="tools">
+    <button id="mic">🎙️ Falar</button>
+    <button id="voice">🔊 Voz: ligada</button>
+    <button id="clear">Limpar chat</button>
+  </div>
+
+  <p class="note">
+    Versão local de teste. As respostas são programadas;
+    nenhuma chave API é usada ou guardada nesta página.
+  </p>
+</main>
+
+<script>
+const chat = document.getElementById("chat");
+const input = document.getElementById("message");
+const statusText = document.getElementById("status");
+
+let voiceOn = true;
+let recognition = null;
+
+function addMessage(text, who) {
+  const div = document.createElement("div");
+  div.className = "msg " + who;
+  div.textContent = (who === "user" ? "TU: " : "JARVIS: ") + text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function speak(text) {
+  if (!voiceOn || !("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "pt-BR";
+  utterance.rate = 1;
+  utterance.pitch = 0.9;
+  speechSynthesis.speak(utterance);
+}
+
+function reply(text) {
+  addMessage(text, "jarvis");
+  speak(text);
+}
+
+
+function localAnswer(raw) {
+  const t = raw.toLowerCase().trim();
+
+  function openSite(url) {
+    window.open(url, "_blank");
+    return "A tentar abrir a página, chefe.";
+  }
+
+  if (/\b(oi|olá|ola|bom dia|boa tarde|boa noite)\b/.test(t)) {
+    return "Olá, chefe! JARVIS online. Como posso ajudar?";
+  }
+
+  if (t.includes("seu nome") || t.includes("quem é você") ||
+      t.includes("quem e voce")) {
+    return "Sou o JARVIS, o teu assistente pessoal.";
+  }
+
+  if (t.includes("que horas") || t === "hora") {
+    return "São " + new Date().toLocaleTimeString("pt-BR", {
+      hour: "2-digit", minute: "2-digit"
+    }) + ".";
+  }
+
+  if (t.includes("que dia") || t.includes("data de hoje")) {
+    return "Hoje é " + new Date().toLocaleDateString("pt-BR", {
+      weekday: "long", day: "numeric", month: "long", year: "numeric"
+    }) + ".";
+  }
+
+  if (t.includes("abrir google")) {
+    return openSite("https://www.google.com/");
+  }
+
+  if (t.includes("abrir youtube")) {
+    return openSite("https://www.youtube.com/");
+  }
+
+  if (t.includes("abrir tiktok")) {
+    return openSite("https://www.tiktok.com/");
+  }
+
+  if (t.startsWith("pesquisar ")) {
+    const query = raw.trim().slice(10).trim();
+    if (!query) return "Diz o que queres pesquisar.";
+    return openSite("https://www.google.com/search?q=" +
+      encodeURIComponent(query));
+  }
+
+  if (t.includes("piada")) {
+    return "Porque o computador foi ao médico? Porque estava com um vírus!";
+  }
+
+  if (t.includes("motivação") || t.includes("motivacao")) {
+    return "Nunca desistas dos teus objetivos, chefe. Um passo de cada vez!";
+  }
+
+  if (t.includes("desligar voz")) {
+    voiceOn = false;
+    document.getElementById("voice").textContent = "🔇 Voz: desligada";
+    return "Voz desligada. Continuarei por texto.";
+  }
+
+  if (t.includes("ligar voz")) {
+    voiceOn = true;
+    document.getElementById("voice").textContent = "🔊 Voz: ligada";
+    return "Voz ativada novamente.";
+  }
+
+  if (t.includes("limpar conversa") || t.includes("limpar chat")) {
+    chat.replaceChildren();
+    return "Conversa limpa. Estou pronto.";
+  }
+
+  if (t.includes("ajuda") || t.includes("comandos")) {
+    return "Podes pedir a hora, a data, abrir Google, abrir YouTube, abrir TikTok, pesquisar um tema, contar uma piada, pedir motivação ou controlar a voz.";
+  }
+
+  if (t.includes("obrigado") || t.includes("obrigada")) {
+    return "Disponha, chefe!";
+  }
+
+  return "Ainda não conheço essa pergunta. Diz ajuda para veres os comandos. Estou a funcionar sem uma IA externa.";
+}
+
+
+ 
+
+function handleMessage(text) {
+  const value = text.trim();
+  if (!value) return;
+
+  addMessage(value, "user");
+  input.value = "";
+  const answer = localAnswer(value);
+  reply(answer);
+}
+
+document.getElementById("send").addEventListener("click", () => {
+  handleMessage(input.value);
+});
+
+input.addEventListener("keydown", event => {
+  if (event.key === "Enter") handleMessage(input.value);
+});
+
+document.getElementById("voice").addEventListener("click", () => {
+  voiceOn = !voiceOn;
+  document.getElementById("voice").textContent =
+    voiceOn ? "🔊 Voz: ligada" : "🔇 Voz: desligada";
+  if (!voiceOn && "speechSynthesis" in window) speechSynthesis.cancel();
+  if (voiceOn) speak("Voz ativada.");
+});
+
+document.getElementById("clear").addEventListener("click", () => {
+  chat.replaceChildren();
+  reply("Conversa limpa. Pronto para novas instruções.");
+});
+
+const SpeechRecognition =
+  window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.lang = "pt-BR";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    statusText.textContent = "A OUVIR...";
+  };
+
+  recognition.onresult = event => {
+    const said = event.results[0][0].transcript;
+    input.value = said;
+    handleMessage(said);
+  };
+
+  recognition.onerror = event => {
+    statusText.textContent =
+      "Microfone: " + event.error + " · tenta novamente";
+  };
+
+  recognition.onend = () => {
+    statusText.textContent = "SISTEMA ONLINE · MODO LOCAL";
+  };
+} else {
+  document.getElementById("mic").disabled = true;
+  document.getElementById("mic").textContent = "Microfone indisponível";
+}
+
+document.getElementById("mic").addEventListener("click", () => {
+  if (!recognition) return;
+  try {
+    recognition.start();
+  } catch (error) {
+    statusText.textContent = "Espera um instante e tenta novamente.";
+  }
+});
+
+addMessage("Sistema iniciado. Diz 'ajuda' para conhecer os comandos.", "jarvis");
+</script>
+</body>
+  </html>
+  

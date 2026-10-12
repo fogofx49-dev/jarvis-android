@@ -195,6 +195,28 @@ function clearChat() {
   reply("Conversa limpa. Estou pronto.");
 }
 
+function startMic() {
+  if (window.AndroidVoice) {
+    document.getElementById("status").textContent =
+      "A preparar o microfone...";
+    window.AndroidVoice.startListening();
+  } else {
+    document.getElementById("status").textContent =
+      "Microfone nativo indisponível.";
+  }
+}
+
+function onNativeSpeechResult(text) {
+  document.getElementById("msg").value = text;
+  document.getElementById("status").textContent =
+    "Voz reconhecida.";
+  send();
+}
+
+function onNativeSpeechError(message) {
+  document.getElementById("status").textContent = message;
+  }
+  
 document.getElementById("msg").addEventListener("keydown", e => {
   if (e.key === "Enter") send();
 });

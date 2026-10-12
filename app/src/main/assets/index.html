@@ -146,10 +146,16 @@ function answer(raw) {
   return "Ainda não sei responder a isso. Nesta versão estou a usar comandos básicos, sem uma IA ligada. Experimenta escrever ajuda.";
 }
 
+
 function send() {
   const input = document.getElementById("msg");
   const text = input.value.trim();
-  if (!text) return;
+
+  if (!text) {
+    document.getElementById("status").textContent =
+      "Escreve uma mensagem primeiro.";
+    return;
+  }
 
   addMessage(text, "user");
   input.value = "";
@@ -157,10 +163,7 @@ function send() {
   const msg = text.toLowerCase();
   const result = answer(text);
 
-  if (
-    msg.includes("youtube") ||
-    msg.includes("you tube")
-  ) {
+  if (msg.includes("youtube") || msg.includes("you tube")) {
     reply("A abrir o YouTube.");
     if (window.AndroidVoice) {
       window.AndroidVoice.openApp("youtube");
@@ -193,5 +196,83 @@ function send() {
   }
 
   reply(result);
-        }
+}
+
+function sendCommand(command) {
+  document.getElementById("msg").value = command;
+  send();
+}
+
+function toggleVoice() {
+  voiceOn = !voiceOn;
+
+  document.getElementById("voiceBtn").textContent =
+    voiceOn ? "🔊 Voz ligada" : "🔇 Voz desligada";
+
+  if (!voiceOn && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+
+  if (voiceOn) {
+    reply("Voz ativada.");
+  } else {
+    addMessage("Voz desativada.", "jarvis");
+  }
+}
+
+function clearChat() {
+  document.getElementById("chat").innerHTML = "";
+  addMessage("Conversa limpa. Estou pronto!", "jarvis");
+}
+
+function startMic() {
+  document.getElementById("status").textContent =
+    "A tentar ativar o microfone...";
+
+  if (window.AndroidVoice) {
+    window.AndroidVoice.startListening();
+  } else if ("webkitSpeechRecognition" in window ||
+             "SpeechRecognition" in window) {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = "pt-BR";
+    recognition.onresult = function(event) {
+      document.getElementById("msg").value =
+        event.results[0][0].transcript;
+      send();
+    };
+
+    recognition.onerror = function() {
+      document.getElementById("status").textContent =
+        "Não foi possível reconhecer a voz.";
+    };
+
+    recognition.start();
+  } else {
+    document.getElementById("status").textContent =
+      "Reconhecimento de voz indisponível neste navegador.";
+  }
+}
+
+function onNativeSpeechResult(text) {
+  document.getElementById("msg").value = text;
+  document.getElementById("status").textContent = "Comando reconhecido.";
+  send();
+}
+
+function onNativeSpeechError(message) {
+  document.getElementById("status").textContent = message;
+}
+
+document.getElementById("msg").addEventListener("keydown", function(event) {
+  if (event.key === "Enter") {
+    send();
+  }
+});
+
+  </script>
+</body>
+</html>
   

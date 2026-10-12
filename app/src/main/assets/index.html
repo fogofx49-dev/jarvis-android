@@ -93,8 +93,7 @@ function speak(text) {
     window.speechSynthesis.speak(utterance);
   }
 }
-  
-
+   
 function reply(text) {
   addMessage(text, "jarvis");
   speak(text);
@@ -158,69 +157,41 @@ function send() {
   const msg = text.toLowerCase();
   const result = answer(text);
 
-  if (msg.includes("youtube")) {
-    reply(result);
-    window.location.href = "https://m.youtube.com/";
+  if (
+    msg.includes("youtube") ||
+    msg.includes("you tube")
+  ) {
+    reply("A abrir o YouTube.");
+    if (window.AndroidVoice) {
+      window.AndroidVoice.openApp("youtube");
+    } else {
+      window.location.href = "https://m.youtube.com/";
+    }
     return;
   }
 
   if (msg.includes("google")) {
-    reply(result);
-    window.location.href = "https://www.google.com/";
+    reply("A abrir o Google.");
+    if (window.AndroidVoice) {
+      window.AndroidVoice.openApp("google");
+    } else {
+      window.location.href = "https://www.google.com/";
+    }
+    return;
+  }
+
+  if (
+    msg.includes("definições") ||
+    msg.includes("configurações") ||
+    msg.includes("configuracoes")
+  ) {
+    reply("A abrir as definições do Android.");
+    if (window.AndroidVoice) {
+      window.AndroidVoice.openApp("settings");
+    }
     return;
   }
 
   reply(result);
-}
-
-function sendCommand(command) {
-  document.getElementById("msg").value = command;
-  send();
-}
-
-function toggleVoice() {
-  voiceOn = !voiceOn;
-  document.getElementById("voiceBtn").textContent =
-    voiceOn ? "🔊 Voz ligada" : "🔇 Voz desligada";
-
-  if (!voiceOn && "speechSynthesis" in window) {
-    window.speechSynthesis.cancel();
-  } else if (voiceOn) {
-    speak("Voz ativada.");
-  }
-}
-
-function clearChat() {
-  document.getElementById("chat").replaceChildren();
-  reply("Conversa limpa. Estou pronto.");
-}
-
-function startMic() {
-  if (window.AndroidVoice) {
-    document.getElementById("status").textContent =
-      "A preparar o microfone...";
-    window.AndroidVoice.startListening();
-  } else {
-    document.getElementById("status").textContent =
-      "Microfone nativo indisponível.";
-  }
-}
-
-function onNativeSpeechResult(text) {
-  document.getElementById("msg").value = text;
-  document.getElementById("status").textContent =
-    "Voz reconhecida.";
-  send();
-}
-
-function onNativeSpeechError(message) {
-  document.getElementById("status").textContent = message;
-  }
+        }
   
-document.getElementById("msg").addEventListener("keydown", e => {
-  if (e.key === "Enter") send();
-});
-</script>
-</body>
-</html>
-

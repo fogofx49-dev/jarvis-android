@@ -2,44 +2,190 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>JARVIS</title>
-  <style>
-    body {
-      background: #07111f;
-      color: #67e8f9;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 30px 15px;
-    }
-    input, button {
-      padding: 12px;
-      margin: 6px;
-      border-radius: 8px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JARVIS AI</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;background:#06101d;color:#b9f7ff;
+  font-family:Arial,sans-serif;padding:18px
+}
+header{text-align:center;padding:18px 0}
+h1{color:#39e6ff;letter-spacing:5px}
+#status{color:#7e9eac;font-size:13px}
+#chat{
+  height:48vh;min-height:250px;overflow-y:auto;
+  border:1px solid #16465a;border-radius:14px;
+  padding:12px;background:#091725
+}
+.msg{padding:11px;margin:8px 0;border-radius:10px;
+  overflow-wrap:anywhere;white-space:pre-wrap}
+.jarvis{background:#103345}
+.user{background:#174a56;text-align:right}
+.controls{display:flex;gap:8px;margin-top:12px}
+input{
+  flex:1;min-width:0;background:#0c2030;color:white;
+  border:1px solid #23657b;border-radius:10px;padding:13px
+}
+button{
+  background:#00cde8;color:#00131c;border:0;
+  border-radius:10px;padding:12px;font-weight:bold
+}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.actions button{background:#143747;color:#b9f7ff}
+a{color:#65eaff}
+</style>
 </head>
 <body>
+<header>
   <h1>J.A.R.V.I.S</h1>
-  <p>Assistente iniciado com sucesso.</p>
+  <p>ASSISTENTE PESSOAL</p>
+  <div id="status">Sistema online • Modo local básico</div>
+</header>
 
-  <input id="msg" placeholder="Escreve uma mensagem">
+<div id="chat" aria-live="polite">
+  <div class="msg jarvis">
+    Olá! Sou o JARVIS. Escreve uma mensagem para começar.
+  </div>
+</div>
+
+<div class="controls">
+  <input id="msg" placeholder="Fala comigo..." autocomplete="off">
   <button onclick="send()">Enviar</button>
-  <p id="out">À espera de uma mensagem.</p>
+</div>
 
-  <script>
-    function send() {
-      const msg = document.getElementById("msg").value;
-      document.getElementById("out").textContent =
-        "JARVIS recebeu: " + msg;
-      if (msg.trim()) {
-        speechSynthesis.cancel();
-        speechSynthesis.speak(
-          new SpeechSynthesisUtterance(msg)
-        );
-      }
-    }
-  </script>
+<div class="actions">
+  <button onclick="toggleVoice()" id="voiceBtn">🔊 Voz ligada</button>
+  <button onclick="sendCommand('ajuda')">❔ Ajuda</button>
+  <button onclick="clearChat()">🧹 Limpar</button>
+</div>
+
+<script>
+let voiceOn = true;
+
+function addMessage(text, who) {
+  const el = document.createElement("div");
+  el.className = "msg " + who;
+  el.textContent = text;
+  document.getElementById("chat").appendChild(el);
+  document.getElementById("chat").scrollTop =
+    document.getElementById("chat").scrollHeight;
+}
+
+function speak(text) {
+  if (!voiceOn || !("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "pt-BR";
+  utterance.rate = 1;
+  window.speechSynthesis.speak(utterance);
+}
+
+function reply(text) {
+  addMessage(text, "jarvis");
+  speak(text);
+}
+
+function answer(raw) {
+  const msg = raw.toLowerCase().trim();
+
+  if (!msg) return "Escreve alguma coisa para começarmos.";
+
+  if (msg.includes("olá") || msg.includes("ola") ||
+      msg.includes("bom dia") || msg.includes("boa noite") ||
+      msg.includes("oi")) {
+    return "Olá! Estou pronto para ajudar. Qual é o teu comando?";
+  }
+
+  if (msg.includes("teu nome") || msg.includes("quem és")) {
+    return "Sou o JARVIS, o teu assistente pessoal em desenvolvimento.";
+  }
+
+  if (msg.includes("horas") || msg.includes("hora agora")) {
+    return "São " + new Date().toLocaleTimeString("pt-BR",
+      {hour:"2-digit",minute:"2-digit"}) + ".";
+  }
+
+  if (msg.includes("data") || msg.includes("dia de hoje")) {
+    return "Hoje é " + new Date().toLocaleDateString("pt-BR") + ".";
+  }
+
+  if (msg.includes("piada")) {
+    return "Porque o computador foi ao médico? Porque tinha um vírus!";
+  }
+
+  if (msg.includes("motivação") || msg.includes("motivacional")) {
+    return "Continua a trabalhar no teu objetivo. Cada passo conta!";
+  }
+
+  if (msg.includes("youtube")) {
+    return "Vou abrir o YouTube.";
+  }
+
+  if (msg.includes("google")) {
+    return "Vou abrir o Google.";
+  }
+
+  if (msg.includes("ajuda") || msg.includes("comandos")) {
+    return "Podes pedir a hora, a data, uma piada, uma frase motivacional ou pedir para abrir o Google e o YouTube. Esta versão ainda usa respostas programadas.";
+  }
+
+  return "Ainda não sei responder a isso. Nesta versão estou a usar comandos básicos, sem uma IA ligada. Experimenta escrever ajuda.";
+}
+
+function send() {
+  const input = document.getElementById("msg");
+  const text = input.value.trim();
+  if (!text) return;
+
+  addMessage(text, "user");
+  input.value = "";
+
+  const msg = text.toLowerCase();
+  const result = answer(text);
+
+  if (msg.includes("youtube")) {
+    reply(result);
+    window.location.href = "https://m.youtube.com/";
+    return;
+  }
+
+  if (msg.includes("google")) {
+    reply(result);
+    window.location.href = "https://www.google.com/";
+    return;
+  }
+
+  reply(result);
+}
+
+function sendCommand(command) {
+  document.getElementById("msg").value = command;
+  send();
+}
+
+function toggleVoice() {
+  voiceOn = !voiceOn;
+  document.getElementById("voiceBtn").textContent =
+    voiceOn ? "🔊 Voz ligada" : "🔇 Voz desligada";
+
+  if (!voiceOn && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  } else if (voiceOn) {
+    speak("Voz ativada.");
+  }
+}
+
+function clearChat() {
+  document.getElementById("chat").replaceChildren();
+  reply("Conversa limpa. Estou pronto.");
+}
+
+document.getElementById("msg").addEventListener("keydown", e => {
+  if (e.key === "Enter") send();
+});
+</script>
 </body>
 </html>
+

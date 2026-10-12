@@ -1,0 +1,45 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JARVIS</title>
+  <style>
+    body {
+      background: #07111f;
+      color: #67e8f9;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 30px 15px;
+    }
+    input, button {
+      padding: 12px;
+      margin: 6px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>J.A.R.V.I.S</h1>
+  <p>Assistente iniciado com sucesso.</p>
+
+  <input id="msg" placeholder="Escreve uma mensagem">
+  <button onclick="send()">Enviar</button>
+  <p id="out">À espera de uma mensagem.</p>
+
+  <script>
+    function send() {
+      const msg = document.getElementById("msg").value;
+      document.getElementById("out").textContent =
+        "JARVIS recebeu: " + msg;
+      if (msg.trim()) {
+        speechSynthesis.cancel();
+        speechSynthesis.speak(
+          new SpeechSynthesisUtterance(msg)
+        );
+      }
+    }
+  </script>
+</body>
+</html>

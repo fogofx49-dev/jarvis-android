@@ -53,6 +53,7 @@ class MainActivity : Activity() {
     }
 
     inner class AndroidBridge {
+
         @JavascriptInterface
         fun speak(text: String) {
             runOnUiThread {
@@ -122,5 +123,100 @@ class MainActivity : Activity() {
             }
         }
     }
+
+    private fun showStatus(message: String) {
+        webView.evaluateJavascript(
+            "onNativeSpeechError(${JSONObject.quote(message)})",
+            null
+        )
+    }
+
+    private fun beginRecognition() {
+        try {
+            recognizer?.destroy()
+            recognizer = SpeechRecognizer.createSpeechRecognizer(this)
+
+            recognizer?.setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: Bundle?) {
+                    showStatus("Estou a ouvir…")
+                }
+
+                override fun onBeginningOfSpeech() {}
+                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onBufferReceived(buffer: ByteArray?) {}
+
+                override fun onEndOfSpeech() {
+                    showStatus("A processar a voz…")
+                }
+
+                override fun onError(error: Int) {
+                    showStatus("Não consegui reconhecer a voz. Tenta novamente.")
+                }
+
+                override fun onResults(results: Bundle?) {
+                    val matches = results?.getStringArrayList(
+                        SpeechRecognizer.RESULTS_RECOGNITION
+                    )
+                    val text = matches?.firstOrNull().orEmpty()
+
+                    if (text.isNotBlank()) {
+                        webView.evaluateJavascript(
+                            "onNativeSpeechResult(${JSONObject.quote(text)})",
+                            null
+                        )
+                    } else {
+                        showStatus("Não ouvi uma frase. Tenta novamente.")
+                    }
+                }
+
+                override fun onPartialResults(partialResults: Bundle?) {}
+                override fun onEvent(eventType: Int, params: Bundle?) {}
+            })
+
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                )
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
+                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+            }
+
+            recognizer?.startListening(intent)
+        } catch (e: Exception) {
+            showStatus("Não foi possível iniciar o microfone.")
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == MIC_PERMISSION) {
+            if (grantResults.isNotEmpty() &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                beginRecognition()
+            } else {
+                showStatus("A permissão do microfone foi recusada.")
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        recognizer?.destroy()
+        recognizer = null
+
+        if (::tts.isInitialized) {
+            tts.stop()
+            tts.shutdown()
+        }
+
+        super.onDestroy()
+    }
+}
+
     
     

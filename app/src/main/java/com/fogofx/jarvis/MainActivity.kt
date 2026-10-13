@@ -11,7 +11,6 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
-import android.speech.tts.Voice
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
@@ -88,105 +87,95 @@ class MainActivity : Activity() {
 
     // Configura a voz do JARVIS em português brasileiro.
     private fun configureJarvisVoice(status: Int) {
-    if (status != TextToSpeech.SUCCESS) {
-        ttsReady = false
-        showStatus("Não foi possível iniciar a voz do JARVIS.")
-        return
-    }
-
-    try {
-        val localeBR = Locale("pt", "BR")
-        val languageResult = tts.setLanguage(localeBR)
-
-        if (
-            languageResult == TextToSpeech.LANG_MISSING_DATA ||
-            languageResult == TextToSpeech.LANG_NOT_SUPPORTED
-        ) {
+        if (status != TextToSpeech.SUCCESS) {
             ttsReady = false
-            showStatus(
-                "Português do Brasil indisponível. " +
-                "Verifica as definições de voz do Android."
-            )
+            showStatus("Não foi possível iniciar a voz do JARVIS.")
             return
         }
 
-        // Lista as vozes brasileiras disponíveis no motor TTS.
-        val availableVoices = tts.voices
-            ?.filter {
-                it.locale.language == "pt" &&
-                it.locale.country == "BR"
-            }
-            .orEmpty()
+        try {
+            val localeBR = Locale("pt", "BR")
+            val languageResult = tts.setLanguage(localeBR)
 
-        // Mostra os identificadores das vozes no registo do Android.
-        availableVoices.forEach { voice ->
+            if (
+                languageResult == TextToSpeech.LANG_MISSING_DATA ||
+                languageResult == TextToSpeech.LANG_NOT_SUPPORTED
+            ) {
+                ttsReady = false
+                showStatus(
+                    "Português do Brasil indisponível. " +
+                    "Verifica as definições de voz do Android."
+                )
+                return
+            }
+
+            val availableVoices = tts.voices
+                ?.filter {
+                    it.locale.language == "pt" &&
+                    it.locale.country == "BR"
+                }
+                .orEmpty()
+
+            // Regista as vozes para podermos identificar a masculina.
+            availableVoices.forEach { voice ->
+                android.util.Log.d(
+                    "JARVIS_VOICES",
+                    "Nome=${voice.name}, " +
+                    "Idioma=${voice.locale}, " +
+                    "Rede=${voice.isNetworkConnectionRequired}, " +
+                    "Qualidade=${voice.quality}"
+                )
+            }
+
+            // Dá preferência a identificadores que indiquem voz masculina.
+            val selectedVoice = availableVoices
+                .filter { !it.isNetworkConnectionRequired }
+                .maxByOrNull { voice ->
+                    val name = voice.name.lowercase(Locale.ROOT)
+
+                    when {
+                        "male" in name ||
+                        "mascul" in name ||
+                        "man" in name -> 3
+
+                        "female" in name ||
+                        "fem" in name ||
+                        "woman" in name -> 0
+
+                        else -> 1
+                    }
+                }
+
+            if (selectedVoice != null) {
+                tts.voice = selectedVoice
+            }
+
+            tts.setSpeechRate(0.94f)
+            tts.setPitch(0.92f)
+            ttsReady = true
+
+            showStatus(
+                if (selectedVoice != null) {
+                    "Voz selecionada: ${selectedVoice.name}"
+                } else {
+                    "Voz padrão pronta • Português BR"
+                }
+            )
+
             android.util.Log.d(
                 "JARVIS_VOICES",
-                "Nome=${voice.name}, " +
-                "Idioma=${voice.locale}, " +
-                "Rede=${voice.isNetworkConnectionRequired}, " +
-                "Qualidade=${voice.quality}"
+                "Vozes pt-BR: " +
+                    availableVoices.joinToString(", ") { it.name }
             )
-        }
-
-        // Tenta selecionar uma voz identificada como masculina.
-        val selectedVoice = availableVoices
-            .filter { !it.isNetworkConnectionRequired }
-            .maxByOrNull { voice ->
-                val name = voice.name.lowercase(Locale.ROOT)
-
-                when {
-                    "male" in name ||
-                    "mascul" in name ||
-                    "man" in name -> 3
-
-                    "female" in name ||
-                    "fem" in name ||
-                    "woman" in name -> 0
-
-                    else -> 1
-                }
-            }
-
-        if (selectedVoice != null) {
-            tts.voice = selectedVoice
-        }
-
-        tts.setSpeechRate(0.94f)
-        tts.setPitch(0.92f)
-        ttsReady = true
-
-        val voiceNames = availableVoices
-            .joinToString(", ") { it.name }
-
-        showStatus(
-            if (selectedVoice != null) {
-                "Voz: ${selectedVoice.name}"
-            } else {
-                "Voz padrão pronta • Português BR"
-            }
-        )
-
-        android.util.Log.d(
-            "JARVIS_VOICES",
-            "Vozes pt-BR disponíveis: $voiceNames"
-        )
-
-    } catch (e: Exception) {
-        ttsReady = false
-        showStatus("Erro ao configurar a voz do JARVIS.")
-        android.util.Log.e(
-            "JARVIS_VOICES",
-            "Erro ao configurar voz",
-            e
-        )
-    }
-}
-
 
         } catch (e: Exception) {
             ttsReady = false
             showStatus("Erro ao configurar a voz do JARVIS.")
+            android.util.Log.e(
+                "JARVIS_VOICES",
+                "Erro ao configurar voz",
+                e
+            )
         }
     }
 
@@ -242,7 +231,8 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun startListening() {
             runOnUiThread {
-                if (!SpeechRecognizer.isRecognitionAvailable(
+                if (
+                    !SpeechRecognizer.isRecognitionAvailable(
                         this@MainActivity
                     )
                 ) {

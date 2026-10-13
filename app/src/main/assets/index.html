@@ -4,104 +4,393 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>JARVIS AI</title>
+<meta name="theme-color" content="#06101d">
+<title>J.A.R.V.I.S AI</title>
 
 <style>
-*{box-sizing:border-box}
-
-body{
-  margin:0;
-  background:#06101d;
-  color:#b9f7ff;
-  font-family:Arial,sans-serif;
-  padding:18px
+:root {
+  --cyan: #39e6ff;
+  --blue: #008cff;
+  --dark: #06101d;
+  --panel: #091725;
+  --line: #16465a;
+  --text: #b9f7ff;
 }
 
-header{text-align:center;padding:18px 0}
+* { box-sizing: border-box; }
 
-h1{
-  color:#39e6ff;
-  letter-spacing:5px;
-  text-shadow:0 0 14px #00cde8
+body {
+  margin: 0;
+  padding: 16px;
+  color: var(--text);
+  background:
+    radial-gradient(ellipse at 50% 28%, #06304a 0%, transparent 38%),
+    linear-gradient(180deg, #06101d, #020912);
+  font-family: Arial, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
-#status{color:#7e9eac;font-size:13px}
-
-#chat{
-  height:48vh;
-  min-height:250px;
-  overflow-y:auto;
-  border:1px solid #16465a;
-  border-radius:14px;
-  padding:12px;
-  background:#091725
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .25;
+  background-image:
+    linear-gradient(#0c648022 1px, transparent 1px),
+    linear-gradient(90deg, #0c648022 1px, transparent 1px);
+  background-size: 30px 30px;
 }
 
-.msg{
-  padding:11px;
-  margin:8px 0;
-  border-radius:10px;
-  overflow-wrap:anywhere;
-  white-space:pre-wrap
+header {
+  text-align: center;
+  padding: 12px 0 14px;
+  border-bottom: 1px solid #167b9c66;
 }
 
-.jarvis{background:#103345}
-.user{background:#174a56;text-align:right}
-
-.controls{
-  display:flex;
-  gap:8px;
-  margin-top:12px
+h1 {
+  margin: 0;
+  font-size: clamp(27px, 7vw, 38px);
+  letter-spacing: 6px;
+  color: var(--cyan);
+  text-shadow: 0 0 8px #00d9ff, 0 0 24px #008cff99;
 }
 
-input{
-  flex:1;
-  min-width:0;
-  background:#0c2030;
-  color:white;
-  border:1px solid #23657b;
-  border-radius:10px;
-  padding:13px
+.subtitle {
+  margin: 7px 0;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: #72dfff;
 }
 
-button{
-  background:#00cde8;
-  color:#00131c;
-  border:0;
-  border-radius:10px;
-  padding:12px;
-  font-weight:bold;
-  cursor:pointer
+#status {
+  margin-top: 9px;
+  color: #8aaeba;
+  font-size: 12px;
 }
 
-button:active{transform:scale(.97)}
-
-button:disabled{
-  opacity:.55;
-  cursor:wait
+.visual {
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  padding: 12px 0 14px;
 }
 
-.actions{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin-top:10px
+.radar {
+  width: min(72vw, 290px);
+  aspect-ratio: 1;
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle, #0a567766 0%, #04283b55 40%, #06101d 72%);
+  border: 1px solid #1bcfff66;
+  box-shadow:
+    0 0 18px #00cfff22,
+    inset 0 0 24px #00bfff22;
 }
 
-.actions button{
-  background:#143747;
-  color:#b9f7ff;
-  border:1px solid #23657b
+.radar::before,
+.radar::after {
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border: 1px solid #28cfff66;
+  border-radius: 50%;
 }
 
-.actions .ai-button{
-  background:#00cde8;
-  color:#00131c;
-  border-color:#39e6ff;
-  box-shadow:0 0 10px #00cde855
+.radar::after {
+  inset: 20%;
+  border-color: #28cfff88;
 }
 
-a{color:#65eaff}
+.ring {
+  position: absolute;
+  inset: 4%;
+  border: 2px solid transparent;
+  border-top-color: var(--cyan);
+  border-bottom-color: #0879c9;
+  border-radius: 50%;
+  animation: rotate 8s linear infinite;
+  filter: drop-shadow(0 0 5px #00d9ff);
+}
+
+.ring.r2 {
+  inset: 13%;
+  border-width: 3px;
+  border-top-color: #0879c9;
+  border-right-color: #39e6ff;
+  animation-duration: 5s;
+  animation-direction: reverse;
+}
+
+.ring.r3 {
+  inset: 25%;
+  border-width: 2px;
+  border-left-color: var(--cyan);
+  border-right-color: #008cff;
+  animation-duration: 3s;
+}
+
+.ring.r4 {
+  inset: 35%;
+  border-width: 1px;
+  border-top-color: #fff;
+  border-bottom-color: var(--cyan);
+  animation-duration: 2s;
+}
+
+.radar-grid {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    linear-gradient(90deg, transparent 49.7%, #20cfff55 50%, transparent 50.3%),
+    linear-gradient(0deg, transparent 49.7%, #20cfff55 50%, transparent 50.3%);
+}
+
+.sweep {
+  position: absolute;
+  inset: 5%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 290deg,
+    #00cfff08 310deg,
+    #00cfff22 335deg,
+    #39e6ff99 359deg,
+    transparent 360deg
+  );
+  animation: rotate 4s linear infinite;
+}
+
+.core {
+  position: absolute;
+  width: 24%;
+  aspect-ratio: 1;
+  top: 38%;
+  left: 38%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #39e6ff 18%, #008cff 48%, #03406a 72%);
+  box-shadow: 0 0 15px #00d9ff, 0 0 38px #008cff, 0 0 60px #00d9ff55;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.core::after {
+  content: "";
+  position: absolute;
+  inset: -35%;
+  border: 1px solid #39e6ff;
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite reverse;
+}
+
+.dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 9px 3px #00d9ff;
+  animation: blink 1.6s ease-in-out infinite;
+}
+
+.d1 { top: 22%; left: 69%; }
+.d2 { top: 69%; left: 23%; animation-delay: .4s; }
+.d3 { top: 78%; left: 66%; animation-delay: .8s; }
+.d4 { top: 34%; left: 18%; animation-delay: 1s; }
+
+.orbit-label {
+  margin-top: 12px;
+  color: #70dfff;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-align: center;
+}
+
+.state-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.state {
+  padding: 6px 9px;
+  border: 1px solid #16516b;
+  border-radius: 20px;
+  color: #6d9cae;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.state.active {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  box-shadow: 0 0 10px #00cfff33;
+}
+
+.wave {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  margin: 4px 0 14px;
+  overflow: hidden;
+}
+
+.wave span {
+  width: 3px;
+  height: 6px;
+  border-radius: 5px;
+  background: var(--cyan);
+  box-shadow: 0 0 7px #00cfff;
+  animation: wave 1s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+
+.wave span:nth-child(3n) { animation-delay: -.3s; }
+.wave span:nth-child(4n) { animation-delay: -.6s; }
+.wave span:nth-child(5n) { animation-delay: -.8s; }
+
+body.busy .wave span,
+body.listening .wave span,
+body.speaking .wave span {
+  animation-play-state: running;
+}
+
+body.busy .ring { animation-duration: 1.2s; }
+body.listening .radar { box-shadow: 0 0 35px #00d9ff55; }
+body.speaking .core { animation-duration: .45s; }
+
+#chat {
+  height: 31vh;
+  min-height: 190px;
+  max-height: 360px;
+  overflow-y: auto;
+  border: 1px solid #16465a;
+  border-radius: 14px;
+  padding: 12px;
+  background: #04111de8;
+  box-shadow: inset 0 0 20px #008cff0c;
+  scroll-behavior: smooth;
+}
+
+.msg {
+  padding: 11px;
+  margin: 8px 0;
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  line-height: 1.45;
+  font-size: 14px;
+}
+
+.jarvis {
+  background: #103345;
+  border-left: 2px solid var(--cyan);
+}
+
+.user {
+  background: #174a56;
+  border-right: 2px solid #008cff;
+  text-align: right;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+input {
+  flex: 1;
+  min-width: 0;
+  background: #0c2030;
+  color: white;
+  border: 1px solid #23657b;
+  border-radius: 10px;
+  padding: 13px;
+  outline: none;
+}
+
+input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 10px #00cfff22;
+}
+
+button {
+  background: var(--cyan);
+  color: #00131c;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:active { transform: scale(.97); }
+
+button:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.actions button {
+  flex: 1 1 92px;
+  background: #143747;
+  color: var(--text);
+  border: 1px solid #23657b;
+  min-height: 42px;
+}
+
+.actions .ai-button {
+  background: #00cde8;
+  color: #00131c;
+  border-color: var(--cyan);
+  box-shadow: 0 0 10px #00cde855;
+}
+
+@keyframes rotate {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(.92); opacity: .85; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: .25; }
+  50% { opacity: 1; }
+}
+
+@keyframes wave {
+  from { height: 4px; }
+  to { height: 29px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
 </style>
 </head>
 
@@ -109,13 +398,39 @@ a{color:#65eaff}
 
 <header>
   <h1>J.A.R.V.I.S</h1>
-  <p>ASSISTENTE PESSOAL</p>
-  <div id="status">Sistema online • A aguardar a IA local</div>
+  <div class="subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+  <div id="status">SISTEMA ONLINE • GEMMA LOCAL</div>
 </header>
+
+<section class="visual">
+  <div class="radar" aria-label="Radar holográfico animado">
+    <div class="radar-grid"></div>
+    <div class="sweep"></div>
+    <div class="ring"></div>
+    <div class="ring r2"></div>
+    <div class="ring r3"></div>
+    <div class="ring r4"></div>
+    <div class="core"></div>
+    <div class="dot d1"></div>
+    <div class="dot d2"></div>
+    <div class="dot d3"></div>
+    <div class="dot d4"></div>
+  </div>
+
+  <div class="orbit-label" id="visualState">SISTEMA EM ESPERA</div>
+
+  <div class="state-row">
+    <span class="state" id="listenState">◉ OUVINDO</span>
+    <span class="state" id="thinkState">◎ PENSANDO</span>
+    <span class="state" id="speakState">◖ FALANDO</span>
+  </div>
+</section>
+
+<div class="wave" id="wave" aria-hidden="true"></div>
 
 <div id="chat" aria-live="polite">
   <div class="msg jarvis">
-    Olá! Sou o JARVIS. Carrega em "Carregar IA" para selecionar o modelo Gemma. Depois, podes conversar comigo.
+    Olá! Sou o JARVIS. Estou pronto para ajudar. Escreve uma mensagem ou utiliza o microfone.
   </div>
 </div>
 
@@ -134,23 +449,60 @@ a{color:#65eaff}
 
 <script>
 let voiceOn = true;
-let modelSelectionRequested = false;
 let waitingForModel = false;
+let speakingTimer = null;
 
 function setStatus(text) {
   document.getElementById("status").textContent = text;
 }
 
+function setVisualState(state) {
+  document.body.classList.remove(
+    "busy", "listening", "speaking"
+  );
+
+  document.querySelectorAll(".state").forEach(el => {
+    el.classList.remove("active");
+  });
+
+  const label = document.getElementById("visualState");
+
+  if (state === "listening") {
+    document.body.classList.add("listening");
+    document.getElementById("listenState").classList.add("active");
+    label.textContent = "A OUVIR COMANDO...";
+  } else if (state === "busy") {
+    document.body.classList.add("busy");
+    document.getElementById("thinkState").classList.add("active");
+    label.textContent = "A PROCESSAR DADOS...";
+  } else if (state === "speaking") {
+    document.body.classList.add("speaking");
+    document.getElementById("speakState").classList.add("active");
+    label.textContent = "A TRANSMITIR RESPOSTA...";
+  } else {
+    label.textContent = "SISTEMA EM ESPERA";
+  }
+}
+
+function createWave() {
+  const wave = document.getElementById("wave");
+
+  for (let i = 0; i < 49; i++) {
+    const bar = document.createElement("span");
+    bar.style.animationDelay = (-Math.random()).toFixed(2) + "s";
+    wave.appendChild(bar);
+  }
+}
+
+createWave();
+
 function chooseJarvisModel() {
-  if (
-    window.AndroidVoice &&
-    typeof window.AndroidVoice.chooseModel === "function"
-  ) {
-    modelSelectionRequested = true;
-    setStatus("Seleciona o ficheiro .litertlm no telemóvel.");
+  if (window.AndroidVoice &&
+      typeof window.AndroidVoice.chooseModel === "function") {
+    setStatus("Seleciona o ficheiro .litertlm.");
     window.AndroidVoice.chooseModel();
   } else {
-    setStatus("O carregamento do modelo requer a aplicação Android.");
+    setStatus("Esta função requer a aplicação Android.");
   }
 }
 
@@ -159,20 +511,24 @@ function addMessage(text, who) {
   el.className = "msg " + who;
   el.textContent = String(text);
 
-  document.getElementById("chat").appendChild(el);
-
   const chat = document.getElementById("chat");
+  chat.appendChild(el);
   chat.scrollTop = chat.scrollHeight;
 }
 
 function speak(text) {
   if (!voiceOn) return;
 
-  if (
-    window.AndroidVoice &&
-    typeof window.AndroidVoice.speak === "function"
-  ) {
+  if (window.AndroidVoice &&
+      typeof window.AndroidVoice.speak === "function") {
+    setVisualState("speaking");
     window.AndroidVoice.speak(String(text));
+
+    clearTimeout(speakingTimer);
+    speakingTimer = setTimeout(() => {
+      if (!waitingForModel) setVisualState("idle");
+    }, Math.max(1800, String(text).length * 65));
+
     return;
   }
 
@@ -181,8 +537,11 @@ function speak(text) {
 
     const utterance = new SpeechSynthesisUtterance(String(text));
     utterance.lang = "pt-BR";
-    utterance.volume = 1;
     utterance.rate = 1;
+
+    utterance.onstart = () => setVisualState("speaking");
+    utterance.onend = () => setVisualState("idle");
+    utterance.onerror = () => setVisualState("idle");
 
     window.speechSynthesis.speak(utterance);
   }
@@ -198,25 +557,21 @@ function answer(raw) {
 
   if (!msg) return "Escreve alguma coisa para começarmos.";
 
-  if (
-    msg.includes("olá") ||
-    msg.includes("ola") ||
-    msg.includes("bom dia") ||
-    msg.includes("boa noite") ||
-    msg === "oi" ||
-    msg.startsWith("oi ")
-  ) {
+  if (msg.includes("bom dia") ||
+      msg.includes("boa noite") ||
+      msg.includes("boa tarde") ||
+      msg === "oi" || msg.startsWith("oi ") ||
+      msg.includes("olá") || msg.includes("ola")) {
     return "Olá! Estou pronto para ajudar. Qual é o teu comando?";
   }
 
   if (msg.includes("teu nome") || msg.includes("quem és")) {
-    return "Sou o JARVIS, o teu assistente pessoal em desenvolvimento.";
+    return "Sou o JARVIS, o teu assistente pessoal com Gemma local.";
   }
 
   if (msg.includes("horas") || msg.includes("hora agora")) {
     return "São " + new Date().toLocaleTimeString("pt-BR", {
-      hour:"2-digit",
-      minute:"2-digit"
+      hour: "2-digit", minute: "2-digit"
     }) + ".";
   }
 
@@ -233,23 +588,15 @@ function answer(raw) {
   }
 
   if (msg.includes("ajuda") || msg.includes("comandos")) {
-    return "Podes pedir a hora, a data, uma piada, uma frase motivacional, abrir o Google ou YouTube, ou fazer perguntas ao Gemma local.";
+    return "Posso conversar através do Gemma local, dizer a hora e a data, contar uma piada, dar motivação e abrir o Google, YouTube ou definições do Android.";
   }
 
   return null;
 }
 
-function isSettingsCommand(msg) {
-  return (
-    msg.includes("definições") ||
-    msg.includes("configurações") ||
-    msg.includes("configuracoes")
-  );
-}
-
 function send() {
   if (waitingForModel) {
-    setStatus("Aguarda a resposta anterior do Gemma.");
+    setStatus("Aguarda a resposta anterior.");
     return;
   }
 
@@ -266,10 +613,8 @@ function send() {
 
   const msg = text.toLowerCase();
 
-  // Comandos para abrir aplicações no Android.
   if (msg.includes("youtube") || msg.includes("you tube")) {
     reply("A abrir o YouTube.");
-
     if (window.AndroidVoice) {
       window.AndroidVoice.openApp("youtube");
     } else {
@@ -280,7 +625,6 @@ function send() {
 
   if (msg.includes("google")) {
     reply("A abrir o Google.");
-
     if (window.AndroidVoice) {
       window.AndroidVoice.openApp("google");
     } else {
@@ -289,9 +633,10 @@ function send() {
     return;
   }
 
-  if (isSettingsCommand(msg)) {
+  if (msg.includes("definições") ||
+      msg.includes("configurações") ||
+      msg.includes("configuracoes")) {
     reply("A abrir as definições do Android.");
-
     if (window.AndroidVoice) {
       window.AndroidVoice.openApp("settings");
     } else {
@@ -300,67 +645,68 @@ function send() {
     return;
   }
 
-  // Respostas locais rápidas.
-  const localAnswer = answer(text);
+  const local = answer(text);
 
-  if (localAnswer !== null) {
-    reply(localAnswer);
-    setStatus("Resposta dos comandos locais.");
+  if (local !== null) {
+    setVisualState("idle");
+    setStatus("Comando local executado.");
+    reply(local);
     return;
   }
 
-  // Perguntas livres: enviar ao modelo Gemma no Android.
-  if (
-    window.AndroidVoice &&
-    typeof window.AndroidVoice.askModel === "function"
-  ) {
+  if (window.AndroidVoice &&
+      typeof window.AndroidVoice.askModel === "function") {
     waitingForModel = true;
     document.getElementById("sendBtn").disabled = true;
-    setStatus("O Gemma está a pensar...");
+
+    setVisualState("busy");
+    setStatus("Gemma local a processar...");
 
     try {
       window.AndroidVoice.askModel(text);
     } catch (error) {
-      waitingForModel = false;
-      document.getElementById("sendBtn").disabled = false;
-      setStatus("Não foi possível enviar a mensagem ao Gemma.");
-      reply("Não consegui contactar o modelo local.");
+      finishModelResponse(
+        "Não consegui enviar a mensagem ao modelo local."
+      );
     }
     return;
   }
 
-  reply(
-    "A IA local só funciona na aplicação Android com a ponte nativa ativa. " +
-    "Podes continuar a usar os comandos básicos."
-  );
-  setStatus("Ponte Android indisponível.");
+  setStatus("A ponte Android não está disponível.");
+  reply("A IA local requer a aplicação Android com o modelo integrado.");
 }
 
-// Chamado pelo MainActivity.kt quando o Gemma responde.
-function onNativeModelResponse(text) {
+function finishModelResponse(text) {
   waitingForModel = false;
   document.getElementById("sendBtn").disabled = false;
 
   const response = String(text || "").trim();
 
   if (!response) {
+    setVisualState("idle");
     setStatus("O Gemma não devolveu uma resposta.");
-    reply("Não recebi uma resposta do modelo. Tenta novamente.");
+    reply("Não recebi uma resposta. Tenta novamente.");
     return;
   }
 
-  setStatus("Gemma local • Resposta recebida");
+  setStatus("GEMMA LOCAL • RESPOSTA RECEBIDA");
+  setVisualState("idle");
   reply(response);
 }
 
-// Chamado pelo Android ao terminar a seleção/cópia do modelo.
+function onNativeModelResponse(text) {
+  finishModelResponse(text);
+}
+
 function onNativeSpeechResult(text) {
-  document.getElementById("msg").value = text;
+  setVisualState("idle");
   setStatus("Comando de voz reconhecido.");
+  document.getElementById("msg").value = text;
   send();
 }
 
 function onNativeSpeechError(message) {
+  setVisualState("idle");
   setStatus(message);
 }
 
@@ -382,6 +728,7 @@ function toggleVoice() {
   if (voiceOn) {
     reply("Voz ativada.");
   } else {
+    setVisualState("idle");
     addMessage("Voz desativada.", "jarvis");
   }
 }
@@ -389,20 +736,19 @@ function toggleVoice() {
 function clearChat() {
   document.getElementById("chat").innerHTML = "";
   addMessage("Conversa limpa. Estou pronto!", "jarvis");
+  setStatus("SISTEMA ONLINE");
+  setVisualState("idle");
 }
 
 function startMic() {
+  setVisualState("listening");
   setStatus("A tentar ativar o microfone...");
 
-  if (
-    window.AndroidVoice &&
-    typeof window.AndroidVoice.startListening === "function"
-  ) {
+  if (window.AndroidVoice &&
+      typeof window.AndroidVoice.startListening === "function") {
     window.AndroidVoice.startListening();
-  } else if (
-    "webkitSpeechRecognition" in window ||
-    "SpeechRecognition" in window
-  ) {
+  } else if ("webkitSpeechRecognition" in window ||
+             "SpeechRecognition" in window) {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -412,28 +758,34 @@ function startMic() {
     recognition.onresult = function(event) {
       document.getElementById("msg").value =
         event.results[0][0].transcript;
+      setVisualState("idle");
       send();
     };
 
     recognition.onerror = function() {
+      setVisualState("idle");
       setStatus("Não foi possível reconhecer a voz.");
+    };
+
+    recognition.onend = function() {
+      if (!waitingForModel) setVisualState("idle");
     };
 
     recognition.start();
   } else {
-    setStatus("Reconhecimento de voz indisponível neste navegador.");
+    setVisualState("idle");
+    setStatus("Reconhecimento de voz indisponível.");
   }
 }
 
 document.getElementById("msg").addEventListener("keydown", function(event) {
-  if (event.key === "Enter") {
-    send();
-  }
+  if (event.key === "Enter") send();
 });
 </script>
 
 </body>
-</html>
+  </html>
+  
 
 
   

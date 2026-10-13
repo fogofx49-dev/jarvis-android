@@ -20,12 +20,12 @@ import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
+import java.util.concurrent.Executors
 
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Conversation
-import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
 
@@ -41,13 +41,13 @@ class MainActivity : Activity() {
     private var modelEngine: Engine? = null
     private var modelConversation: Conversation? = null
 
-@Volatile
-private var modelReady = false
+    @Volatile
+    private var modelReady = false
 
-@Volatile
-private var modelLoading = false
+    @Volatile
+    private var modelLoading = false
 
-private val aiExecutor = Executors.newSingleThreadExecutor()
+    private val aiExecutor = Executors.newSingleThreadExecutor()
 
     companion object {
         private const val MIC_PERMISSION = 101
@@ -66,28 +66,26 @@ private val aiExecutor = Executors.newSingleThreadExecutor()
             }
         }
 
-        
-webView = WebView(this)
-webView.settings.javaScriptEnabled = true
-webView.settings.domStorageEnabled = true
+        webView = WebView(this)
+        webView.settings.javaScriptEnabled = true
+        webView.settings.domStorageEnabled = true
 
-webView.webViewClient = object : WebViewClient() {
-    override fun onPageFinished(
-        view: WebView?,
-        url: String?
-    ) {
-        super.onPageFinished(view, url)
-        initializeGemma()
-    }
-}
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(
+                view: WebView?,
+                url: String?
+            ) {
+                super.onPageFinished(view, url)
+                initializeGemma()
+            }
+        }
 
-webView.webChromeClient = WebChromeClient()
+        webView.webChromeClient = WebChromeClient()
+        webView.addJavascriptInterface(AndroidBridge(), "AndroidVoice")
 
-webView.addJavascriptInterface(AndroidBridge(), "AndroidVoice")
-
-setContentView(webView)
-webView.loadUrl("file:///android_asset/index.html")
-
+        setContentView(webView)
+        webView.loadUrl("file:///android_asset/index.html")
+    } // Fim de onCreate()
 
     inner class AndroidBridge {
 
@@ -112,12 +110,12 @@ webView.loadUrl("file:///android_asset/index.html")
                     val intent = when (app.lowercase()) {
                         "youtube" -> Intent(
                             Intent.ACTION_VIEW,
-                            android.net.Uri.parse("https://m.youtube.com/")
+                            Uri.parse("https://m.youtube.com/")
                         )
 
                         "google" -> Intent(
                             Intent.ACTION_VIEW,
-                            android.net.Uri.parse("https://www.google.com/")
+                            Uri.parse("https://www.google.com/")
                         )
 
                         "settings" -> Intent(
@@ -141,15 +139,19 @@ webView.loadUrl("file:///android_asset/index.html")
         @JavascriptInterface
         fun startListening() {
             runOnUiThread {
-                if (!SpeechRecognizer.isRecognitionAvailable(this@MainActivity)) {
+                if (!SpeechRecognizer.isRecognitionAvailable(
+                        this@MainActivity
+                    )
+                ) {
                     showStatus(
                         "Não há serviço de reconhecimento de voz disponível."
                     )
                     return@runOnUiThread
                 }
 
-                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
-                    != PackageManager.PERMISSION_GRANTED
+                if (
+                    checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
+                    PackageManager.PERMISSION_GRANTED
                 ) {
                     ActivityCompat.requestPermissions(
                         this@MainActivity,
@@ -169,14 +171,16 @@ webView.loadUrl("file:///android_asset/index.html")
                 openModelPicker()
             }
         }
-    }
+    } // Fim de AndroidBridge
 
     private fun showStatus(message: String) {
         runOnUiThread {
-            webView.evaluateJavascript(
-                "onNativeSpeechError(${JSONObject.quote(message)})",
-                null
-            )
+            if (!isFinishing && ::webView.isInitialized) {
+                webView.evaluateJavascript(
+                    "onNativeSpeechError(${JSONObject.quote(message)})",
+                    null
+                )
+            }
         }
     }
 
@@ -213,17 +217,28 @@ webView.loadUrl("file:///android_asset/index.html")
                         val text = matches?.firstOrNull().orEmpty()
 
                         if (text.isNotBlank()) {
-                            webView.evaluateJavascript(
-                                "onNativeSpeechResult(${JSONObject.quote(text)})",
-                                null
-                            )
+                            runOnUiThread {
+                                webView.evaluateJavascript(
+                                    "onNativeSpeechResult(" +
+                                        "${JSONObject.quote(text)})",
+                                    null
+                                )
+                            }
                         } else {
-                            showStatus("Não ouvi uma frase. Tenta novamente.")
+                            showStatus(
+                                "Não ouvi uma frase. Tenta novamente."
+                            )
                         }
                     }
 
-                    override fun onPartialResults(partialResults: Bundle?) {}
-                    override fun onEvent(eventType: Int, params: Bundle?) {}
+                    override fun onPartialResults(
+                        partialResults: Bundle?
+                    ) {}
+
+                    override fun onEvent(
+                        eventType: Int,
+                        params: Bundle?
+                    ) {}
                 }
             )
 
@@ -234,8 +249,14 @@ webView.loadUrl("file:///android_asset/index.html")
                     RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                     RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
                 )
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
-                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE,
+                    "pt-BR"
+                )
+                putExtra(
+                    RecognizerIntent.EXTRA_PARTIAL_RESULTS,
+                    false
+                )
             }
 
             recognizer?.startListening(intent)
@@ -253,59 +274,63 @@ webView.loadUrl("file:///android_asset/index.html")
 
         startActivityForResult(intent, MODEL_PICKER)
     }
-    
+
     private fun initializeGemma() {
-    val file = File(filesDir, "model.litertlm")
+        val file = File(filesDir, "model.litertlm")
 
-    if (!file.exists()) {
-        showStatus("Modelo não encontrado. Seleciona o ficheiro .litertlm.")
-        return
-    }
-
-    if (modelReady || modelLoading) return
-
-    modelLoading = true
-    showStatus("A iniciar o Gemma...")
-
-    aiExecutor.execute {
-        var newEngine: Engine? = null
-
-        try {
-            val config = EngineConfig(
-                modelPath = file.absolutePath,
-                backend = Backend.CPU()
-            )
-
-            newEngine = Engine(config)
-            newEngine.initialize()
-
-            val conversation = newEngine.createConversation()
-
-            modelEngine = newEngine
-            modelConversation = conversation
-            modelReady = true
-
-            showStatus("Gemma iniciado com sucesso!")
-        } catch (e: Exception) {
-            try {
-                newEngine?.close()
-            } catch (_: Exception) {
-            }
-
-            modelEngine = null
-            modelConversation = null
-            modelReady = false
-
+        if (!file.exists()) {
             showStatus(
-                "Erro ao iniciar o Gemma: " +
-                    (e.message ?: "erro desconhecido")
+                "Seleciona o ficheiro do modelo .litertlm."
             )
-        } finally {
-            modelLoading = false
+            return
+        }
+
+        if (modelReady || modelLoading) return
+
+        modelLoading = true
+        showStatus("A iniciar o Gemma...")
+
+        aiExecutor.execute {
+            var newEngine: Engine? = null
+
+            try {
+                val config = EngineConfig(
+                    modelPath = file.absolutePath,
+                    backend = Backend.CPU()
+                )
+
+                newEngine = Engine(config)
+                newEngine.initialize()
+
+                val conversation = newEngine.createConversation()
+
+                modelEngine = newEngine
+                modelConversation = conversation
+                modelFile = file
+                modelReady = true
+
+                showStatus("Gemma iniciado com sucesso!")
+
+            } catch (e: Exception) {
+                try {
+                    newEngine?.close()
+                } catch (_: Exception) {
+                }
+
+                modelEngine = null
+                modelConversation = null
+                modelReady = false
+
+                showStatus(
+                    "Erro ao iniciar o Gemma: " +
+                        (e.message ?: "erro desconhecido")
+                )
+            } finally {
+                modelLoading = false
+            }
         }
     }
-}
-    
+
     @Suppress("DEPRECATION")
     override fun onActivityResult(
         requestCode: Int,
@@ -314,7 +339,10 @@ webView.loadUrl("file:///android_asset/index.html")
     ) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (requestCode == MODEL_PICKER && resultCode == RESULT_OK) {
+        if (
+            requestCode == MODEL_PICKER &&
+            resultCode == RESULT_OK
+        ) {
             val uri = data?.data ?: return
             modelUri = uri
 
@@ -322,7 +350,10 @@ webView.loadUrl("file:///android_asset/index.html")
 
             Thread {
                 try {
-                    val destination = File(filesDir, "model.litertlm")
+                    val destination = File(
+                        filesDir,
+                        "model.litertlm"
+                    )
 
                     contentResolver.openInputStream(uri).use { input ->
                         requireNotNull(input) {
@@ -335,11 +366,17 @@ webView.loadUrl("file:///android_asset/index.html")
                     }
 
                     modelFile = destination
-                    showStatus("Modelo copiado com sucesso!")
+
+                    showStatus(
+                        "Modelo copiado! A iniciar o Gemma..."
+                    )
+
+                    initializeGemma()
 
                 } catch (e: Exception) {
                     showStatus(
-                        "Erro ao copiar o modelo. Verifica o espaço disponível."
+                        "Erro ao copiar o modelo. " +
+                            "Verifica o ficheiro e o espaço disponível."
                     )
                 }
             }.start()
@@ -364,7 +401,9 @@ webView.loadUrl("file:///android_asset/index.html")
             ) {
                 beginRecognition()
             } else {
-                showStatus("A permissão do microfone foi recusada.")
+                showStatus(
+                    "A permissão do microfone foi recusada."
+                )
             }
         }
     }
@@ -378,6 +417,19 @@ webView.loadUrl("file:///android_asset/index.html")
             tts.shutdown()
         }
 
+        try {
+            modelConversation?.close()
+        } catch (_: Exception) {
+        }
+
+        try {
+            modelEngine?.close()
+        } catch (_: Exception) {
+        }
+
+        aiExecutor.shutdownNow()
+
         super.onDestroy()
     }
 }
+

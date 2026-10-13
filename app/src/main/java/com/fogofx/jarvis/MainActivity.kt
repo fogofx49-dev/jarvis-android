@@ -87,92 +87,150 @@ class MainActivity : Activity() {
         webView.loadUrl("file:///android_asset/index.html")
     } // Fim de onCreate()
 
-    inner class AndroidBridge {
+inner class AndroidBridge {
 
-        @JavascriptInterface
-        fun speak(text: String) {
-            runOnUiThread {
-                if (ttsReady && text.isNotBlank()) {
-                    tts.speak(
-                        text,
-                        TextToSpeech.QUEUE_FLUSH,
-                        null,
-                        "jarvis-voice"
-                    )
-                }
+    @JavascriptInterface
+    fun speak(text: String) {
+        runOnUiThread {
+            if (ttsReady && text.isNotBlank()) {
+                tts.speak(
+                    text,
+                    TextToSpeech.QUEUE_FLUSH,
+                    null,
+                    "jarvis-voice"
+                )
             }
         }
+    }
 
-        @JavascriptInterface
-        fun openApp(app: String) {
-            runOnUiThread {
-                try {
-                    val intent = when (app.lowercase()) {
-                        "youtube" -> Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse("https://m.youtube.com/")
-                        )
+    @JavascriptInterface
+    fun openApp(app: String) {
+        runOnUiThread {
+            try {
+                val intent = when (app.lowercase()) {
+                    "youtube" -> Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://m.youtube.com/")
+                    )
 
-                        "google" -> Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse("https://www.google.com/")
-                        )
+                    "google" -> Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://www.google.com/")
+                    )
 
-                        "settings" -> Intent(
-                            android.provider.Settings.ACTION_SETTINGS
-                        )
+                    "settings" -> Intent(
+                        android.provider.Settings.ACTION_SETTINGS
+                    )
 
-                        else -> null
+                    else -> null
+                }
+
+                if (intent != null) {
+                    startActivity(intent)
+                } else {
+                    showStatus("Comando não reconhecido.")
+                }
+            } catch (e: Exception) {
+                showStatus("Não consegui abrir essa aplicação.")
+            }
+        }
+    }
+
+    @JavascriptInterface
+    fun startListening() {
+        runOnUiThread {
+            if (!SpeechRecognizer.isRecognitionAvailable(
+                    this@MainActivity
+                )
+            ) {
+                showStatus(
+                    "Não há serviço de reconhecimento de voz disponível."
+                )
+                return@runOnUiThread
+            }
+
+            if (
+                checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this@MainActivity,
+                    arrayOf(Manifest.permission.RECORD_AUDIO),
+                    MIC_PERMISSION
+                )
+                return@runOnUiThread
+            }
+
+            beginRecognition()
+        }
+    }
+
+    @JavascriptInterface
+    fun chooseModel() {
+        runOnUiThread {
+            openModelPicker()
+        }
+    }
+
+    // NOVO: recebe perguntas do chat HTML e envia-as ao Gemma.
+    @JavascriptInterface
+    fun askModel(prompt: String) {
+        val question = prompt.trim()
+
+        if (question.isBlank()) return
+
+        if (!modelReady) {
+            showModelResponse(
+                "O Gemma ainda não está pronto. " +
+                    "Seleciona o modelo e aguarda a inicialização."
+            )
+            return
+        }
+
+        aiExecutor.execute {
+            try {
+                val conversation = modelConversation
+                    ?: throw IllegalStateException(
+                        "Conversa com o Gemma indisponível."
+                    )
+
+                val result = conversation.sendMessage(
+                    question,
+                    maxOutputToken = 256
+                )
+
+                // O modelo devolve uma mensagem LiteRT-LM.
+                // Usamos a representação da mensagem como resposta.
+                val answer = result.toString().trim()
+
+                showModelResponse(
+                    answer.ifBlank {
+                        "Não consegui gerar uma resposta."
                     }
+                )
 
-                    if (intent != null) {
-                        startActivity(intent)
-                    } else {
-                        showStatus("Comando não reconhecido.")
-                    }
-                } catch (e: Exception) {
-                    showStatus("Não consegui abrir essa aplicação.")
-                }
+            } catch (e: Exception) {
+                showModelResponse(
+                    "Ocorreu um erro ao gerar a resposta do Gemma."
+                )
             }
         }
+    }
+}
 
-        @JavascriptInterface
-        fun startListening() {
-            runOnUiThread {
-                if (!SpeechRecognizer.isRecognitionAvailable(
-                        this@MainActivity
-                    )
-                ) {
-                    showStatus(
-                        "Não há serviço de reconhecimento de voz disponível."
-                    )
-                    return@runOnUiThread
-                }
-
-                if (
-                    checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
-                    PackageManager.PERMISSION_GRANTED
-                ) {
-                    ActivityCompat.requestPermissions(
-                        this@MainActivity,
-                        arrayOf(Manifest.permission.RECORD_AUDIO),
-                        MIC_PERMISSION
-                    )
-                    return@runOnUiThread
-                }
-
-                beginRecognition()
-            }
+private fun showModelResponse(answer: String) {
+    runOnUiThread {
+        if (!isFinishing && ::webView.isInitialized) {
+            webView.evaluateJavascript(
+                "onNativeModelResponse(" +
+                    "${JSONObject.quote(answer)})",
+                null
+            )
         }
+    }
+}
 
-        @JavascriptInterface
-        fun chooseModel() {
-            runOnUiThread {
-                openModelPicker()
-            }
-        }
-    } // Fim de AndroidBridge
-
+    
     private fun showStatus(message: String) {
         runOnUiThread {
             if (!isFinishing && ::webView.isInitialized) {

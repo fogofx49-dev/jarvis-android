@@ -11,6 +11,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.speech.tts.Voice
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
@@ -58,12 +59,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         tts = TextToSpeech(this) { status ->
-            if (status == TextToSpeech.SUCCESS) {
-                val result = tts.setLanguage(Locale("pt", "BR"))
-                ttsReady =
-                    result != TextToSpeech.LANG_MISSING_DATA &&
-                    result != TextToSpeech.LANG_NOT_SUPPORTED
-            }
+            configureJarvisVoice(status)
         }
 
         webView = WebView(this)
@@ -81,156 +77,231 @@ class MainActivity : Activity() {
         }
 
         webView.webChromeClient = WebChromeClient()
-        webView.addJavascriptInterface(AndroidBridge(), "AndroidVoice")
+        webView.addJavascriptInterface(
+            AndroidBridge(),
+            "AndroidVoice"
+        )
 
         setContentView(webView)
         webView.loadUrl("file:///android_asset/index.html")
-    } // Fim de onCreate()
-
-inner class AndroidBridge {
-
-    @JavascriptInterface
-    fun speak(text: String) {
-        runOnUiThread {
-            if (ttsReady && text.isNotBlank()) {
-                tts.speak(
-                    text,
-                    TextToSpeech.QUEUE_FLUSH,
-                    null,
-                    "jarvis-voice"
-                )
-            }
-        }
     }
 
-    @JavascriptInterface
-    fun openApp(app: String) {
-        runOnUiThread {
-            try {
-                val intent = when (app.lowercase()) {
-                    "youtube" -> Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse("https://m.youtube.com/")
-                    )
-
-                    "google" -> Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse("https://www.google.com/")
-                    )
-
-                    "settings" -> Intent(
-                        android.provider.Settings.ACTION_SETTINGS
-                    )
-
-                    else -> null
-                }
-
-                if (intent != null) {
-                    startActivity(intent)
-                } else {
-                    showStatus("Comando não reconhecido.")
-                }
-            } catch (e: Exception) {
-                showStatus("Não consegui abrir essa aplicação.")
-            }
-        }
-    }
-
-    @JavascriptInterface
-    fun startListening() {
-        runOnUiThread {
-            if (!SpeechRecognizer.isRecognitionAvailable(
-                    this@MainActivity
-                )
-            ) {
-                showStatus(
-                    "Não há serviço de reconhecimento de voz disponível."
-                )
-                return@runOnUiThread
-            }
-
-            if (
-                checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                ActivityCompat.requestPermissions(
-                    this@MainActivity,
-                    arrayOf(Manifest.permission.RECORD_AUDIO),
-                    MIC_PERMISSION
-                )
-                return@runOnUiThread
-            }
-
-            beginRecognition()
-        }
-    }
-
-    @JavascriptInterface
-    fun chooseModel() {
-        runOnUiThread {
-            openModelPicker()
-        }
-    }
-
-    // NOVO: recebe perguntas do chat HTML e envia-as ao Gemma.
-    @JavascriptInterface
-    fun askModel(prompt: String) {
-        val question = prompt.trim()
-
-        if (question.isBlank()) return
-
-        if (!modelReady) {
-            showModelResponse(
-                "O Gemma ainda não está pronto. " +
-                    "Seleciona o modelo e aguarda a inicialização."
-            )
+    // Configura a voz do JARVIS em português brasileiro.
+    private fun configureJarvisVoice(status: Int) {
+        if (status != TextToSpeech.SUCCESS) {
+            ttsReady = false
+            showStatus("Não foi possível iniciar a voz do JARVIS.")
             return
         }
 
-        aiExecutor.execute {
-            try {
-                val conversation = modelConversation
-                    ?: throw IllegalStateException(
-                        "Conversa com o Gemma indisponível."
+        try {
+            val localeBR = Locale("pt", "BR")
+            val languageResult = tts.setLanguage(localeBR)
+
+            if (
+                languageResult == TextToSpeech.LANG_MISSING_DATA ||
+                languageResult == TextToSpeech.LANG_NOT_SUPPORTED
+            ) {
+                ttsReady = false
+                showStatus(
+                    "Português do Brasil indisponível. " +
+                    "Verifica os dados de voz do Android."
+                )
+                return
+            }
+
+            val availableVoices = tts.voices
+                ?.filter { voice ->
+                    voice.locale.language == "pt" &&
+                    voice.locale.country == "BR" &&
+                    !voice.isNetworkConnectionRequired
+                }
+                .orEmpty()
+
+            // Prefere uma voz identificada como masculina.
+            // Se não houver uma identificação, escolhe uma voz local.
+            val selectedVoice = availableVoices.maxWithOrNull(
+                compareBy<Voice> { voice ->
+                    val name = voice.name.lowercase(Locale.ROOT)
+
+                    when {
+                        "male" in name ||
+                        "mascul" in name -> 2
+
+                        "female" in name ||
+                        "fem" in name -> 0
+
+                        else -> 1
+                    }
+                }.thenBy { it.quality }
+            )
+
+            if (selectedVoice != null) {
+                tts.voice = selectedVoice
+            }
+
+            // Velocidade ligeiramente mais lenta.
+            tts.setSpeechRate(0.94f)
+
+            // Tom ligeiramente mais grave.
+            tts.setPitch(0.92f)
+
+            ttsReady = true
+
+            showStatus(
+                if (selectedVoice != null) {
+                    "Voz JARVIS pronta • Português BR"
+                } else {
+                    "Voz padrão pronta • Português BR"
+                }
+            )
+
+        } catch (e: Exception) {
+            ttsReady = false
+            showStatus("Erro ao configurar a voz do JARVIS.")
+        }
+    }
+
+    inner class AndroidBridge {
+
+        @JavascriptInterface
+        fun speak(text: String) {
+            runOnUiThread {
+                if (ttsReady && text.isNotBlank()) {
+                    tts.speak(
+                        text,
+                        TextToSpeech.QUEUE_FLUSH,
+                        null,
+                        "jarvis-voice"
+                    )
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun openApp(app: String) {
+            runOnUiThread {
+                try {
+                    val intent = when (app.lowercase()) {
+                        "youtube" -> Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://m.youtube.com/")
+                        )
+
+                        "google" -> Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://www.google.com/")
+                        )
+
+                        "settings" -> Intent(
+                            android.provider.Settings.ACTION_SETTINGS
+                        )
+
+                        else -> null
+                    }
+
+                    if (intent != null) {
+                        startActivity(intent)
+                    } else {
+                        showStatus("Comando não reconhecido.")
+                    }
+                } catch (e: Exception) {
+                    showStatus("Não consegui abrir essa aplicação.")
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun startListening() {
+            runOnUiThread {
+                if (!SpeechRecognizer.isRecognitionAvailable(
+                        this@MainActivity
+                    )
+                ) {
+                    showStatus(
+                        "Não há serviço de reconhecimento de voz disponível."
+                    )
+                    return@runOnUiThread
+                }
+
+                if (
+                    checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
+                    PackageManager.PERMISSION_GRANTED
+                ) {
+                    ActivityCompat.requestPermissions(
+                        this@MainActivity,
+                        arrayOf(Manifest.permission.RECORD_AUDIO),
+                        MIC_PERMISSION
+                    )
+                    return@runOnUiThread
+                }
+
+                beginRecognition()
+            }
+        }
+
+        @JavascriptInterface
+        fun chooseModel() {
+            runOnUiThread {
+                openModelPicker()
+            }
+        }
+
+        @JavascriptInterface
+        fun askModel(prompt: String) {
+            val question = prompt.trim()
+
+            if (question.isBlank()) return
+
+            if (!modelReady) {
+                showModelResponse(
+                    "O Gemma ainda não está pronto. " +
+                    "Seleciona o modelo e aguarda a inicialização."
+                )
+                return
+            }
+
+            aiExecutor.execute {
+                try {
+                    val conversation = modelConversation
+                        ?: throw IllegalStateException(
+                            "Conversa com o Gemma indisponível."
+                        )
+
+                    val result = conversation.sendMessage(
+                        question,
+                        maxOutputToken = 256
                     )
 
-                val result = conversation.sendMessage(
-                    question,
-                    maxOutputToken = 256
-                )
+                    val answer = result.toString().trim()
 
-                // O modelo devolve uma mensagem LiteRT-LM.
-                // Usamos a representação da mensagem como resposta.
-                val answer = result.toString().trim()
+                    showModelResponse(
+                        answer.ifBlank {
+                            "Não consegui gerar uma resposta."
+                        }
+                    )
 
-                showModelResponse(
-                    answer.ifBlank {
-                        "Não consegui gerar uma resposta."
-                    }
-                )
+                } catch (e: Exception) {
+                    showModelResponse(
+                        "Ocorreu um erro ao gerar a resposta do Gemma."
+                    )
+                }
+            }
+        }
+    }
 
-            } catch (e: Exception) {
-                showModelResponse(
-                    "Ocorreu um erro ao gerar a resposta do Gemma."
+    private fun showModelResponse(answer: String) {
+        runOnUiThread {
+            if (!isFinishing && ::webView.isInitialized) {
+                webView.evaluateJavascript(
+                    "onNativeModelResponse(" +
+                    "${JSONObject.quote(answer)})",
+                    null
                 )
             }
         }
     }
-}
 
-private fun showModelResponse(answer: String) {
-    runOnUiThread {
-        if (!isFinishing && ::webView.isInitialized) {
-            webView.evaluateJavascript(
-                "onNativeModelResponse(" +
-                    "${JSONObject.quote(answer)})",
-                null
-            )
-        }
-    }
-}
-
-    
     private fun showStatus(message: String) {
         runOnUiThread {
             if (!isFinishing && ::webView.isInitialized) {
@@ -278,7 +349,7 @@ private fun showModelResponse(answer: String) {
                             runOnUiThread {
                                 webView.evaluateJavascript(
                                     "onNativeSpeechResult(" +
-                                        "${JSONObject.quote(text)})",
+                                    "${JSONObject.quote(text)})",
                                     null
                                 )
                             }
@@ -381,7 +452,7 @@ private fun showModelResponse(answer: String) {
 
                 showStatus(
                     "Erro ao iniciar o Gemma: " +
-                        (e.message ?: "erro desconhecido")
+                    (e.message ?: "erro desconhecido")
                 )
             } finally {
                 modelLoading = false
@@ -434,7 +505,7 @@ private fun showModelResponse(answer: String) {
                 } catch (e: Exception) {
                     showStatus(
                         "Erro ao copiar o modelo. " +
-                            "Verifica o ficheiro e o espaço disponível."
+                        "Verifica o ficheiro e o espaço disponível."
                     )
                 }
             }.start()
@@ -490,4 +561,5 @@ private fun showModelResponse(answer: String) {
         super.onDestroy()
     }
 }
+
 

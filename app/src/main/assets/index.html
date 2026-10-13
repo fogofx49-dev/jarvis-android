@@ -5,39 +5,103 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>JARVIS AI</title>
+
 <style>
 *{box-sizing:border-box}
+
 body{
-  margin:0;background:#06101d;color:#b9f7ff;
-  font-family:Arial,sans-serif;padding:18px
+  margin:0;
+  background:#06101d;
+  color:#b9f7ff;
+  font-family:Arial,sans-serif;
+  padding:18px
 }
+
 header{text-align:center;padding:18px 0}
-h1{color:#39e6ff;letter-spacing:5px}
-#status{color:#7e9eac;font-size:13px}
-#chat{
-  height:48vh;min-height:250px;overflow-y:auto;
-  border:1px solid #16465a;border-radius:14px;
-  padding:12px;background:#091725
+
+h1{
+  color:#39e6ff;
+  letter-spacing:5px;
+  text-shadow:0 0 14px #00cde8
 }
-.msg{padding:11px;margin:8px 0;border-radius:10px;
-  overflow-wrap:anywhere;white-space:pre-wrap}
+
+#status{color:#7e9eac;font-size:13px}
+
+#chat{
+  height:48vh;
+  min-height:250px;
+  overflow-y:auto;
+  border:1px solid #16465a;
+  border-radius:14px;
+  padding:12px;
+  background:#091725
+}
+
+.msg{
+  padding:11px;
+  margin:8px 0;
+  border-radius:10px;
+  overflow-wrap:anywhere;
+  white-space:pre-wrap
+}
+
 .jarvis{background:#103345}
 .user{background:#174a56;text-align:right}
-.controls{display:flex;gap:8px;margin-top:12px}
+
+.controls{
+  display:flex;
+  gap:8px;
+  margin-top:12px
+}
+
 input{
-  flex:1;min-width:0;background:#0c2030;color:white;
-  border:1px solid #23657b;border-radius:10px;padding:13px
+  flex:1;
+  min-width:0;
+  background:#0c2030;
+  color:white;
+  border:1px solid #23657b;
+  border-radius:10px;
+  padding:13px
 }
+
 button{
-  background:#00cde8;color:#00131c;border:0;
-  border-radius:10px;padding:12px;font-weight:bold
+  background:#00cde8;
+  color:#00131c;
+  border:0;
+  border-radius:10px;
+  padding:12px;
+  font-weight:bold;
+  cursor:pointer
 }
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.actions button{background:#143747;color:#b9f7ff}
+
+button:active{transform:scale(.97)}
+
+.actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:10px
+}
+
+.actions button{
+  background:#143747;
+  color:#b9f7ff;
+  border:1px solid #23657b
+}
+
+.actions .ai-button{
+  background:#00cde8;
+  color:#00131c;
+  border-color:#39e6ff;
+  box-shadow:0 0 10px #00cde855
+}
+
 a{color:#65eaff}
 </style>
 </head>
+
 <body>
+
 <header>
   <h1>J.A.R.V.I.S</h1>
   <p>ASSISTENTE PESSOAL</p>
@@ -55,24 +119,44 @@ a{color:#65eaff}
   <button onclick="send()">Enviar</button>
 </div>
 
-<div class="actions"><button onclick="startMic()">🎙️ Falar</button>
+<div class="actions">
+  <button onclick="startMic()">🎙️ Falar</button>
   <button onclick="toggleVoice()" id="voiceBtn">🔊 Voz ligada</button>
   <button onclick="sendCommand('ajuda')">❔ Ajuda</button>
   <button onclick="clearChat()">🧹 Limpar</button>
+  <button class="ai-button" onclick="chooseJarvisModel()">🧠 Carregar IA</button>
 </div>
 
 <script>
 let voiceOn = true;
+let modelSelectionRequested = false;
+
+function chooseJarvisModel() {
+  if (
+    window.AndroidVoice &&
+    typeof window.AndroidVoice.chooseModel === "function"
+  ) {
+    modelSelectionRequested = true;
+
+    document.getElementById("status").textContent =
+      "Seleciona o ficheiro .litertlm no teu telemóvel.";
+
+    window.AndroidVoice.chooseModel();
+  } else {
+    document.getElementById("status").textContent =
+      "O carregamento do modelo está disponível na aplicação Android.";
+  }
+}
 
 function addMessage(text, who) {
   const el = document.createElement("div");
   el.className = "msg " + who;
   el.textContent = text;
+
   document.getElementById("chat").appendChild(el);
   document.getElementById("chat").scrollTop =
     document.getElementById("chat").scrollHeight;
 }
-
 
 function speak(text) {
   if (!voiceOn) return;
@@ -93,7 +177,7 @@ function speak(text) {
     window.speechSynthesis.speak(utterance);
   }
 }
-   
+
 function reply(text) {
   addMessage(text, "jarvis");
   speak(text);
@@ -104,9 +188,13 @@ function answer(raw) {
 
   if (!msg) return "Escreve alguma coisa para começarmos.";
 
-  if (msg.includes("olá") || msg.includes("ola") ||
-      msg.includes("bom dia") || msg.includes("boa noite") ||
-      msg.includes("oi")) {
+  if (
+    msg.includes("olá") ||
+    msg.includes("ola") ||
+    msg.includes("bom dia") ||
+    msg.includes("boa noite") ||
+    msg.includes("oi")
+  ) {
     return "Olá! Estou pronto para ajudar. Qual é o teu comando?";
   }
 
@@ -115,8 +203,10 @@ function answer(raw) {
   }
 
   if (msg.includes("horas") || msg.includes("hora agora")) {
-    return "São " + new Date().toLocaleTimeString("pt-BR",
-      {hour:"2-digit",minute:"2-digit"}) + ".";
+    return "São " + new Date().toLocaleTimeString("pt-BR", {
+      hour:"2-digit",
+      minute:"2-digit"
+    }) + ".";
   }
 
   if (msg.includes("data") || msg.includes("dia de hoje")) {
@@ -140,12 +230,11 @@ function answer(raw) {
   }
 
   if (msg.includes("ajuda") || msg.includes("comandos")) {
-    return "Podes pedir a hora, a data, uma piada, uma frase motivacional ou pedir para abrir o Google e o YouTube. Esta versão ainda usa respostas programadas.";
+    return "Podes pedir a hora, a data, uma piada, uma frase motivacional ou pedir para abrir o Google e o YouTube. A integração com IA local ainda está em desenvolvimento.";
   }
 
   return "Ainda não sei responder a isso. Nesta versão estou a usar comandos básicos, sem uma IA ligada. Experimenta escrever ajuda.";
 }
-
 
 function send() {
   const input = document.getElementById("msg");
@@ -165,6 +254,7 @@ function send() {
 
   if (msg.includes("youtube") || msg.includes("you tube")) {
     reply("A abrir o YouTube.");
+
     if (window.AndroidVoice) {
       window.AndroidVoice.openApp("youtube");
     } else {
@@ -175,6 +265,7 @@ function send() {
 
   if (msg.includes("google")) {
     reply("A abrir o Google.");
+
     if (window.AndroidVoice) {
       window.AndroidVoice.openApp("google");
     } else {
@@ -189,6 +280,7 @@ function send() {
     msg.includes("configuracoes")
   ) {
     reply("A abrir as definições do Android.");
+
     if (window.AndroidVoice) {
       window.AndroidVoice.openApp("settings");
     }
@@ -231,13 +323,16 @@ function startMic() {
 
   if (window.AndroidVoice) {
     window.AndroidVoice.startListening();
-  } else if ("webkitSpeechRecognition" in window ||
-             "SpeechRecognition" in window) {
+  } else if (
+    "webkitSpeechRecognition" in window ||
+    "SpeechRecognition" in window
+  ) {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
 
+    const recognition = new SpeechRecognition();
     recognition.lang = "pt-BR";
+
     recognition.onresult = function(event) {
       document.getElementById("msg").value =
         event.results[0][0].transcript;
@@ -258,7 +353,8 @@ function startMic() {
 
 function onNativeSpeechResult(text) {
   document.getElementById("msg").value = text;
-  document.getElementById("status").textContent = "Comando reconhecido.";
+  document.getElementById("status").textContent =
+    "Comando reconhecido.";
   send();
 }
 
@@ -271,8 +367,9 @@ document.getElementById("msg").addEventListener("keydown", function(event) {
     send();
   }
 });
+</script>
 
-  </script>
 </body>
 </html>
+
   

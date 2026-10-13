@@ -22,6 +22,7 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Conversation
 import java.util.concurrent.Executors
+import android.net.Uri
 
  class MainActivity : Activity() {
 
@@ -30,7 +31,8 @@ import java.util.concurrent.Executors
     private lateinit var tts: TextToSpeech
     private var recognizer: SpeechRecognizer? = null
     @Volatile private var ttsReady = false
-
+    private var modelUri: Uri? = null
+  
     companion object {
         private const val MIC_PERMISSION = 101
     }

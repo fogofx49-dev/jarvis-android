@@ -38,6 +38,16 @@ class MainActivity : Activity() {
 
     private var modelUri: Uri? = null
     private var modelFile: File? = null
+    private var modelEngine: Engine? = null
+    private var modelConversation: Conversation? = null
+
+@Volatile
+private var modelReady = false
+
+@Volatile
+private var modelLoading = false
+
+private val aiExecutor = Executors.newSingleThreadExecutor()
 
     companion object {
         private const val MIC_PERMISSION = 101
@@ -56,17 +66,28 @@ class MainActivity : Activity() {
             }
         }
 
-        webView = WebView(this)
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
-        webView.webViewClient = WebViewClient()
-        webView.webChromeClient = WebChromeClient()
+        
+webView = WebView(this)
+webView.settings.javaScriptEnabled = true
+webView.settings.domStorageEnabled = true
 
-        webView.addJavascriptInterface(AndroidBridge(), "AndroidVoice")
-
-        setContentView(webView)
-        webView.loadUrl("file:///android_asset/index.html")
+webView.webViewClient = object : WebViewClient() {
+    override fun onPageFinished(
+        view: WebView?,
+        url: String?
+    ) {
+        super.onPageFinished(view, url)
+        initializeGemma()
     }
+}
+
+webView.webChromeClient = WebChromeClient()
+
+webView.addJavascriptInterface(AndroidBridge(), "AndroidVoice")
+
+setContentView(webView)
+webView.loadUrl("file:///android_asset/index.html")
+
 
     inner class AndroidBridge {
 
@@ -232,7 +253,59 @@ class MainActivity : Activity() {
 
         startActivityForResult(intent, MODEL_PICKER)
     }
+    
+    private fun initializeGemma() {
+    val file = File(filesDir, "model.litertlm")
 
+    if (!file.exists()) {
+        showStatus("Modelo não encontrado. Seleciona o ficheiro .litertlm.")
+        return
+    }
+
+    if (modelReady || modelLoading) return
+
+    modelLoading = true
+    showStatus("A iniciar o Gemma...")
+
+    aiExecutor.execute {
+        var newEngine: Engine? = null
+
+        try {
+            val config = EngineConfig(
+                modelPath = file.absolutePath,
+                backend = Backend.CPU()
+            )
+
+            newEngine = Engine(config)
+            newEngine.initialize()
+
+            val conversation = newEngine.createConversation()
+
+            modelEngine = newEngine
+            modelConversation = conversation
+            modelReady = true
+
+            showStatus("Gemma iniciado com sucesso!")
+        } catch (e: Exception) {
+            try {
+                newEngine?.close()
+            } catch (_: Exception) {
+            }
+
+            modelEngine = null
+            modelConversation = null
+            modelReady = false
+
+            showStatus(
+                "Erro ao iniciar o Gemma: " +
+                    (e.message ?: "erro desconhecido")
+            )
+        } finally {
+            modelLoading = false
+        }
+    }
+}
+    
     @Suppress("DEPRECATION")
     override fun onActivityResult(
         requestCode: Int,

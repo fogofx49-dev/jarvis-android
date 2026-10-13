@@ -17,8 +17,14 @@ import android.webkit.WebViewClient
 import androidx.core.app.ActivityCompat
 import java.util.Locale
 import org.json.JSONObject
+import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Engine
+import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.Conversation
+import java.util.concurrent.Executors
 
-class MainActivity : Activity() {
+ class MainActivity : Activity() {
+
 
     private lateinit var webView: WebView
     private lateinit var tts: TextToSpeech

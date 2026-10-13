@@ -22,6 +22,7 @@ android {
     }
 }
 
+
 kotlin {
     compilerOptions {
         jvmTarget.set(
@@ -30,12 +31,9 @@ kotlin {
     }
 }
 
-
 dependencies {
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
     implementation("androidx.core:core-ktx:1.15.0")
-  }
-
 }
 
 

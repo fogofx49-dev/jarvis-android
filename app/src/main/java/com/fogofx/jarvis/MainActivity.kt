@@ -5,6 +5,7 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -15,26 +16,32 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.app.ActivityCompat
-import java.util.Locale
 import org.json.JSONObject
+import java.io.File
+import java.io.FileOutputStream
+import java.util.Locale
+
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.Conversation
 import java.util.concurrent.Executors
-import android.net.Uri
 
- class MainActivity : Activity() {
-
+class MainActivity : Activity() {
 
     private lateinit var webView: WebView
     private lateinit var tts: TextToSpeech
     private var recognizer: SpeechRecognizer? = null
-    @Volatile private var ttsReady = false
+
+    @Volatile
+    private var ttsReady = false
+
     private var modelUri: Uri? = null
-  
+    private var modelFile: File? = null
+
     companion object {
         private const val MIC_PERMISSION = 101
+        private const val MODEL_PICKER = 102
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,6 +63,7 @@ import android.net.Uri
         webView.webChromeClient = WebChromeClient()
 
         webView.addJavascriptInterface(AndroidBridge(), "AndroidVoice")
+
         setContentView(webView)
         webView.loadUrl("file:///android_asset/index.html")
     }
@@ -113,12 +121,15 @@ import android.net.Uri
         fun startListening() {
             runOnUiThread {
                 if (!SpeechRecognizer.isRecognitionAvailable(this@MainActivity)) {
-                    showStatus("Não há serviço de reconhecimento de voz disponível.")
+                    showStatus(
+                        "Não há serviço de reconhecimento de voz disponível."
+                    )
                     return@runOnUiThread
                 }
 
                 if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
-                    != PackageManager.PERMISSION_GRANTED) {
+                    != PackageManager.PERMISSION_GRANTED
+                ) {
                     ActivityCompat.requestPermissions(
                         this@MainActivity,
                         arrayOf(Manifest.permission.RECORD_AUDIO),
@@ -130,13 +141,22 @@ import android.net.Uri
                 beginRecognition()
             }
         }
+
+        @JavascriptInterface
+        fun chooseModel() {
+            runOnUiThread {
+                openModelPicker()
+            }
+        }
     }
 
     private fun showStatus(message: String) {
-        webView.evaluateJavascript(
-            "onNativeSpeechError(${JSONObject.quote(message)})",
-            null
-        )
+        runOnUiThread {
+            webView.evaluateJavascript(
+                "onNativeSpeechError(${JSONObject.quote(message)})",
+                null
+            )
+        }
     }
 
     private fun beginRecognition() {
@@ -144,44 +164,51 @@ import android.net.Uri
             recognizer?.destroy()
             recognizer = SpeechRecognizer.createSpeechRecognizer(this)
 
-            recognizer?.setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {
-                    showStatus("Estou a ouvir…")
-                }
+            recognizer?.setRecognitionListener(
+                object : RecognitionListener {
 
-                override fun onBeginningOfSpeech() {}
-                override fun onRmsChanged(rmsdB: Float) {}
-                override fun onBufferReceived(buffer: ByteArray?) {}
-
-                override fun onEndOfSpeech() {
-                    showStatus("A processar a voz…")
-                }
-
-                override fun onError(error: Int) {
-                    showStatus("Não consegui reconhecer a voz. Tenta novamente.")
-                }
-
-                override fun onResults(results: Bundle?) {
-                    val matches = results?.getStringArrayList(
-                        SpeechRecognizer.RESULTS_RECOGNITION
-                    )
-                    val text = matches?.firstOrNull().orEmpty()
-
-                    if (text.isNotBlank()) {
-                        webView.evaluateJavascript(
-                            "onNativeSpeechResult(${JSONObject.quote(text)})",
-                            null
-                        )
-                    } else {
-                        showStatus("Não ouvi uma frase. Tenta novamente.")
+                    override fun onReadyForSpeech(params: Bundle?) {
+                        showStatus("Estou a ouvir…")
                     }
+
+                    override fun onBeginningOfSpeech() {}
+                    override fun onRmsChanged(rmsdB: Float) {}
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+
+                    override fun onEndOfSpeech() {
+                        showStatus("A processar a voz…")
+                    }
+
+                    override fun onError(error: Int) {
+                        showStatus(
+                            "Não consegui reconhecer a voz. Tenta novamente."
+                        )
+                    }
+
+                    override fun onResults(results: Bundle?) {
+                        val matches = results?.getStringArrayList(
+                            SpeechRecognizer.RESULTS_RECOGNITION
+                        )
+                        val text = matches?.firstOrNull().orEmpty()
+
+                        if (text.isNotBlank()) {
+                            webView.evaluateJavascript(
+                                "onNativeSpeechResult(${JSONObject.quote(text)})",
+                                null
+                            )
+                        } else {
+                            showStatus("Não ouvi uma frase. Tenta novamente.")
+                        }
+                    }
+
+                    override fun onPartialResults(partialResults: Bundle?) {}
+                    override fun onEvent(eventType: Int, params: Bundle?) {}
                 }
+            )
 
-                override fun onPartialResults(partialResults: Bundle?) {}
-                override fun onEvent(eventType: Int, params: Bundle?) {}
-            })
-
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            val intent = Intent(
+                RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+            ).apply {
                 putExtra(
                     RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                     RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
@@ -191,8 +218,58 @@ import android.net.Uri
             }
 
             recognizer?.startListening(intent)
+
         } catch (e: Exception) {
             showStatus("Não foi possível iniciar o microfone.")
+        }
+    }
+
+    private fun openModelPicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "*/*"
+        }
+
+        startActivityForResult(intent, MODEL_PICKER)
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?
+    ) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == MODEL_PICKER && resultCode == RESULT_OK) {
+            val uri = data?.data ?: return
+            modelUri = uri
+
+            showStatus("A copiar o modelo para o JARVIS…")
+
+            Thread {
+                try {
+                    val destination = File(filesDir, "model.litertlm")
+
+                    contentResolver.openInputStream(uri).use { input ->
+                        requireNotNull(input) {
+                            "Não foi possível abrir o ficheiro."
+                        }
+
+                        FileOutputStream(destination).use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+
+                    modelFile = destination
+                    showStatus("Modelo copiado com sucesso!")
+
+                } catch (e: Exception) {
+                    showStatus(
+                        "Erro ao copiar o modelo. Verifica o espaço disponível."
+                    )
+                }
+            }.start()
         }
     }
 
@@ -201,11 +278,17 @@ import android.net.Uri
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        super.onRequestPermissionsResult(
+            requestCode,
+            permissions,
+            grantResults
+        )
 
         if (requestCode == MIC_PERMISSION) {
-            if (grantResults.isNotEmpty() &&
-                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            if (
+                grantResults.isNotEmpty() &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED
+            ) {
                 beginRecognition()
             } else {
                 showStatus("A permissão do microfone foi recusada.")
@@ -225,6 +308,3 @@ import android.net.Uri
         super.onDestroy()
     }
 }
-
-    
-    

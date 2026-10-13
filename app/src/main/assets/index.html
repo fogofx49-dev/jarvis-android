@@ -76,6 +76,11 @@ button{
 
 button:active{transform:scale(.97)}
 
+button:disabled{
+  opacity:.55;
+  cursor:wait
+}
+
 .actions{
   display:flex;
   gap:8px;
@@ -105,18 +110,18 @@ a{color:#65eaff}
 <header>
   <h1>J.A.R.V.I.S</h1>
   <p>ASSISTENTE PESSOAL</p>
-  <div id="status">Sistema online • Modo local básico</div>
+  <div id="status">Sistema online • A aguardar a IA local</div>
 </header>
 
 <div id="chat" aria-live="polite">
   <div class="msg jarvis">
-    Olá! Sou o JARVIS. Escreve uma mensagem para começar.
+    Olá! Sou o JARVIS. Carrega em "Carregar IA" para selecionar o modelo Gemma. Depois, podes conversar comigo.
   </div>
 </div>
 
 <div class="controls">
   <input id="msg" placeholder="Fala comigo..." autocomplete="off">
-  <button onclick="send()">Enviar</button>
+  <button id="sendBtn" onclick="send()">Enviar</button>
 </div>
 
 <div class="actions">
@@ -130,6 +135,11 @@ a{color:#65eaff}
 <script>
 let voiceOn = true;
 let modelSelectionRequested = false;
+let waitingForModel = false;
+
+function setStatus(text) {
+  document.getElementById("status").textContent = text;
+}
 
 function chooseJarvisModel() {
   if (
@@ -137,31 +147,31 @@ function chooseJarvisModel() {
     typeof window.AndroidVoice.chooseModel === "function"
   ) {
     modelSelectionRequested = true;
-
-    document.getElementById("status").textContent =
-      "Seleciona o ficheiro .litertlm no teu telemóvel.";
-
+    setStatus("Seleciona o ficheiro .litertlm no telemóvel.");
     window.AndroidVoice.chooseModel();
   } else {
-    document.getElementById("status").textContent =
-      "O carregamento do modelo está disponível na aplicação Android.";
+    setStatus("O carregamento do modelo requer a aplicação Android.");
   }
 }
 
 function addMessage(text, who) {
   const el = document.createElement("div");
   el.className = "msg " + who;
-  el.textContent = text;
+  el.textContent = String(text);
 
   document.getElementById("chat").appendChild(el);
-  document.getElementById("chat").scrollTop =
-    document.getElementById("chat").scrollHeight;
+
+  const chat = document.getElementById("chat");
+  chat.scrollTop = chat.scrollHeight;
 }
 
 function speak(text) {
   if (!voiceOn) return;
 
-  if (window.AndroidVoice) {
+  if (
+    window.AndroidVoice &&
+    typeof window.AndroidVoice.speak === "function"
+  ) {
     window.AndroidVoice.speak(String(text));
     return;
   }
@@ -169,7 +179,7 @@ function speak(text) {
   if ("speechSynthesis" in window) {
     window.speechSynthesis.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(text);
+    const utterance = new SpeechSynthesisUtterance(String(text));
     utterance.lang = "pt-BR";
     utterance.volume = 1;
     utterance.rate = 1;
@@ -193,7 +203,8 @@ function answer(raw) {
     msg.includes("ola") ||
     msg.includes("bom dia") ||
     msg.includes("boa noite") ||
-    msg.includes("oi")
+    msg === "oi" ||
+    msg.startsWith("oi ")
   ) {
     return "Olá! Estou pronto para ajudar. Qual é o teu comando?";
   }
@@ -221,28 +232,32 @@ function answer(raw) {
     return "Continua a trabalhar no teu objetivo. Cada passo conta!";
   }
 
-  if (msg.includes("youtube")) {
-    return "Vou abrir o YouTube.";
-  }
-
-  if (msg.includes("google")) {
-    return "Vou abrir o Google.";
-  }
-
   if (msg.includes("ajuda") || msg.includes("comandos")) {
-    return "Podes pedir a hora, a data, uma piada, uma frase motivacional ou pedir para abrir o Google e o YouTube. A integração com IA local ainda está em desenvolvimento.";
+    return "Podes pedir a hora, a data, uma piada, uma frase motivacional, abrir o Google ou YouTube, ou fazer perguntas ao Gemma local.";
   }
 
-  return "Ainda não sei responder a isso. Nesta versão estou a usar comandos básicos, sem uma IA ligada. Experimenta escrever ajuda.";
+  return null;
+}
+
+function isSettingsCommand(msg) {
+  return (
+    msg.includes("definições") ||
+    msg.includes("configurações") ||
+    msg.includes("configuracoes")
+  );
 }
 
 function send() {
+  if (waitingForModel) {
+    setStatus("Aguarda a resposta anterior do Gemma.");
+    return;
+  }
+
   const input = document.getElementById("msg");
   const text = input.value.trim();
 
   if (!text) {
-    document.getElementById("status").textContent =
-      "Escreve uma mensagem primeiro.";
+    setStatus("Escreve uma mensagem primeiro.");
     return;
   }
 
@@ -250,8 +265,8 @@ function send() {
   input.value = "";
 
   const msg = text.toLowerCase();
-  const result = answer(text);
 
+  // Comandos para abrir aplicações no Android.
   if (msg.includes("youtube") || msg.includes("you tube")) {
     reply("A abrir o YouTube.");
 
@@ -274,20 +289,79 @@ function send() {
     return;
   }
 
-  if (
-    msg.includes("definições") ||
-    msg.includes("configurações") ||
-    msg.includes("configuracoes")
-  ) {
+  if (isSettingsCommand(msg)) {
     reply("A abrir as definições do Android.");
 
     if (window.AndroidVoice) {
       window.AndroidVoice.openApp("settings");
+    } else {
+      setStatus("Abre as definições no teu dispositivo.");
     }
     return;
   }
 
-  reply(result);
+  // Respostas locais rápidas.
+  const localAnswer = answer(text);
+
+  if (localAnswer !== null) {
+    reply(localAnswer);
+    setStatus("Resposta dos comandos locais.");
+    return;
+  }
+
+  // Perguntas livres: enviar ao modelo Gemma no Android.
+  if (
+    window.AndroidVoice &&
+    typeof window.AndroidVoice.askModel === "function"
+  ) {
+    waitingForModel = true;
+    document.getElementById("sendBtn").disabled = true;
+    setStatus("O Gemma está a pensar...");
+
+    try {
+      window.AndroidVoice.askModel(text);
+    } catch (error) {
+      waitingForModel = false;
+      document.getElementById("sendBtn").disabled = false;
+      setStatus("Não foi possível enviar a mensagem ao Gemma.");
+      reply("Não consegui contactar o modelo local.");
+    }
+    return;
+  }
+
+  reply(
+    "A IA local só funciona na aplicação Android com a ponte nativa ativa. " +
+    "Podes continuar a usar os comandos básicos."
+  );
+  setStatus("Ponte Android indisponível.");
+}
+
+// Chamado pelo MainActivity.kt quando o Gemma responde.
+function onNativeModelResponse(text) {
+  waitingForModel = false;
+  document.getElementById("sendBtn").disabled = false;
+
+  const response = String(text || "").trim();
+
+  if (!response) {
+    setStatus("O Gemma não devolveu uma resposta.");
+    reply("Não recebi uma resposta do modelo. Tenta novamente.");
+    return;
+  }
+
+  setStatus("Gemma local • Resposta recebida");
+  reply(response);
+}
+
+// Chamado pelo Android ao terminar a seleção/cópia do modelo.
+function onNativeSpeechResult(text) {
+  document.getElementById("msg").value = text;
+  setStatus("Comando de voz reconhecido.");
+  send();
+}
+
+function onNativeSpeechError(message) {
+  setStatus(message);
 }
 
 function sendCommand(command) {
@@ -318,10 +392,12 @@ function clearChat() {
 }
 
 function startMic() {
-  document.getElementById("status").textContent =
-    "A tentar ativar o microfone...";
+  setStatus("A tentar ativar o microfone...");
 
-  if (window.AndroidVoice) {
+  if (
+    window.AndroidVoice &&
+    typeof window.AndroidVoice.startListening === "function"
+  ) {
     window.AndroidVoice.startListening();
   } else if (
     "webkitSpeechRecognition" in window ||
@@ -340,26 +416,13 @@ function startMic() {
     };
 
     recognition.onerror = function() {
-      document.getElementById("status").textContent =
-        "Não foi possível reconhecer a voz.";
+      setStatus("Não foi possível reconhecer a voz.");
     };
 
     recognition.start();
   } else {
-    document.getElementById("status").textContent =
-      "Reconhecimento de voz indisponível neste navegador.";
+    setStatus("Reconhecimento de voz indisponível neste navegador.");
   }
-}
-
-function onNativeSpeechResult(text) {
-  document.getElementById("msg").value = text;
-  document.getElementById("status").textContent =
-    "Comando reconhecido.";
-  send();
-}
-
-function onNativeSpeechError(message) {
-  document.getElementById("status").textContent = message;
 }
 
 document.getElementById("msg").addEventListener("keydown", function(event) {
@@ -371,5 +434,6 @@ document.getElementById("msg").addEventListener("keydown", function(event) {
 
 </body>
 </html>
+
 
   

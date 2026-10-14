@@ -42,8 +42,10 @@ jobs:
           path = Path("app/src/main/AndroidManifest.xml")
           content = path.read_text(encoding="utf-8-sig").lstrip()
 
-          if not content.startswith('<?xml'):
-              raise SystemExit("Erro: declaração XML não encontrada no início do manifesto.")
+          if not content.startswith("<?xml"):
+              raise SystemExit(
+                  "Erro: declaração XML não encontrada no início do manifesto."
+              )
 
           path.write_text(content, encoding="utf-8")
           print("Início do manifesto corrigido.")
@@ -58,7 +60,6 @@ jobs:
           path = Path("app/src/main/AndroidManifest.xml")
           ET.parse(path)
           print("XML válido")
-          print(path.read_text(encoding="utf-8"))
           PY
 
       - name: Configurar Gradle
@@ -67,7 +68,19 @@ jobs:
           gradle-version: "8.9"
 
       - name: Compilar APK
-        run: gradle assembleDebug --no-daemon --stacktrace
+        id: build
+        shell: bash
+        run: |
+          set -o pipefail
+          gradle assembleDebug --no-daemon --stacktrace --console=plain 2>&1 | tee build.log
+
+      - name: Guardar log da compilação
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-build-log
+          path: build.log
+          if-no-files-found: ignore
 
       - name: Guardar APK
         if: success()
@@ -75,4 +88,5 @@ jobs:
         with:
           name: jarvis-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
           

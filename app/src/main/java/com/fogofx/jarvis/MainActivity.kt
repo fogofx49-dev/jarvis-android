@@ -180,6 +180,70 @@ class MainActivity : Activity() {
     }
 
     inner class AndroidBridge {
+        
+    @JavascriptInterface
+     fun listVoices() {
+       runOnUiThread {
+        try {
+            val voices = tts.voices
+                ?.filter {
+                    it.locale.language == "pt"
+                }
+                .orEmpty()
+
+            if (voices.isEmpty()) {
+                showStatus(
+                    "Nenhuma voz portuguesa encontrada."
+                )
+                return@runOnUiThread
+            }
+
+            val report = voices.joinToString("\n") {
+                "${it.name} | ${it.locale} | " +
+                    "Rede: ${it.isNetworkConnectionRequired}"
+            }
+
+            android.util.Log.d(
+                "JARVIS_VOICES",
+                "LISTA COMPLETA:\n$report"
+            )
+
+            val json = org.json.JSONArray()
+
+            voices.forEach { voice ->
+                val item = org.json.JSONObject()
+                item.put("name", voice.name)
+                item.put("locale", voice.locale.toString())
+                item.put(
+                    "network",
+                    voice.isNetworkConnectionRequired
+                )
+                json.put(item)
+            }
+
+            webView.evaluateJavascript(
+                "if (typeof onNativeVoicesListed === 'function') " +
+                    "onNativeVoicesListed(${org.json.JSONObject.quote(json.toString())});",
+                null
+            )
+
+            showStatus(
+                "${voices.size} vozes encontradas."
+            )
+        } catch (e: Exception) {
+            showStatus(
+                "Erro ao consultar as vozes disponíveis."
+            )
+
+            android.util.Log.e(
+                "JARVIS_VOICES",
+                "Erro ao listar vozes",
+                e
+            )
+        }
+    }
+}
+
 
         @JavascriptInterface
         fun speak(text: String) {

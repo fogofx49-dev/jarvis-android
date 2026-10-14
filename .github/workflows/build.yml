@@ -34,19 +34,37 @@ jobs:
           yes | sdkmanager --licenses
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Corrigir AndroidManifest
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("app/src/main/AndroidManifest.xml")
+          content = path.read_text(encoding="utf-8-sig").lstrip()
+
+          if not content.startswith('<?xml'):
+              raise SystemExit("Erro: declaração XML não encontrada no início do manifesto.")
+
+          path.write_text(content, encoding="utf-8")
+          print("Início do manifesto corrigido.")
+          PY
+
+      - name: Validar AndroidManifest
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          path = Path("app/src/main/AndroidManifest.xml")
+          ET.parse(path)
+          print("XML válido")
+          print(path.read_text(encoding="utf-8"))
+          PY
+
       - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
-
-      - name: Diagnosticar AndroidManifest
-        run: |
-          echo "=== Ficheiro encontrado ==="
-          ls -l app/src/main/AndroidManifest.xml
-          echo "=== Conteúdo do manifesto ==="
-          cat -n app/src/main/AndroidManifest.xml
-          echo "=== Validar sintaxe XML ==="
-          python3 -c "import xml.etree.ElementTree as ET; ET.parse('app/src/main/AndroidManifest.xml'); print('XML válido')"
 
       - name: Compilar APK
         run: gradle assembleDebug --no-daemon --stacktrace

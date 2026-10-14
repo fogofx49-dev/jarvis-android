@@ -17,25 +17,27 @@
   --text: #b9f7ff;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
   padding: 16px;
+  min-height: 100vh;
+  overflow-x: hidden;
   color: var(--text);
   background:
     radial-gradient(ellipse at 50% 28%, #06304a 0%, transparent 38%),
     linear-gradient(180deg, #06101d, #020912);
   font-family: Arial, sans-serif;
-  min-height: 100vh;
-  overflow-x: hidden;
 }
 
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
   opacity: .25;
   background-image:
@@ -44,10 +46,22 @@ body::before {
   background-size: 30px 30px;
 }
 
+header, main, footer {
+  position: relative;
+  z-index: 1;
+}
+
 header {
   text-align: center;
   padding: 12px 0 14px;
   border-bottom: 1px solid #167b9c66;
+}
+
+.brand {
+  color: #8aaeba;
+  font-size: 11px;
+  letter-spacing: 4px;
+  margin-bottom: 9px;
 }
 
 h1 {
@@ -60,8 +74,8 @@ h1 {
 
 .subtitle {
   margin: 7px 0;
-  font-size: 11px;
-  letter-spacing: 3px;
+  font-size: 10px;
+  letter-spacing: 2px;
   color: #72dfff;
 }
 
@@ -69,13 +83,14 @@ h1 {
   margin-top: 9px;
   color: #8aaeba;
   font-size: 12px;
+  text-align: center;
 }
 
 .visual {
   display: grid;
   grid-template-columns: 1fr;
   justify-items: center;
-  padding: 12px 0 14px;
+  padding: 18px 0 10px;
 }
 
 .radar {
@@ -118,7 +133,7 @@ h1 {
   filter: drop-shadow(0 0 5px #00d9ff);
 }
 
-.ring.r2 {
+.ring2 {
   inset: 13%;
   border-width: 3px;
   border-top-color: #0879c9;
@@ -127,20 +142,12 @@ h1 {
   animation-direction: reverse;
 }
 
-.ring.r3 {
+.ring3 {
   inset: 25%;
   border-width: 2px;
   border-left-color: var(--cyan);
   border-right-color: #008cff;
   animation-duration: 3s;
-}
-
-.ring.r4 {
-  inset: 35%;
-  border-width: 1px;
-  border-top-color: #fff;
-  border-bottom-color: var(--cyan);
-  animation-duration: 2s;
 }
 
 .radar-grid {
@@ -192,7 +199,7 @@ h1 {
   animation: pulse 2s ease-in-out infinite reverse;
 }
 
-.dot {
+.radar-dot {
   position: absolute;
   width: 6px;
   height: 6px;
@@ -217,25 +224,18 @@ h1 {
 
 .state-row {
   display: flex;
+  align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
-.state {
-  padding: 6px 9px;
-  border: 1px solid #16516b;
-  border-radius: 20px;
-  color: #6d9cae;
-  font-size: 10px;
-  letter-spacing: 1px;
-}
-
-.state.active {
-  color: var(--cyan);
-  border-color: var(--cyan);
-  box-shadow: 0 0 10px #00cfff33;
+.dot-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #7b8794;
+  box-shadow: 0 0 8px currentColor;
 }
 
 .wave {
@@ -269,12 +269,11 @@ body.speaking .wave span {
 }
 
 body.busy .ring { animation-duration: 1.2s; }
-body.listening .radar { box-shadow: 0 0 35px #00d9ff55; }
+body.listening .radar {
+  box-shadow: 0 0 35px #00d9ff55;
+}
 body.speaking .core { animation-duration: .45s; }
-</style>
-</head>
- 
-<style>
+
 #chat {
   width: 100%;
   max-width: 700px;
@@ -286,25 +285,29 @@ body.speaking .core { animation-duration: .45s; }
   border: 1px solid #00d9ff55;
   border-radius: 12px;
   background: #00101acc;
-  box-sizing: border-box;
 }
+
 .msg {
   padding: 10px 12px;
   margin: 8px 0;
   border-radius: 9px;
   overflow-wrap: anywhere;
   line-height: 1.5;
+  white-space: pre-wrap;
 }
+
 .jarvis {
   color: #9beeff;
   background: #00d9ff12;
   border-left: 3px solid #00d9ff;
 }
+
 .user {
   color: #fff;
   background: #ffffff10;
   border-left: 3px solid #888;
 }
+
 .controls, .actions {
   display: flex;
   flex-wrap: wrap;
@@ -314,6 +317,7 @@ body.speaking .core { animation-duration: .45s; }
   max-width: 700px;
   margin: 12px auto;
 }
+
 input {
   flex: 1 1 180px;
   min-width: 0;
@@ -324,10 +328,12 @@ input {
   border-radius: 9px;
   outline: none;
 }
+
 input:focus {
   border-color: #00eaff;
   box-shadow: 0 0 10px #00d9ff44;
 }
+
 button {
   padding: 12px 15px;
   color: #eafaff;
@@ -335,21 +341,38 @@ button {
   border: 1px solid #00d9ff99;
   border-radius: 9px;
   cursor: pointer;
+  font-size: 14px;
 }
-button:active {
-  transform: scale(.97);
-}
+
+button:active { transform: scale(.97); }
+
 button:disabled {
   opacity: .5;
   cursor: not-allowed;
 }
-.actions .ai-button {
-  background: #064052;
+
+button:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 3px;
 }
+
 #detectVoicesBtn {
-  display: block;
-  margin: 12px auto;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 320px;
+  margin: 18px auto;
+  padding: 14px;
+  color: #b9f7ff;
+  background: #062334;
+  border: 1px solid #39e6ff;
+  border-radius: 10px;
+  font-size: 15px;
 }
+
 #voiceResults {
   width: 100%;
   max-width: 700px;
@@ -358,9 +381,11 @@ button:disabled {
   font-size: 13px;
   overflow-wrap: anywhere;
 }
+
 #voiceResults h3 {
   color: #00d9ff;
 }
+
 .voice-item {
   padding: 10px;
   margin: 7px 0;
@@ -368,14 +393,20 @@ button:disabled {
   border-radius: 8px;
   background: #001522;
 }
-.voice-item strong {
-  color: #fff;
-}
+
 .voice-id {
   color: #8daebc;
   font-size: 11px;
   overflow-wrap: anywhere;
 }
+
+footer {
+  margin: 22px auto 8px;
+  text-align: center;
+  color: #587b8b;
+  font-size: 11px;
+}
+
 @keyframes rotate {
   to { transform: rotate(360deg); }
 }
@@ -388,6 +419,7 @@ button:disabled {
 @keyframes wave {
   50% { transform: scaleY(1.8); }
 }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .01ms !important;
@@ -396,85 +428,140 @@ button:disabled {
   }
 }
 </style>
-
+</head>
+  
 <body>
 <header>
   <div class="brand">STARK TECHNOLOGY</div>
   <h1>J.A.R.V.I.S.</h1>
-  <div class="subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+  <div class="subtitle">
+    JUST A RATHER VERY INTELLIGENT SYSTEM
+  </div>
 </header>
 
-<section class="visual">
-  <div class="radar" id="radar">
-    <div class="ring ring1"></div>
-    <div class="ring ring2"></div>
-    <div class="ring ring3"></div>
-    <div class="sweep"></div>
-    <div class="core"></div>
-    <div class="dot dot1"></div>
-    <div class="dot dot2"></div>
-    <div class="dot dot3"></div>
+<main>
+  <section class="visual">
+    <div class="radar" id="radar">
+      <div class="radar-grid"></div>
+      <div class="ring ring1"></div>
+      <div class="ring ring2"></div>
+      <div class="ring ring3"></div>
+      <div class="sweep"></div>
+      <div class="core"></div>
+      <div class="radar-dot d1"></div>
+      <div class="radar-dot d2"></div>
+      <div class="radar-dot d3"></div>
+      <div class="radar-dot d4"></div>
+    </div>
+
+    <div class="orbit-label">SCANNING ENVIRONMENT</div>
+
+    <div class="state-row">
+      <span class="dot-status" id="dot"></span>
+      <span id="status" role="status" aria-live="polite">
+        SISTEMA PRONTO
+      </span>
+    </div>
+  </section>
+
+  <div class="wave" aria-hidden="true">
+    <span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span>
   </div>
-  <div class="state-row">
-    <span class="dot-status" id="dot"></span>
-    <span id="status" role="status">SISTEMA PRONTO</span>
+
+  <section id="chat" aria-label="Conversa" aria-live="polite">
+    <div class="msg jarvis">
+      J.A.R.V.I.S.: Sistema iniciado. Como posso ajudar?
+    </div>
+  </section>
+
+  <div class="controls">
+    <input
+      id="userInput"
+      type="text"
+      placeholder="Escreva um comando..."
+      aria-label="Escreva uma mensagem"
+      autocomplete="off"
+    >
+    <button id="sendBtn" type="button" onclick="sendMessage()">
+      Enviar
+    </button>
   </div>
-</section>
 
-<div class="wave" id="wave" aria-hidden="true">
-  <span></span><span></span><span></span><span></span><span></span>
-  <span></span><span></span><span></span><span></span><span></span>
-  <span></span>
-</div>
-
-<div id="chat" aria-live="polite">
-  <div class="msg jarvis">
-    J.A.R.V.I.S.: Sistema iniciado. Como posso ajudar?
+  <div class="actions">
+    <button id="micBtn" type="button" onclick="toggleVoice()">
+      🎙️ Falar
+    </button>
+    <button id="stopBtn" type="button" onclick="stopSpeaking()">
+      🔇 Parar voz
+    </button>
+    <button id="clearBtn" type="button" onclick="clearChat()">
+      🗑️ Limpar chat
+    </button>
   </div>
-</div>
 
-<div class="controls">
-  <input id="userInput" type="text"
-    placeholder="Escreva um comando..."
-    aria-label="Escreva uma mensagem">
-  <button id="sendBtn" onclick="sendMessage()">Enviar</button>
-</div>
+  <button
+    id="detectVoicesBtn"
+    type="button"
+    onclick="detectJarvisVoices()">
+    🔎 Detetar vozes disponíveis
+  </button>
 
-<div class="actions">
-  <button id="micBtn" onclick="toggleVoice()">🎙️ Falar</button>
-  <button id="stopBtn" onclick="stopSpeaking()">🔇 Parar voz</button>
-  <button id="clearBtn" onclick="clearChat()">🗑️ Limpar chat</button>
-</div>
+  <div id="voiceResults" aria-live="polite"></div>
+</main>
 
-<button id="detectVoicesBtn" onclick="detectJarvisVoices()">
-  🔎 Detetar vozes disponíveis
-</button>
-
-<div id="voiceResults" aria-live="polite"></div>
+<footer>STARK TECHNOLOGY · J.A.R.V.I.S. SYSTEM</footer>
 
 <script>
+"use strict";
+
 function detectJarvisVoices() {
   const output = document.getElementById("voiceResults");
+  output.replaceChildren();
+
+  const heading = document.createElement("h3");
+  heading.textContent = "A procurar vozes disponíveis...";
+  output.appendChild(heading);
+
+  // Tenta primeiro consultar as vozes Android,
+  // caso a aplicação disponibilize este método.
+  try {
+    if (
+      window.AndroidVoice &&
+      typeof window.AndroidVoice.listVoices === "function"
+    ) {
+      window.AndroidVoice.listVoices();
+      return;
+    }
+  } catch (error) {
+    // Continua para a alternativa do navegador.
+  }
 
   if (!("speechSynthesis" in window)) {
     output.textContent =
-      "Este navegador não disponibiliza síntese de voz.";
+      "A lista de vozes não está disponível neste navegador. " +
+      "Verifica se a aplicação Android disponibiliza a função de listar vozes.";
     return;
   }
 
-  output.textContent = "A procurar vozes disponíveis...";
-
   function showVoices() {
     const voices = window.speechSynthesis.getVoices();
+    output.replaceChildren();
+
+    const title = document.createElement("h3");
+    title.textContent = voices.length
+      ? "Vozes encontradas: " + voices.length
+      : "Ainda não foram encontradas vozes.";
+    output.appendChild(title);
 
     if (!voices.length) {
-      output.textContent =
-        "Nenhuma voz encontrada ainda. Tenta novamente em alguns segundos.";
+      const note = document.createElement("p");
+      note.textContent =
+        "Verifica as definições de texto para voz do Android e tenta novamente.";
+      output.appendChild(note);
       return;
     }
-
-    output.innerHTML = "<h3>Vozes disponíveis: " +
-      voices.length + "</h3>";
 
     voices.forEach(function(voice, index) {
       const item = document.createElement("div");
@@ -486,15 +573,42 @@ function detectJarvisVoices() {
       const details = document.createElement("div");
       details.textContent =
         "Idioma: " + (voice.lang || "Não indicado") +
-        " | Padrão: " + (voice.default ? "Sim" : "Não");
+        " · Padrão: " + (voice.default ? "Sim" : "Não");
 
       const id = document.createElement("div");
       id.className = "voice-id";
       id.textContent = "Identificador: " + voice.voiceURI;
 
+      const test = document.createElement("button");
+      test.type = "button";
+      test.textContent = "▶ Testar voz";
+      test.style.marginTop = "8px";
+
+      test.addEventListener("click", function() {
+        try {
+          window.speechSynthesis.cancel();
+
+          const utterance = new SpeechSynthesisUtterance(
+            "Olá. Sou o JARVIS. Sistema de voz operacional."
+          );
+
+          utterance.voice = voice;
+          utterance.lang = voice.lang || "pt-BR";
+          utterance.rate = 1;
+          utterance.pitch = 1;
+
+          window.speechSynthesis.speak(utterance);
+        } catch (error) {
+          const warning = document.createElement("p");
+          warning.textContent = "Não foi possível testar esta voz.";
+          item.appendChild(warning);
+        }
+      });
+
       item.appendChild(name);
       item.appendChild(details);
       item.appendChild(id);
+      item.appendChild(test);
       output.appendChild(item);
     });
   }
@@ -503,25 +617,30 @@ function detectJarvisVoices() {
   showVoices();
 }
 
+// Esta função pode ser chamada pela MainActivity.kt
+// se o Android enviar a lista de vozes em formato JSON.
 function onNativeVoicesListed(jsonText) {
   const output = document.getElementById("voiceResults");
 
   try {
     const voices = JSON.parse(jsonText);
-    output.innerHTML = "<h3>Vozes Android disponíveis: " +
-      voices.length + "</h3>";
+    output.replaceChildren();
+
+    const title = document.createElement("h3");
+    title.textContent = "Vozes Android: " + voices.length;
+    output.appendChild(title);
 
     voices.forEach(function(voice, index) {
       const item = document.createElement("div");
       item.className = "voice-item";
 
       const name = document.createElement("strong");
-      name.textContent = (index + 1) + ". " +
-        (voice.name || "Voz sem nome");
+      name.textContent =
+        (index + 1) + ". " + (voice.name || "Voz sem nome");
 
       const details = document.createElement("div");
       details.textContent =
-        "Idioma: " + (voice.locale || "Não indicado");
+        "Idioma: " + (voice.locale || voice.lang || "Não indicado");
 
       item.appendChild(name);
       item.appendChild(details);
@@ -529,14 +648,12 @@ function onNativeVoicesListed(jsonText) {
     });
   } catch (error) {
     output.textContent =
-      "Não foi possível interpretar a lista de vozes do Android.";
+      "Não foi possível ler a lista de vozes Android.";
   }
 }
-</script>
+      </script>
   
 <script>
-"use strict";
-
 let voiceOn = true;
 let listening = false;
 let recognition = null;
@@ -547,9 +664,11 @@ const chat = document.getElementById("chat");
 const statusText = document.getElementById("status");
 const statusDot = document.getElementById("dot");
 const micBtn = document.getElementById("micBtn");
+const sendBtn = document.getElementById("sendBtn");
 
 function setStatus(message, state) {
   statusText.textContent = message;
+
   document.body.classList.remove(
     "busy", "listening", "speaking"
   );
@@ -558,22 +677,21 @@ function setStatus(message, state) {
     document.body.classList.add(state);
   }
 
-  if (statusDot) {
-    statusDot.style.background =
-      state === "listening" ? "#00ff99" :
-      state === "busy" ? "#ffcc00" :
-      state === "speaking" ? "#00d9ff" : "#7b8794";
-  }
+  statusDot.style.background =
+    state === "listening" ? "#00ff99" :
+    state === "busy" ? "#ffcc00" :
+    state === "speaking" ? "#00d9ff" : "#7b8794";
 }
 
 function addMessage(message, sender) {
   const item = document.createElement("div");
+
   item.className = "msg " +
     (sender === "user" ? "user" : "jarvis");
 
   item.textContent =
     (sender === "user" ? "TU: " : "J.A.R.V.I.S.: ") +
-    message;
+    String(message);
 
   chat.appendChild(item);
   chat.scrollTop = chat.scrollHeight;
@@ -583,9 +701,11 @@ function speak(message) {
   if (!voiceOn || !message) return;
 
   try {
-    if (window.AndroidVoice &&
-        typeof AndroidVoice.speak === "function") {
-      AndroidVoice.speak(String(message));
+    if (
+      window.AndroidVoice &&
+      typeof window.AndroidVoice.speak === "function"
+    ) {
+      window.AndroidVoice.speak(String(message));
       setStatus("A FALAR", "speaking");
       return;
     }
@@ -606,7 +726,9 @@ function speak(message) {
       };
 
       utterance.onend = function() {
-        setStatus("SISTEMA PRONTO", "");
+        if (!listening && !waitingForModel) {
+          setStatus("SISTEMA PRONTO", "");
+        }
       };
 
       utterance.onerror = function() {
@@ -626,12 +748,14 @@ function stopSpeaking() {
       window.speechSynthesis.cancel();
     }
 
-    if (window.AndroidVoice &&
-        typeof AndroidVoice.stopSpeaking === "function") {
-      AndroidVoice.stopSpeaking();
+    if (
+      window.AndroidVoice &&
+      typeof window.AndroidVoice.stopSpeaking === "function"
+    ) {
+      window.AndroidVoice.stopSpeaking();
     }
   } catch (error) {
-    // Mantém o sistema disponível mesmo se a voz falhar.
+    // A voz pode já ter terminado.
   }
 
   setStatus("SISTEMA PRONTO", "");
@@ -653,7 +777,11 @@ function reply(message) {
 
 function openWebsite(url) {
   try {
-    window.open(url, "_blank");
+    const opened = window.open(url, "_blank");
+
+    if (!opened) {
+      window.location.href = url;
+    }
   } catch (error) {
     window.location.href = url;
   }
@@ -684,71 +812,58 @@ function answer(rawText) {
 
   if (
     text.includes("quem és") ||
-    text.includes("quem e voce") ||
+    text.includes("quem es") ||
     text.includes("quem é você") ||
-    text.includes("quem es tu")
+    text.includes("quem e voce")
   ) {
     return "Sou o J.A.R.V.I.S., o teu assistente digital.";
   }
 
   if (
-    text.includes("olá") ||
-    text.includes("ola") ||
     text.includes("bom dia") ||
     text.includes("boa tarde") ||
-    text.includes("boa noite")
+    text.includes("boa noite") ||
+    text === "olá" ||
+    text === "ola"
   ) {
     return "Olá! Sistema operacional. Em que posso ajudar?";
   }
 
   if (
-    text.includes("youtube") &&
-    (
-      text.includes("abrir") ||
-      text.includes("ir para") ||
-      text.includes("acessar")
-    )
+    text.includes("abrir youtube") ||
+    text.includes("abrir o youtube")
   ) {
     openWebsite("https://www.youtube.com/");
     return "A abrir o YouTube.";
   }
 
   if (
-    text.includes("google") &&
-    (
-      text.includes("abrir") ||
-      text.includes("pesquisar") ||
-      text.includes("ir para")
-    )
+    text.includes("abrir google") ||
+    text.includes("abrir o google")
   ) {
     openWebsite("https://www.google.com/");
     return "A abrir o Google.";
   }
 
   if (
-    text.includes("pesquisa") ||
-    text.includes("pesquisar") ||
-    text.includes("procura na internet")
+    text.startsWith("pesquisar ") ||
+    text.startsWith("pesquisa ") ||
+    text.startsWith("procura na internet ")
   ) {
     openWebsite(
       "https://www.google.com/search?q=" +
       encodeURIComponent(rawText)
     );
-    return "A preparar a pesquisa na internet.";
-  }
 
-  if (
-    text.includes("obrigado") ||
-    text.includes("obrigada")
-  ) {
-    return "Sempre às ordens. Como posso ajudar a seguir?";
+    return "A abrir a pesquisa na internet.";
   }
 
   if (
     text.includes("desligar voz") ||
-    text.includes("silenciar")
+    text.includes("silenciar voz")
   ) {
     voiceOn = false;
+    stopSpeaking();
     return "Voz desativada. Continuarei a responder por texto.";
   }
 
@@ -758,6 +873,13 @@ function answer(rawText) {
   ) {
     voiceOn = true;
     return "Voz ativada.";
+  }
+
+  if (
+    text.includes("obrigado") ||
+    text.includes("obrigada")
+  ) {
+    return "Sempre às ordens. Como posso ajudar a seguir?";
   }
 
   return null;
@@ -787,57 +909,55 @@ function askModel(message) {
 
   if (
     window.AndroidVoice &&
-    typeof AndroidVoice.askModel === "function"
+    typeof window.AndroidVoice.askModel === "function"
   ) {
     waitingForModel = true;
+    sendBtn.disabled = true;
 
     try {
-      AndroidVoice.askModel(message);
+      window.AndroidVoice.askModel(message);
     } catch (error) {
       waitingForModel = false;
+      sendBtn.disabled = false;
+
       reply(
         "Não consegui comunicar com o modelo Android. " +
         "Verifica a integração na MainActivity.kt."
       );
+
       setStatus("SISTEMA PRONTO", "");
     }
 
     return;
   }
 
-  waitingForModel = false;
-
   reply(
     "Ainda não tenho um modelo de inteligência artificial " +
-    "ligado neste ambiente. Os comandos locais continuam " +
-    "disponíveis. Para responder a outras perguntas, " +
-    "preciso de um modelo ou serviço de IA integrado."
+    "ligado. Os comandos locais estão disponíveis, mas " +
+    "as restantes perguntas precisam de um modelo de IA integrado."
   );
 
   setStatus("SISTEMA PRONTO", "");
 }
 
+// O Android deve chamar esta função ao receber a resposta
+// do modelo, se esta integração estiver implementada.
 function onNativeModelResponse(response) {
   waitingForModel = false;
+  sendBtn.disabled = false;
 
-  let message = String(response || "").trim();
+  const message = String(response || "").trim();
 
-  if (!message) {
-    message = "Não recebi uma resposta do modelo.";
-  }
-
-  reply(message);
+  reply(message || "Não recebi uma resposta do modelo.");
   setStatus("SISTEMA PRONTO", "");
 }
 
+// O Android pode chamar esta função com o texto reconhecido.
 function onNativeSpeechResult(result) {
-  const transcript = String(result || "").trim();
-
   listening = false;
+  micBtn.textContent = "🎙️ Falar";
 
-  if (micBtn) {
-    micBtn.textContent = "🎙️ Falar";
-  }
+  const transcript = String(result || "").trim();
 
   if (transcript) {
     input.value = transcript;
@@ -849,10 +969,7 @@ function onNativeSpeechResult(result) {
 
 function onNativeSpeechError(error) {
   listening = false;
-
-  if (micBtn) {
-    micBtn.textContent = "🎙️ Falar";
-  }
+  micBtn.textContent = "🎙️ Falar";
 
   setStatus(
     "ERRO NO MICROFONE: " + String(error || "desconhecido"),
@@ -863,15 +980,17 @@ function onNativeSpeechError(error) {
 function startMic() {
   if (
     window.AndroidVoice &&
-    typeof AndroidVoice.startListening === "function"
+    typeof window.AndroidVoice.startListening === "function"
   ) {
     try {
       listening = true;
       micBtn.textContent = "⏹️ A ouvir...";
       setStatus("A OUVIR", "listening");
-      AndroidVoice.startListening();
+
+      window.AndroidVoice.startListening();
     } catch (error) {
       listening = false;
+      micBtn.textContent = "🎙️ Falar";
       setStatus("FALHA NO MICROFONE", "");
     }
 
@@ -884,9 +1003,11 @@ function startMic() {
 
   if (!SpeechRecognition) {
     reply(
-      "O reconhecimento de voz não está disponível neste " +
-      "navegador. Experimenta utilizar o microfone do Android."
+      "O reconhecimento de voz não está disponível aqui. " +
+      "Experimenta abrir a página num navegador compatível " +
+      "ou integrar o reconhecimento de voz Android."
     );
+
     setStatus("SISTEMA PRONTO", "");
     return;
   }
@@ -911,6 +1032,7 @@ function startMic() {
     recognition.onend = function() {
       listening = false;
       micBtn.textContent = "🎙️ Falar";
+
       if (!waitingForModel) {
         setStatus("SISTEMA PRONTO", "");
       }
@@ -938,9 +1060,9 @@ function toggleVoice() {
 
       if (
         window.AndroidVoice &&
-        typeof AndroidVoice.stopListening === "function"
+        typeof window.AndroidVoice.stopListening === "function"
       ) {
-        AndroidVoice.stopListening();
+        window.AndroidVoice.stopListening();
       }
     } catch (error) {
       // O reconhecimento pode já ter terminado.
@@ -966,6 +1088,7 @@ setStatus("SISTEMA PRONTO", "");
 </script>
 </body>
 </html>
+
 
   
 

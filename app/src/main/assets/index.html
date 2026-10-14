@@ -757,17 +757,37 @@ function showHelp() {
   speak("Estou pronto. Podes fazer perguntas ou usar os comandos disponíveis.");
 }
 
+
 function onNativeModelResponse(text) {
   setWaiting(false);
-  addMessage(text || "O modelo não devolveu uma resposta.");
-  if (text) speak(text);
-  setStatus("Resposta do modelo recebida", "online");
+
+  const response = String(text || "").trim();
+
+  if (!response) {
+    addMessage("O modelo não devolveu uma resposta. Verifica o modelo de IA.");
+    setStatus("Resposta vazia", "online");
+    return;
+  }
+
+  addMessage(response, "bot");
+  speak(response);
+  setStatus("Resposta recebida", "online");
 }
 
+// Ligação correta com o MainActivity.kt
+window.onModelResponse = onNativeModelResponse;
+
 function onNativeStatus(message) {
-  setStatus(message || "Estado atualizado", "online");
-  modelSelectionRequested = false;
-  loadAIButton.disabled = false;
+  const text = String(message || "Estado atualizado");
+
+  const busy = /pensar|processar|carregar|copiar/i.test(text);
+
+  setStatus(text, busy ? "busy" : "online");
+
+  if (/modelo pronto|modelo carregado/i.test(text)) {
+    modelSelectionRequested = false;
+    loadAIButton.disabled = false;
+  }
 }
 
 function onNativeSpeechResult(text) {
@@ -785,19 +805,28 @@ function onNativeSpeechResult(text) {
 function onNativeSpeechError(message) {
   recognitionActive = false;
   micButton.disabled = false;
+
   setStatus(message || "Erro no reconhecimento de voz");
 }
 
 function onNativeModelError(message) {
   setWaiting(false);
-  addMessage("Erro do modelo: " + (message || "erro desconhecido"));
-  setStatus("Falha ao consultar o modelo");
+
+  addMessage(
+    "Erro do modelo: " + (message || "erro desconhecido"),
+    "bot"
+  );
+
+  setStatus("Falha ao consultar o modelo", "online");
 }
 
-// Compatibilidade com respostas nativas que chamem este nome.
+// Ligação correta com o MainActivity.kt
+window.onModelError = onNativeModelError;
+
 function onNativeModelLoaded(message) {
   modelSelectionRequested = false;
   loadAIButton.disabled = false;
+
   setStatus(message || "Modelo carregado", "online");
 }
 

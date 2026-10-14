@@ -501,11 +501,19 @@ footer {
     </button>
   </div>
 
+
+  <button
+    id="aiToggleBtn"
+    type="button"
+    onclick="toggleAI()">
+    🧠 Ligar IA
+  </button>
+
   <button
     id="detectVoicesBtn"
     type="button"
     onclick="detectJarvisVoices()">
-    🔎 Detetar vozes disponíveis
+    🔊 Testar e escolher vozes
   </button>
 
   <div id="voiceResults" aria-live="polite"></div>
@@ -516,148 +524,11 @@ footer {
 <script>
 "use strict";
 
-function detectJarvisVoices() {
-  const output = document.getElementById("voiceResults");
-  output.replaceChildren();
-
-  const heading = document.createElement("h3");
-  heading.textContent = "A procurar vozes disponíveis...";
-  output.appendChild(heading);
-
-  // Tenta primeiro consultar as vozes Android,
-  // caso a aplicação disponibilize este método.
-  try {
-    if (
-      window.AndroidVoice &&
-      typeof window.AndroidVoice.listVoices === "function"
-    ) {
-      window.AndroidVoice.listVoices();
-      return;
-    }
-  } catch (error) {
-    // Continua para a alternativa do navegador.
-  }
-
-  if (!("speechSynthesis" in window)) {
-    output.textContent =
-      "A lista de vozes não está disponível neste navegador. " +
-      "Verifica se a aplicação Android disponibiliza a função de listar vozes.";
-    return;
-  }
-
-  function showVoices() {
-    const voices = window.speechSynthesis.getVoices();
-    output.replaceChildren();
-
-    const title = document.createElement("h3");
-    title.textContent = voices.length
-      ? "Vozes encontradas: " + voices.length
-      : "Ainda não foram encontradas vozes.";
-    output.appendChild(title);
-
-    if (!voices.length) {
-      const note = document.createElement("p");
-      note.textContent =
-        "Verifica as definições de texto para voz do Android e tenta novamente.";
-      output.appendChild(note);
-      return;
-    }
-
-    voices.forEach(function(voice, index) {
-      const item = document.createElement("div");
-      item.className = "voice-item";
-
-      const name = document.createElement("strong");
-      name.textContent = (index + 1) + ". " + voice.name;
-
-      const details = document.createElement("div");
-      details.textContent =
-        "Idioma: " + (voice.lang || "Não indicado") +
-        " · Padrão: " + (voice.default ? "Sim" : "Não");
-
-      const id = document.createElement("div");
-      id.className = "voice-id";
-      id.textContent = "Identificador: " + voice.voiceURI;
-
-      const test = document.createElement("button");
-      test.type = "button";
-      test.textContent = "▶ Testar voz";
-      test.style.marginTop = "8px";
-
-      test.addEventListener("click", function() {
-        try {
-          window.speechSynthesis.cancel();
-
-          const utterance = new SpeechSynthesisUtterance(
-            "Olá. Sou o JARVIS. Sistema de voz operacional."
-          );
-
-          utterance.voice = voice;
-          utterance.lang = voice.lang || "pt-BR";
-          utterance.rate = 1;
-          utterance.pitch = 1;
-
-          window.speechSynthesis.speak(utterance);
-        } catch (error) {
-          const warning = document.createElement("p");
-          warning.textContent = "Não foi possível testar esta voz.";
-          item.appendChild(warning);
-        }
-      });
-
-      item.appendChild(name);
-      item.appendChild(details);
-      item.appendChild(id);
-      item.appendChild(test);
-      output.appendChild(item);
-    });
-  }
-
-  window.speechSynthesis.onvoiceschanged = showVoices;
-  showVoices();
-}
-
-// Esta função pode ser chamada pela MainActivity.kt
-// se o Android enviar a lista de vozes em formato JSON.
-function onNativeVoicesListed(jsonText) {
-  const output = document.getElementById("voiceResults");
-
-  try {
-    const voices = JSON.parse(jsonText);
-    output.replaceChildren();
-
-    const title = document.createElement("h3");
-    title.textContent = "Vozes Android: " + voices.length;
-    output.appendChild(title);
-
-    voices.forEach(function(voice, index) {
-      const item = document.createElement("div");
-      item.className = "voice-item";
-
-      const name = document.createElement("strong");
-      name.textContent =
-        (index + 1) + ". " + (voice.name || "Voz sem nome");
-
-      const details = document.createElement("div");
-      details.textContent =
-        "Idioma: " + (voice.locale || voice.lang || "Não indicado");
-
-      item.appendChild(name);
-      item.appendChild(details);
-      output.appendChild(item);
-    });
-  } catch (error) {
-    output.textContent =
-      "Não foi possível ler a lista de vozes Android.";
-  }
-}
-      </script>
-  
-<script>
 let voiceOn = true;
 let listening = false;
 let recognition = null;
 let waitingForModel = false;
+let aiEnabled = false;
 
 const input = document.getElementById("userInput");
 const chat = document.getElementById("chat");
@@ -665,6 +536,7 @@ const statusText = document.getElementById("status");
 const statusDot = document.getElementById("dot");
 const micBtn = document.getElementById("micBtn");
 const sendBtn = document.getElementById("sendBtn");
+const aiToggleBtn = document.getElementById("aiToggleBtn");
 
 function setStatus(message, state) {
   statusText.textContent = message;
@@ -787,13 +659,182 @@ function openWebsite(url) {
   }
 }
 
+/* Ativa ou desativa a opção de utilizar a IA. */
+function toggleAI() {
+  aiEnabled = !aiEnabled;
+
+  aiToggleBtn.textContent = aiEnabled
+    ? "🧠 Desligar IA"
+    : "🧠 Ligar IA";
+
+  aiToggleBtn.setAttribute(
+    "aria-pressed",
+    String(aiEnabled)
+  );
+
+  if (aiEnabled) {
+    if (
+      window.AndroidVoice &&
+      typeof window.AndroidVoice.askModel === "function"
+    ) {
+      reply(
+        "Opção de IA ativada. Vou tentar utilizar o modelo " +
+        "integrado na aplicação Android."
+      );
+    } else {
+      reply(
+        "Opção de IA ativada, mas ainda não detetei a ligação " +
+        "ao modelo. É necessário integrar um modelo na " +
+        "MainActivity.kt para responder a perguntas gerais."
+      );
+    }
+  } else {
+    reply(
+      "Opção de IA desativada. Os comandos locais continuam disponíveis."
+    );
+  }
+}
+
+/* Pesquisa e apresenta as vozes disponíveis. */
+function detectJarvisVoices() {
+  const output = document.getElementById("voiceResults");
+  output.replaceChildren();
+
+  const heading = document.createElement("h3");
+  heading.textContent = "A procurar vozes disponíveis...";
+  output.appendChild(heading);
+
+  try {
+    if (
+      window.AndroidVoice &&
+      typeof window.AndroidVoice.listVoices === "function"
+    ) {
+      window.AndroidVoice.listVoices();
+      return;
+    }
+  } catch (error) {
+    // Tenta a alternativa do navegador.
+  }
+
+  if (!("speechSynthesis" in window)) {
+    output.textContent =
+      "A lista de vozes não está disponível neste navegador. " +
+      "Verifica as definições de texto para voz do Android.";
+    return;
+  }
+
+  function showVoices() {
+    const voices = window.speechSynthesis.getVoices();
+    output.replaceChildren();
+
+    const title = document.createElement("h3");
+    title.textContent = voices.length
+      ? "Vozes encontradas: " + voices.length
+      : "Ainda não foram encontradas vozes.";
+    output.appendChild(title);
+
+    if (!voices.length) {
+      const note = document.createElement("p");
+      note.textContent =
+        "Verifica as definições de texto para voz do Android " +
+        "e tenta novamente.";
+      output.appendChild(note);
+      return;
+    }
+
+    voices.forEach(function(voice, index) {
+      const item = document.createElement("div");
+      item.className = "voice-item";
+
+      const name = document.createElement("strong");
+      name.textContent = (index + 1) + ". " + voice.name;
+
+      const details = document.createElement("div");
+      details.textContent =
+        "Idioma: " + (voice.lang || "Não indicado") +
+        " · Padrão: " + (voice.default ? "Sim" : "Não");
+
+      const id = document.createElement("div");
+      id.className = "voice-id";
+      id.textContent = "Identificador: " + voice.voiceURI;
+
+      const test = document.createElement("button");
+      test.type = "button";
+      test.textContent = "▶ Testar voz";
+      test.style.marginTop = "8px";
+
+      test.addEventListener("click", function() {
+        try {
+          window.speechSynthesis.cancel();
+
+          const utterance = new SpeechSynthesisUtterance(
+            "Olá. Sou o JARVIS. Sistema de voz operacional."
+          );
+
+          utterance.voice = voice;
+          utterance.lang = voice.lang || "pt-BR";
+          utterance.rate = 1;
+          utterance.pitch = 1;
+
+          window.speechSynthesis.speak(utterance);
+        } catch (error) {
+          const warning = document.createElement("p");
+          warning.textContent =
+            "Não foi possível testar esta voz.";
+          item.appendChild(warning);
+        }
+      });
+
+      item.appendChild(name);
+      item.appendChild(details);
+      item.appendChild(id);
+      item.appendChild(test);
+      output.appendChild(item);
+    });
+  }
+
+  window.speechSynthesis.onvoiceschanged = showVoices;
+  showVoices();
+}
+
+/* Recebe a lista de vozes da MainActivity.kt, se integrada. */
+function onNativeVoicesListed(jsonText) {
+  const output = document.getElementById("voiceResults");
+
+  try {
+    const voices = JSON.parse(jsonText);
+    output.replaceChildren();
+
+    const title = document.createElement("h3");
+    title.textContent = "Vozes Android: " + voices.length;
+    output.appendChild(title);
+
+    voices.forEach(function(voice, index) {
+      const item = document.createElement("div");
+      item.className = "voice-item";
+
+      const name = document.createElement("strong");
+      name.textContent =
+        (index + 1) + ". " + (voice.name || "Voz sem nome");
+
+      const details = document.createElement("div");
+      details.textContent =
+        "Idioma: " + (voice.locale || voice.lang || "Não indicado");
+
+      item.appendChild(name);
+      item.appendChild(details);
+      output.appendChild(item);
+    });
+  } catch (error) {
+    output.textContent =
+      "Não foi possível ler a lista de vozes Android.";
+  }
+}
+
 function answer(rawText) {
   const text = rawText.toLowerCase().trim();
 
-  if (
-    text.includes("que horas") ||
-    text.includes("hora atual")
-  ) {
+  if (text.includes("que horas") || text.includes("hora atual")) {
     return "A hora indicada pelo dispositivo é " +
       new Date().toLocaleTimeString("pt-BR", {
         hour: "2-digit",
@@ -894,6 +935,7 @@ function sendMessage() {
   input.value = "";
   addMessage(message, "user");
 
+  // Os comandos locais funcionam mesmo com a IA desligada.
   const localAnswer = answer(message);
 
   if (localAnswer !== null) {
@@ -901,47 +943,52 @@ function sendMessage() {
     return;
   }
 
+  if (!aiEnabled) {
+    reply(
+      "Esse pedido precisa de inteligência artificial. " +
+      "Toca em 🧠 Ligar IA. Se o modelo ainda não estiver " +
+      "integrado, será necessário configurá-lo na aplicação Android."
+    );
+    return;
+  }
+
   askModel(message);
 }
 
 function askModel(message) {
-  setStatus("A PROCESSAR", "busy");
-
   if (
-    window.AndroidVoice &&
-    typeof window.AndroidVoice.askModel === "function"
+    !window.AndroidVoice ||
+    typeof window.AndroidVoice.askModel !== "function"
   ) {
-    waitingForModel = true;
-    sendBtn.disabled = true;
-
-    try {
-      window.AndroidVoice.askModel(message);
-    } catch (error) {
-      waitingForModel = false;
-      sendBtn.disabled = false;
-
-      reply(
-        "Não consegui comunicar com o modelo Android. " +
-        "Verifica a integração na MainActivity.kt."
-      );
-
-      setStatus("SISTEMA PRONTO", "");
-    }
-
+    reply(
+      "A opção de IA está ativada, mas não existe uma ligação " +
+      "ao modelo. A MainActivity.kt precisa de disponibilizar " +
+      "AndroidVoice.askModel()."
+    );
+    setStatus("SISTEMA PRONTO", "");
     return;
   }
 
-  reply(
-    "Ainda não tenho um modelo de inteligência artificial " +
-    "ligado. Os comandos locais estão disponíveis, mas " +
-    "as restantes perguntas precisam de um modelo de IA integrado."
-  );
+  setStatus("A PROCESSAR", "busy");
+  waitingForModel = true;
+  sendBtn.disabled = true;
 
-  setStatus("SISTEMA PRONTO", "");
+  try {
+    window.AndroidVoice.askModel(message);
+  } catch (error) {
+    waitingForModel = false;
+    sendBtn.disabled = false;
+
+    reply(
+      "Não consegui comunicar com o modelo Android. " +
+      "Verifica a integração na MainActivity.kt."
+    );
+
+    setStatus("SISTEMA PRONTO", "");
+  }
 }
 
-// O Android deve chamar esta função ao receber a resposta
-// do modelo, se esta integração estiver implementada.
+/* Chamadas de retorno esperadas da aplicação Android. */
 function onNativeModelResponse(response) {
   waitingForModel = false;
   sendBtn.disabled = false;
@@ -952,7 +999,6 @@ function onNativeModelResponse(response) {
   setStatus("SISTEMA PRONTO", "");
 }
 
-// O Android pode chamar esta função com o texto reconhecido.
 function onNativeSpeechResult(result) {
   listening = false;
   micBtn.textContent = "🎙️ Falar";
@@ -1004,8 +1050,8 @@ function startMic() {
   if (!SpeechRecognition) {
     reply(
       "O reconhecimento de voz não está disponível aqui. " +
-      "Experimenta abrir a página num navegador compatível " +
-      "ou integrar o reconhecimento de voz Android."
+      "Experimenta um navegador compatível ou integra o " +
+      "reconhecimento de voz Android."
     );
 
     setStatus("SISTEMA PRONTO", "");
@@ -1019,9 +1065,7 @@ function startMic() {
     recognition.interimResults = false;
 
     recognition.onresult = function(event) {
-      const transcript =
-        event.results[0][0].transcript;
-
+      const transcript = event.results[0][0].transcript;
       onNativeSpeechResult(transcript);
     };
 
@@ -1087,10 +1131,5 @@ input.addEventListener("keydown", function(event) {
 setStatus("SISTEMA PRONTO", "");
 </script>
 </body>
-</html>
-
-
-  
-
-
+  </html>
   

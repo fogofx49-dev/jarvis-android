@@ -1,924 +1,435 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#06101d">
-<title>J.A.R.V.I.S AI</title>
+<title>JARVIS AI</title>
 
 <style>
-:root {
-  --cyan: #39e6ff;
-  --blue: #008cff;
-  --dark: #06101d;
-  --panel: #091725;
-  --line: #16465a;
-  --text: #b9f7ff;
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:#06101d;
+  color:#b9f7ff;
+  font-family:Arial,sans-serif;
+  padding:18px
 }
 
-* {
-  box-sizing: border-box;
+header{text-align:center;padding:18px 0}
+
+h1{
+  color:#39e6ff;
+  letter-spacing:5px;
+  text-shadow:0 0 14px #00cde8
 }
 
-body {
-  margin: 0;
-  padding: 16px;
-  min-height: 100vh;
-  overflow-x: hidden;
-  color: var(--text);
-  background:
-    radial-gradient(ellipse at 50% 28%, #06304a 0%, transparent 38%),
-    linear-gradient(180deg, #06101d, #020912);
-  font-family: Arial, sans-serif;
+#status{color:#7e9eac;font-size:13px}
+
+#chat{
+  height:48vh;
+  min-height:250px;
+  overflow-y:auto;
+  border:1px solid #16465a;
+  border-radius:14px;
+  padding:12px;
+  background:#091725
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: .25;
-  background-image:
-    linear-gradient(#0c648022 1px, transparent 1px),
-    linear-gradient(90deg, #0c648022 1px, transparent 1px);
-  background-size: 30px 30px;
+.msg{
+  padding:11px;
+  margin:8px 0;
+  border-radius:10px;
+  overflow-wrap:anywhere;
+  white-space:pre-wrap
 }
 
-header, main, footer {
-  position: relative;
-  z-index: 1;
+.jarvis{background:#103345}
+.user{background:#174a56;text-align:right}
+
+.controls{
+  display:flex;
+  gap:8px;
+  margin-top:12px
 }
 
-header {
-  text-align: center;
-  padding: 12px 0 14px;
-  border-bottom: 1px solid #167b9c66;
+input{
+  flex:1;
+  min-width:0;
+  background:#0c2030;
+  color:white;
+  border:1px solid #23657b;
+  border-radius:10px;
+  padding:13px
 }
 
-.brand {
-  color: #8aaeba;
-  font-size: 11px;
-  letter-spacing: 4px;
-  margin-bottom: 9px;
+button{
+  background:#00cde8;
+  color:#00131c;
+  border:0;
+  border-radius:10px;
+  padding:12px;
+  font-weight:bold;
+  cursor:pointer
 }
 
-h1 {
-  margin: 0;
-  font-size: clamp(27px, 7vw, 38px);
-  letter-spacing: 6px;
-  color: var(--cyan);
-  text-shadow: 0 0 8px #00d9ff, 0 0 24px #008cff99;
+button:active{transform:scale(.97)}
+
+button:disabled{
+  opacity:.55;
+  cursor:wait
 }
 
-.subtitle {
-  margin: 7px 0;
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: #72dfff;
+.actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:10px
 }
 
-#status {
-  margin-top: 9px;
-  color: #8aaeba;
-  font-size: 12px;
-  text-align: center;
+.actions button{
+  background:#143747;
+  color:#b9f7ff;
+  border:1px solid #23657b
 }
 
-.visual {
-  display: grid;
-  grid-template-columns: 1fr;
-  justify-items: center;
-  padding: 18px 0 10px;
+.actions .ai-button{
+  background:#00cde8;
+  color:#00131c;
+  border-color:#39e6ff;
+  box-shadow:0 0 10px #00cde855
 }
 
-.radar {
-  width: min(72vw, 290px);
-  aspect-ratio: 1;
-  position: relative;
-  border-radius: 50%;
-  overflow: hidden;
-  isolation: isolate;
-  background:
-    radial-gradient(circle, #0a567766 0%, #04283b55 40%, #06101d 72%);
-  border: 1px solid #1bcfff66;
-  box-shadow:
-    0 0 18px #00cfff22,
-    inset 0 0 24px #00bfff22;
-}
-
-.radar::before,
-.radar::after {
-  content: "";
-  position: absolute;
-  inset: 8%;
-  border: 1px solid #28cfff66;
-  border-radius: 50%;
-}
-
-.radar::after {
-  inset: 20%;
-  border-color: #28cfff88;
-}
-
-.ring {
-  position: absolute;
-  inset: 4%;
-  border: 2px solid transparent;
-  border-top-color: var(--cyan);
-  border-bottom-color: #0879c9;
-  border-radius: 50%;
-  animation: rotate 8s linear infinite;
-  filter: drop-shadow(0 0 5px #00d9ff);
-}
-
-.ring2 {
-  inset: 13%;
-  border-width: 3px;
-  border-top-color: #0879c9;
-  border-right-color: #39e6ff;
-  animation-duration: 5s;
-  animation-direction: reverse;
-}
-
-.ring3 {
-  inset: 25%;
-  border-width: 2px;
-  border-left-color: var(--cyan);
-  border-right-color: #008cff;
-  animation-duration: 3s;
-}
-
-.radar-grid {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background:
-    linear-gradient(90deg, transparent 49.7%, #20cfff55 50%, transparent 50.3%),
-    linear-gradient(0deg, transparent 49.7%, #20cfff55 50%, transparent 50.3%);
-}
-
-.sweep {
-  position: absolute;
-  inset: 5%;
-  border-radius: 50%;
-  background: conic-gradient(
-    from 0deg,
-    transparent 0deg,
-    transparent 290deg,
-    #00cfff08 310deg,
-    #00cfff22 335deg,
-    #39e6ff99 359deg,
-    transparent 360deg
-  );
-  animation: rotate 4s linear infinite;
-}
-
-.core {
-  position: absolute;
-  width: 24%;
-  aspect-ratio: 1;
-  top: 38%;
-  left: 38%;
-  border-radius: 50%;
-  background: radial-gradient(circle, #fff 0%, #39e6ff 18%, #008cff 48%, #03406a 72%);
-  box-shadow:
-    0 0 15px #00d9ff,
-    0 0 38px #008cff,
-    0 0 60px #00d9ff55;
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.core::after {
-  content: "";
-  position: absolute;
-  inset: -35%;
-  border: 1px solid #39e6ff;
-  border-radius: 50%;
-  animation: pulse 2s ease-in-out infinite reverse;
-}
-
-.radar-dot {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 0 9px 3px #00d9ff;
-  animation: blink 1.6s ease-in-out infinite;
-}
-
-.d1 { top: 22%; left: 69%; }
-.d2 { top: 69%; left: 23%; animation-delay: .4s; }
-.d3 { top: 78%; left: 66%; animation-delay: .8s; }
-.d4 { top: 34%; left: 18%; animation-delay: 1s; }
-
-.orbit-label {
-  margin-top: 12px;
-  color: #70dfff;
-  font-size: 11px;
-  letter-spacing: 3px;
-  text-align: center;
-}
-
-.state-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.dot-status {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #7b8794;
-  box-shadow: 0 0 8px currentColor;
-}
-
-.wave {
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  margin: 4px 0 14px;
-  overflow: hidden;
-}
-
-.wave span {
-  width: 3px;
-  height: 6px;
-  border-radius: 5px;
-  background: var(--cyan);
-  box-shadow: 0 0 7px #00cfff;
-  animation: wave 1s ease-in-out infinite alternate;
-  animation-play-state: paused;
-}
-
-.wave span:nth-child(3n) { animation-delay: -.3s; }
-.wave span:nth-child(4n) { animation-delay: -.6s; }
-.wave span:nth-child(5n) { animation-delay: -.8s; }
-
-body.busy .wave span,
-body.listening .wave span,
-body.speaking .wave span {
-  animation-play-state: running;
-}
-
-body.busy .ring { animation-duration: 1.2s; }
-body.listening .radar {
-  box-shadow: 0 0 35px #00d9ff55;
-}
-body.speaking .core { animation-duration: .45s; }
-
-#chat {
-  width: 100%;
-  max-width: 700px;
-  min-height: 100px;
-  max-height: 260px;
-  overflow-y: auto;
-  padding: 14px;
-  margin: 16px auto;
-  border: 1px solid #00d9ff55;
-  border-radius: 12px;
-  background: #00101acc;
-}
-
-.msg {
-  padding: 10px 12px;
-  margin: 8px 0;
-  border-radius: 9px;
-  overflow-wrap: anywhere;
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-
-.jarvis {
-  color: #9beeff;
-  background: #00d9ff12;
-  border-left: 3px solid #00d9ff;
-}
-
-.user {
-  color: #fff;
-  background: #ffffff10;
-  border-left: 3px solid #888;
-}
-
-.controls, .actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 9px;
-  width: 100%;
-  max-width: 700px;
-  margin: 12px auto;
-}
-
-input {
-  flex: 1 1 180px;
-  min-width: 0;
-  padding: 13px;
-  color: #eafaff;
-  background: #061522;
-  border: 1px solid #00d9ff88;
-  border-radius: 9px;
-  outline: none;
-}
-
-input:focus {
-  border-color: #00eaff;
-  box-shadow: 0 0 10px #00d9ff44;
-}
-
-button {
-  padding: 12px 15px;
-  color: #eafaff;
-  background: #062334;
-  border: 1px solid #00d9ff99;
-  border-radius: 9px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-button:active { transform: scale(.97); }
-
-button:disabled {
-  opacity: .5;
-  cursor: not-allowed;
-}
-
-button:focus-visible {
-  outline: 2px solid white;
-  outline-offset: 3px;
-}
-
-#detectVoicesBtn {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  max-width: 320px;
-  margin: 18px auto;
-  padding: 14px;
-  color: #b9f7ff;
-  background: #062334;
-  border: 1px solid #39e6ff;
-  border-radius: 10px;
-  font-size: 15px;
-}
-
-#voiceResults {
-  width: 100%;
-  max-width: 700px;
-  margin: 12px auto;
-  color: #bcefff;
-  font-size: 13px;
-  overflow-wrap: anywhere;
-}
-
-#voiceResults h3 {
-  color: #00d9ff;
-}
-
-.voice-item {
-  padding: 10px;
-  margin: 7px 0;
-  border: 1px solid #00d9ff44;
-  border-radius: 8px;
-  background: #001522;
-}
-
-.voice-id {
-  color: #8daebc;
-  font-size: 11px;
-  overflow-wrap: anywhere;
-}
-
-footer {
-  margin: 22px auto 8px;
-  text-align: center;
-  color: #587b8b;
-  font-size: 11px;
-}
-
-@keyframes rotate {
-  to { transform: rotate(360deg); }
-}
-@keyframes pulse {
-  50% { opacity: .55; }
-}
-@keyframes blink {
-  50% { opacity: .25; }
-}
-@keyframes wave {
-  50% { transform: scaleY(1.8); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: .01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-  }
-}
+a{color:#65eaff}
 </style>
 </head>
-  
+
 <body>
+
 <header>
-  <div class="brand">STARK TECHNOLOGY</div>
-  <h1>J.A.R.V.I.S.</h1>
-  <div class="subtitle">
-    JUST A RATHER VERY INTELLIGENT SYSTEM
-  </div>
+  <h1>J.A.R.V.I.S</h1>
+  <p>ASSISTENTE PESSOAL</p>
+  <div id="status">Sistema online • A aguardar a IA local</div>
 </header>
 
-<main>
-  <section class="visual">
-    <div class="radar" id="radar">
-      <div class="radar-grid"></div>
-      <div class="ring ring1"></div>
-      <div class="ring ring2"></div>
-      <div class="ring ring3"></div>
-      <div class="sweep"></div>
-      <div class="core"></div>
-      <div class="radar-dot d1"></div>
-      <div class="radar-dot d2"></div>
-      <div class="radar-dot d3"></div>
-      <div class="radar-dot d4"></div>
-    </div>
-
-    <div class="orbit-label">SCANNING ENVIRONMENT</div>
-
-    <div class="state-row">
-      <span class="dot-status" id="dot"></span>
-      <span id="status" role="status" aria-live="polite">
-        SISTEMA PRONTO
-      </span>
-    </div>
-  </section>
-
-  <div class="wave" aria-hidden="true">
-    <span></span><span></span><span></span><span></span>
-    <span></span><span></span><span></span><span></span>
-    <span></span><span></span><span></span>
+<div id="chat" aria-live="polite">
+  <div class="msg jarvis">
+    Olá! Sou o JARVIS. Carrega em "Carregar IA" para selecionar o modelo Gemma. Depois, podes conversar comigo.
   </div>
+</div>
 
-  <section id="chat" aria-label="Conversa" aria-live="polite">
-    <div class="msg jarvis">
-      J.A.R.V.I.S.: Sistema iniciado. Como posso ajudar?
-    </div>
-  </section>
+<div class="controls">
+  <input id="msg" placeholder="Fala comigo..." autocomplete="off">
+  <button id="sendBtn" onclick="send()">Enviar</button>
+</div>
 
-  <div class="controls">
-    <input
-      id="userInput"
-      type="text"
-      placeholder="Escreva um comando..."
-      aria-label="Escreva uma mensagem"
-      autocomplete="off"
-    >
-    <button id="sendBtn" type="button" onclick="sendMessage()">
-      Enviar
-    </button>
-  </div>
-
-  <div class="actions">
-    <button id="micBtn" type="button" onclick="toggleVoice()">
-      🎙️ Falar
-    </button>
-    <button id="stopBtn" type="button" onclick="stopSpeaking()">
-      🔇 Parar voz
-    </button>
-    <button id="clearBtn" type="button" onclick="clearChat()">
-      🗑️ Limpar chat
-    </button>
-  </div>
-
-
-  <button
-  id="loadAIFileBtn"
-  type="button"
-  onclick="chooseAIFile()">
-  📂 Carregar arquivo de IA
-  </button>
-
- <div id="aiFileStatus" role="status" aria-live="polite">
-  Seleciona o ficheiro do modelo para iniciar a IA.
+<div class="actions">
+  <button onclick="startMic()">🎙️ Falar</button>
+  <button onclick="toggleVoice()" id="voiceBtn">🔊 Voz ligada</button>
+  <button onclick="sendCommand('ajuda')">❔ Ajuda</button>
+  <button onclick="clearChat()">🧹 Limpar</button>
+  <button class="ai-button" onclick="chooseJarvisModel()">🧠 Carregar IA</button>
 </div>
 
 <script>
-function chooseAIFile() {
-  const status = document.getElementById("aiFileStatus");
+let voiceOn = true;
+let modelSelectionRequested = false;
+let waitingForModel = false;
 
+function setStatus(text) {
+  document.getElementById("status").textContent = text;
+}
+
+function chooseJarvisModel() {
   if (
     window.AndroidVoice &&
     typeof window.AndroidVoice.chooseModel === "function"
   ) {
-    status.textContent = "A abrir os ficheiros do Android...";
+    modelSelectionRequested = true;
+    setStatus("Seleciona o ficheiro .litertlm no telemóvel.");
     window.AndroidVoice.chooseModel();
   } else {
-    status.textContent =
-      "Seletor Android indisponível. Abre o JARVIS na aplicação Android.";
+    setStatus("O carregamento do modelo requer a aplicação Android.");
   }
 }
 
-function onNativeStatus(message) {
-  const status = document.getElementById("aiFileStatus");
-  if (status) {
-    status.textContent = String(message || "");
-  }
-}
-</script>
-  
-"use strict";
+function addMessage(text, who) {
+  const el = document.createElement("div");
+  el.className = "msg " + who;
+  el.textContent = String(text);
 
-let voiceOn = true;
-let listening = false;
-let recognition = null;
-let waitingForModel = false;
-let aiEnabled = false;
+  document.getElementById("chat").appendChild(el);
 
-const input = document.getElementById("userInput");
-const chat = document.getElementById("chat");
-const statusText = document.getElementById("status");
-const statusDot = document.getElementById("dot");
-const micBtn = document.getElementById("micBtn");
-const sendBtn = document.getElementById("sendBtn");
-const aiToggleBtn = document.getElementById("aiToggleBtn");
-
-function setStatus(message, state) {
-  statusText.textContent = message;
-
-  document.body.classList.remove(
-    "busy", "listening", "speaking"
-  );
-
-  if (state) {
-    document.body.classList.add(state);
-  }
-
-  statusDot.style.background =
-    state === "listening" ? "#00ff99" :
-    state === "busy" ? "#ffcc00" :
-    state === "speaking" ? "#00d9ff" : "#7b8794";
-}
-
-function addMessage(message, sender) {
-  const item = document.createElement("div");
-
-  item.className = "msg " +
-    (sender === "user" ? "user" : "jarvis");
-
-  item.textContent =
-    (sender === "user" ? "TU: " : "J.A.R.V.I.S.: ") +
-    String(message);
-
-  chat.appendChild(item);
+  const chat = document.getElementById("chat");
   chat.scrollTop = chat.scrollHeight;
 }
 
-function speak(message) {
-  if (!voiceOn || !message) return;
+function speak(text) {
+  if (!voiceOn) return;
 
-  try {
-    if (
-      window.AndroidVoice &&
-      typeof window.AndroidVoice.speak === "function"
-    ) {
-      window.AndroidVoice.speak(String(message));
-      setStatus("A FALAR", "speaking");
-      return;
-    }
-
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-
-      const utterance = new SpeechSynthesisUtterance(
-        String(message)
-      );
-
-      utterance.lang = "pt-BR";
-      utterance.rate = 1;
-      utterance.pitch = 1;
-
-      utterance.onstart = function() {
-        setStatus("A FALAR", "speaking");
-      };
-
-      utterance.onend = function() {
-        if (!listening && !waitingForModel) {
-          setStatus("SISTEMA PRONTO", "");
-        }
-      };
-
-      utterance.onerror = function() {
-        setStatus("SISTEMA PRONTO", "");
-      };
-
-      window.speechSynthesis.speak(utterance);
-    }
-  } catch (error) {
-    setStatus("VOZ INDISPONÍVEL", "");
-  }
-}
-
-function stopSpeaking() {
-  try {
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-
-    if (
-      window.AndroidVoice &&
-      typeof window.AndroidVoice.stopSpeaking === "function"
-    ) {
-      window.AndroidVoice.stopSpeaking();
-    }
-  } catch (error) {
-    // A voz pode já ter terminado.
-  }
-
-  setStatus("SISTEMA PRONTO", "");
-}
-
-function clearChat() {
-  chat.replaceChildren();
-
-  addMessage(
-    "Histórico limpo. Estou pronto para receber comandos.",
-    "jarvis"
-  );
-}
-
-function reply(message) {
-  addMessage(message, "jarvis");
-  speak(message);
-}
-
-function openWebsite(url) {
-  try {
-    const opened = window.open(url, "_blank");
-
-    if (!opened) {
-      window.location.href = url;
-    }
-  } catch (error) {
-    window.location.href = url;
-  }
-}
-
-/* Ativa ou desativa a opção de utilizar a IA. */
-function toggleAI() {
-  aiEnabled = !aiEnabled;
-
-  aiToggleBtn.textContent = aiEnabled
-    ? "🧠 Desligar IA"
-    : "🧠 Ligar IA";
-
-  aiToggleBtn.setAttribute(
-    "aria-pressed",
-    String(aiEnabled)
-  );
-
-  if (aiEnabled) {
-    if (
-      window.AndroidVoice &&
-      typeof window.AndroidVoice.askModel === "function"
-    ) {
-      reply(
-        "Opção de IA ativada. Vou tentar utilizar o modelo " +
-        "integrado na aplicação Android."
-      );
-    } else {
-      reply(
-        "Opção de IA ativada, mas ainda não detetei a ligação " +
-        "ao modelo. É necessário integrar um modelo na " +
-        "MainActivity.kt para responder a perguntas gerais."
-      );
-    }
-  } else {
-    reply(
-      "Opção de IA desativada. Os comandos locais continuam disponíveis."
-    );
-  }
-}
-
-/* Pesquisa e apresenta as vozes disponíveis. */
-function detectJarvisVoices() {
-  const output = document.getElementById("voiceResults");
-  output.replaceChildren();
-
-  const heading = document.createElement("h3");
-  heading.textContent = "A procurar vozes disponíveis...";
-  output.appendChild(heading);
-
-  try {
-    if (
-      window.AndroidVoice &&
-      typeof window.AndroidVoice.listVoices === "function"
-    ) {
-      window.AndroidVoice.listVoices();
-      return;
-    }
-  } catch (error) {
-    // Tenta a alternativa do navegador.
-  }
-
-  if (!("speechSynthesis" in window)) {
-    output.textContent =
-      "A lista de vozes não está disponível neste navegador. " +
-      "Verifica as definições de texto para voz do Android.";
+  if (
+    window.AndroidVoice &&
+    typeof window.AndroidVoice.speak === "function"
+  ) {
+    window.AndroidVoice.speak(String(text));
     return;
   }
 
-  function showVoices() {
-    const voices = window.speechSynthesis.getVoices();
-    output.replaceChildren();
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
 
-    const title = document.createElement("h3");
-    title.textContent = voices.length
-      ? "Vozes encontradas: " + voices.length
-      : "Ainda não foram encontradas vozes.";
-    output.appendChild(title);
+    const utterance = new SpeechSynthesisUtterance(String(text));
+    utterance.lang = "pt-BR";
+    utterance.volume = 1;
+    utterance.rate = 1;
 
-    if (!voices.length) {
-      const note = document.createElement("p");
-      note.textContent =
-        "Verifica as definições de texto para voz do Android " +
-        "e tenta novamente.";
-      output.appendChild(note);
-      return;
+    window.speechSynthesis.speak(utterance);
+  }
+}
+
+function reply(text) {
+  addMessage(text, "jarvis");
+  speak(text);
+}
+
+function answer(raw) {
+  const msg = raw.toLowerCase().trim();
+
+  if (!msg) return "Escreve alguma coisa para começarmos.";
+
+  if (
+    msg.includes("olá") ||
+    msg.includes("ola") ||
+    msg.includes("bom dia") ||
+    msg.includes("boa noite") ||
+    msg === "oi" ||
+    msg.startsWith("oi ")
+  ) {
+    return "Olá! Estou pronto para ajudar. Qual é o teu comando?";
+  }
+
+  if (msg.includes("teu nome") || msg.includes("quem és")) {
+    return "Sou o JARVIS, o teu assistente pessoal em desenvolvimento.";
+  }
+
+  if (msg.includes("horas") || msg.includes("hora agora")) {
+    return "São " + new Date().toLocaleTimeString("pt-BR", {
+      hour:"2-digit",
+      minute:"2-digit"
+    }) + ".";
+  }
+
+  if (msg.includes("data") || msg.includes("dia de hoje")) {
+    return "Hoje é " + new Date().toLocaleDateString("pt-BR") + ".";
+  }
+
+  if (msg.includes("piada")) {
+    return "Porque o computador foi ao médico? Porque tinha um vírus!";
+  }
+
+  if (msg.includes("motivação") || msg.includes("motivacional")) {
+    return "Continua a trabalhar no teu objetivo. Cada passo conta!";
+  }
+
+  if (msg.includes("ajuda") || msg.includes("comandos")) {
+    return "Podes pedir a hora, a data, uma piada, uma frase motivacional, abrir o Google ou YouTube, ou fazer perguntas ao Gemma local.";
+  }
+
+  return null;
+}
+
+function isSettingsCommand(msg) {
+  return (
+    msg.includes("definições") ||
+    msg.includes("configurações") ||
+    msg.includes("configuracoes")
+  );
+}
+
+function send() {
+  if (waitingForModel) {
+    setStatus("Aguarda a resposta anterior do Gemma.");
+    return;
+  }
+
+  const input = document.getElementById("msg");
+  const text = input.value.trim();
+
+  if (!text) {
+    setStatus("Escreve uma mensagem primeiro.");
+    return;
+  }
+
+  addMessage(text, "user");
+  input.value = "";
+
+  const msg = text.toLowerCase();
+
+  // Comandos para abrir aplicações no Android.
+  if (msg.includes("youtube") || msg.includes("you tube")) {
+    reply("A abrir o YouTube.");
+
+    if (window.AndroidVoice) {
+      window.AndroidVoice.openApp("youtube");
+    } else {
+      window.location.href = "https://m.youtube.com/";
     }
-
-    voices.forEach(function(voice, index) {
-      const item = document.createElement("div");
-      item.className = "voice-item";
-
-      const name = document.createElement("strong");
-      name.textContent = (index + 1) + ". " + voice.name;
-
-      const details = document.createElement("div");
-      details.textContent =
-        "Idioma: " + (voice.lang || "Não indicado") +
-        " · Padrão: " + (voice.default ? "Sim" : "Não");
-
-      const id = document.createElement("div");
-      id.className = "voice-id";
-      id.textContent = "Identificador: " + voice.voiceURI;
-
-      const test = document.createElement("button");
-      test.type = "button";
-      test.textContent = "▶ Testar voz";
-      test.style.marginTop = "8px";
-
-      test.addEventListener("click", function() {
-        try {
-          window.speechSynthesis.cancel();
-
-          const utterance = new SpeechSynthesisUtterance(
-            "Olá. Sou o JARVIS. Sistema de voz operacional."
-          );
-
-          utterance.voice = voice;
-          utterance.lang = voice.lang || "pt-BR";
-          utterance.rate = 1;
-          utterance.pitch = 1;
-
-          window.speechSynthesis.speak(utterance);
-        } catch (error) {
-          const warning = document.createElement("p");
-          warning.textContent =
-            "Não foi possível testar esta voz.";
-          item.appendChild(warning);
-        }
-      });
-
-      item.appendChild(name);
-      item.appendChild(details);
-      item.appendChild(id);
-      item.appendChild(test);
-      output.appendChild(item);
-    });
+    return;
   }
 
-  window.speechSynthesis.onvoiceschanged = showVoices;
-  showVoices();
+  if (msg.includes("google")) {
+    reply("A abrir o Google.");
+
+    if (window.AndroidVoice) {
+      window.AndroidVoice.openApp("google");
+    } else {
+      window.location.href = "https://www.google.com/";
+    }
+    return;
+  }
+
+  if (isSettingsCommand(msg)) {
+    reply("A abrir as definições do Android.");
+
+    if (window.AndroidVoice) {
+      window.AndroidVoice.openApp("settings");
+    } else {
+      setStatus("Abre as definições no teu dispositivo.");
+    }
+    return;
+  }
+
+  // Respostas locais rápidas.
+  const localAnswer = answer(text);
+
+  if (localAnswer !== null) {
+    reply(localAnswer);
+    setStatus("Resposta dos comandos locais.");
+    return;
+  }
+
+  // Perguntas livres: enviar ao modelo Gemma no Android.
+  if (
+    window.AndroidVoice &&
+    typeof window.AndroidVoice.askModel === "function"
+  ) {
+    waitingForModel = true;
+    document.getElementById("sendBtn").disabled = true;
+    setStatus("O Gemma está a pensar...");
+
+    try {
+      window.AndroidVoice.askModel(text);
+    } catch (error) {
+      waitingForModel = false;
+      document.getElementById("sendBtn").disabled = false;
+      setStatus("Não foi possível enviar a mensagem ao Gemma.");
+      reply("Não consegui contactar o modelo local.");
+    }
+    return;
+  }
+
+  reply(
+    "A IA local só funciona na aplicação Android com a ponte nativa ativa. " +
+    "Podes continuar a usar os comandos básicos."
+  );
+  setStatus("Ponte Android indisponível.");
 }
 
-/* Recebe a lista de vozes da MainActivity.kt, se integrada. */
-function onNativeVoicesListed(jsonText) {
-  const output = document.getElementById("voiceResults");
+// Chamado pelo MainActivity.kt quando o Gemma responde.
+function onNativeModelResponse(text) {
+  waitingForModel = false;
+  document.getElementById("sendBtn").disabled = false;
 
-  try {
-    const voices = JSON.parse(jsonText);
-    output.replaceChildren();
+  const response = String(text || "").trim();
 
-    const title = document.createElement("h3");
-    title.textContent = "Vozes Android: " + voices.length;
-    output.appendChild(title);
+  if (!response) {
+    setStatus("O Gemma não devolveu uma resposta.");
+    reply("Não recebi uma resposta do modelo. Tenta novamente.");
+    return;
+  }
 
-    voices.forEach(function(voice, index) {
-      const item = document.createElement("div");
-      item.className = "voice-item";
+  setStatus("Gemma local • Resposta recebida");
+  reply(response);
+}
 
-      const name = document.createElement("strong");
-      name.textContent =
-        (index + 1) + ". " + (voice.name || "Voz sem nome");
+// Chamado pelo Android ao terminar a seleção/cópia do modelo.
+function onNativeSpeechResult(text) {
+  document.getElementById("msg").value = text;
+  setStatus("Comando de voz reconhecido.");
+  send();
+}
 
-      const details = document.createElement("div");
-      details.textContent =
-        "Idioma: " + (voice.locale || voice.lang || "Não indicado");
+function onNativeSpeechError(message) {
+  setStatus(message);
+}
 
-      item.appendChild(name);
-      item.appendChild(details);
-      output.appendChild(item);
-    });
-  } catch (error) {
-    output.textContent =
-      "Não foi possível ler a lista de vozes Android.";
+function sendCommand(command) {
+  document.getElementById("msg").value = command;
+  send();
+}
+
+function toggleVoice() {
+  voiceOn = !voiceOn;
+
+  document.getElementById("voiceBtn").textContent =
+    voiceOn ? "🔊 Voz ligada" : "🔇 Voz desligada";
+
+  if (!voiceOn && "speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+
+  if (voiceOn) {
+    reply("Voz ativada.");
+  } else {
+    addMessage("Voz desativada.", "jarvis");
   }
 }
 
-function answer(rawText) {
-  const text = rawText.toLowerCase().trim();
+function clearChat() {
+  document.getElementById("chat").innerHTML = "";
+  addMessage("Conversa limpa. Estou pronto!", "jarvis");
+}
 
-  if (text.includes("que horas") || text.includes("hora atual")) {
-    return "A hora indicada pelo dispositivo é " +
-      new Date().toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit"
-      }) + ".";
-  }
+function startMic() {
+  setStatus("A tentar ativar o microfone...");
 
   if (
-    text.includes("que dia") ||
-    text.includes("data de hoje") ||
-    text.includes("data atual")
+    window.AndroidVoice &&
+    typeof window.AndroidVoice.startListening === "function"
   ) {
-    return "Hoje é " +
-      new Date().toLocaleDateString("pt-BR") + ".";
+    window.AndroidVoice.startListening();
+  } else if (
+    "webkitSpeechRecognition" in window ||
+    "SpeechRecognition" in window
+  ) {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "pt-BR";
+
+    recognition.onresult = function(event) {
+      document.getElementById("msg").value =
+        event.results[0][0].transcript;
+      send();
+    };
+
+    recognition.onerror = function() {
+      setStatus("Não foi possível reconhecer a voz.");
+    };
+
+    recognition.start();
+  } else {
+    setStatus("Reconhecimento de voz indisponível neste navegador.");
   }
+}
 
-  if (
-    text.includes("quem és") ||
-    text.includes("quem es") ||
-    text.includes("quem é você") ||
-    text.includes("quem e voce")
-  ) {
-    return "Sou o J.A.R.V.I.S., o teu assistente digital.";
+document.getElementById("msg").addEventListener("keydown", function(event) {
+  if (event.key === "Enter") {
+    send();
   }
+});
+</script>
 
-  if (
-    text.includes("bom dia") ||
-    text.includes("boa tarde") ||
-    text.includes("boa noite") ||
-    text === "olá" ||
-    text === "ola"
-  ) {
-    return "Olá! Sistema operacional. Em que posso ajudar?";
-  }
-
-  if (
-    text.includes("abrir youtube") ||
-    text.includes("abrir o youtube")
-  ) {
-    openWebsite("https://www.youtube.com/");
-    return "A abrir o YouTube.";
-  }
-
-  if (
-    text.includes("abrir google") ||
-    text.includes("abrir o google")
-  ) {
-    openWebsite("https://www.google.com/");
-    return "A abrir o Google.";
-  }
-
-  if (
-    text.startsWith("pesquisar ") ||
-    text.startsWith("pesquisa ") ||
-    text.startsWith("procura na internet ")
-  ) {
-    openWebsite(
-      "https://www.google.com/search?q=" +
-      encodeURIComponent(rawText)
-    );
-
-    return "A abrir a pesquisa na internet.";
-  }
-
-  if (
-    text.includes("desligar voz") ||
-    text.includes("silenciar voz")
-  ) {
-    voiceOn = false;
-    stopSpeaking();
-    return "Voz desativada. Continuarei a res
-  
+</body>
+</html>

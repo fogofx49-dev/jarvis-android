@@ -13,6 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Obter o projeto
         uses: actions/checkout@v4
@@ -23,7 +24,6 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      
       - name: Configurar Android SDK
         uses: android-actions/setup-android@v3
         with:
@@ -33,19 +33,26 @@ jobs:
         run: |
           yes | sdkmanager --licenses
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
-          
-      
-            
 
       - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.9"
 
+      - name: Diagnosticar AndroidManifest
+        run: |
+          echo "=== Ficheiro encontrado ==="
+          ls -l app/src/main/AndroidManifest.xml
+          echo "=== Conteúdo do manifesto ==="
+          cat -n app/src/main/AndroidManifest.xml
+          echo "=== Validar sintaxe XML ==="
+          python3 -c "import xml.etree.ElementTree as ET; ET.parse('app/src/main/AndroidManifest.xml'); print('XML válido')"
+
       - name: Compilar APK
-        run: gradle assembleDebug --no-daemon
+        run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Guardar APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: jarvis-debug-apk

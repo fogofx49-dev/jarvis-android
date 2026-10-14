@@ -1,13 +1,19 @@
 
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Permissão para o microfone -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Permissão de acesso à Internet -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Serviços de voz do Android -->
     <queries>
         <intent>
             <action android:name="android.speech.RecognitionService" />
         </intent>
+
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
@@ -22,7 +28,8 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -30,6 +37,7 @@
             </intent-filter>
 
         </activity>
-    </application>
-</manifest>
 
+    </application>
+
+</manifest>

@@ -1,12 +1,23 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#06101d">
-<title>JARVIS AI</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#020b12">
+<title>J.A.R.V.I.S. | Stark Technology</title>
 
 <style>
+:root {
+  --cyan: #00eaff;
+  --blue: #008cff;
+  --bg: #020b12;
+  --panel: rgba(3, 23, 35, .92);
+  --text: #d8faff;
+  --muted: #77aab7;
+  --border: rgba(0, 234, 255, .28);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -14,588 +25,792 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #06101d;
-  color: #b9f7ff;
-  font-family: Arial, sans-serif;
-  padding: 18px;
+  background:
+    radial-gradient(ellipse at top, #073047 0%, transparent 55%),
+    linear-gradient(150deg, #01060b, #041521 60%, #02080d);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: .14;
+  background-image:
+    linear-gradient(rgba(0,234,255,.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,234,255,.12) 1px, transparent 1px);
+  background-size: 35px 35px;
+  mask-image: linear-gradient(to bottom, black, transparent);
+}
+
+.app {
+  position: relative;
+  width: min(100%, 850px);
+  margin: auto;
+  padding: 18px 14px 25px;
 }
 
 header {
   text-align: center;
-  padding: 18px 0;
+  padding: 14px 0 18px;
+}
+
+.brand {
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 5px;
+  text-shadow: 0 0 12px var(--cyan);
 }
 
 h1 {
-  color: #39e6ff;
-  letter-spacing: 5px;
-  text-shadow: 0 0 14px #00cde8;
+  font-size: clamp(38px, 9vw, 65px);
+  letter-spacing: 7px;
+  margin: 12px 0 5px;
+  color: #e8fdff;
+  text-shadow: 0 0 10px #00dfff, 0 0 35px #007ca8;
 }
 
-#status {
-  color: #7e9eac;
-  font-size: 13px;
-  overflow-wrap: anywhere;
+.subtitle {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 2px;
+  line-height: 1.7;
+}
+
+.radar-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 14px 0 20px;
+}
+
+.radar {
+  width: 150px;
+  height: 150px;
+  position: relative;
+  border: 1px solid var(--cyan);
+  border-radius: 50%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle, transparent 22%, rgba(0,234,255,.12) 23%, transparent 24%),
+    repeating-radial-gradient(circle, transparent 0 22px, rgba(0,234,255,.24) 23px 24px);
+  box-shadow: 0 0 20px rgba(0,234,255,.18), inset 0 0 20px rgba(0,234,255,.12);
+}
+
+.radar::before,
+.radar::after {
+  content: "";
+  position: absolute;
+  background: rgba(0,234,255,.32);
+}
+
+.radar::before {
+  width: 1px;
+  height: 100%;
+  left: 50%;
+}
+
+.radar::after {
+  height: 1px;
+  width: 100%;
+  top: 50%;
+}
+
+.radar-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0deg, transparent 280deg, rgba(0,234,255,.38) 350deg, transparent 360deg);
+  animation: sweep 4s linear infinite;
+}
+
+.radar-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 12px var(--cyan);
+  top: 32%;
+  left: 65%;
+}
+
+@keyframes sweep {
+  to { transform: rotate(360deg); }
+}
+
+.statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 16px;
+  text-align: center;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #777;
+  box-shadow: 0 0 8px currentColor;
+  flex-shrink: 0;
+}
+
+.dot.online {
+  background: #00ff9d;
+  color: #00ff9d;
+}
+
+.dot.busy {
+  background: #ffbf00;
+  color: #ffbf00;
+  animation: blink .7s infinite alternate;
+}
+
+@keyframes blink {
+  to { opacity: .3; }
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  box-shadow: 0 0 24px rgba(0, 166, 255, .08);
+  overflow: hidden;
+}
+
+.panel-title {
+  padding: 14px 15px;
+  color: var(--cyan);
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  border-bottom: 1px solid var(--border);
 }
 
 #chat {
-  height: 48vh;
-  min-height: 250px;
+  min-height: 210px;
+  max-height: 43vh;
   overflow-y: auto;
-  border: 1px solid #16465a;
-  border-radius: 14px;
-  padding: 12px;
-  background: #091725;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   scroll-behavior: smooth;
 }
 
-.msg {
-  padding: 11px;
-  margin: 8px 0;
-  border-radius: 10px;
+.message {
+  max-width: 90%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.55;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
 
-.jarvis {
-  background: #103345;
+.message.bot {
+  align-self: flex-start;
+  background: rgba(0, 160, 205, .11);
+  border: 1px solid rgba(0,234,255,.24);
 }
 
-.user {
-  background: #174a56;
-  text-align: right;
+.message.user {
+  align-self: flex-end;
+  background: rgba(0, 115, 255, .17);
+  border: 1px solid rgba(0,140,255,.35);
 }
 
-.controls {
+.message .who {
+  display: block;
+  font-size: 10px;
+  color: var(--cyan);
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+
+.composer {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
+  padding: 12px;
+  border-top: 1px solid var(--border);
 }
 
-input {
+#userInput {
   flex: 1;
   min-width: 0;
-  background: #0c2030;
-  color: white;
-  border: 1px solid #23657b;
-  border-radius: 10px;
   padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  outline: none;
+  color: white;
+  background: rgba(0,0,0,.35);
+  font-size: 14px;
+}
+
+#userInput:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 10px rgba(0,234,255,.12);
 }
 
 button {
-  background: #00cde8;
-  color: #00131c;
-  border: 0;
+  border: 1px solid var(--border);
+  color: var(--cyan);
+  background: rgba(0, 170, 220, .10);
   border-radius: 10px;
-  padding: 12px;
+  padding: 11px 13px;
   font-weight: bold;
   cursor: pointer;
+  transition: .2s;
 }
 
 button:active {
   transform: scale(.97);
 }
 
+button:hover {
+  background: rgba(0,234,255,.17);
+}
+
 button:disabled {
-  opacity: .55;
-  cursor: wait;
+  opacity: .45;
+  cursor: not-allowed;
 }
 
-.actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 10px;
+.send-button {
+  background: rgba(0, 190, 255, .17);
 }
 
-.actions button {
-  background: #143747;
-  color: #b9f7ff;
-  border: 1px solid #23657b;
+.controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 13px;
 }
 
-.actions .ai-button {
-  background: #00cde8;
-  color: #00131c;
-  border-color: #39e6ff;
-  box-shadow: 0 0 10px #00cde855;
+.controls button {
+  min-height: 45px;
+  font-size: 12px;
 }
 
-#loadAIButton {
-  flex: 1 1 100%;
-  min-height: 46px;
+.ai-button {
+  grid-column: 1 / -1;
+  border-color: rgba(0,255,160,.38);
+  color: #6bffc7;
 }
 
-a {
-  color: #65eaff;
+.hint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  margin: 14px 6px;
 }
 
-@media (max-width: 380px) {
-  body {
-    padding: 12px;
-  }
+footer {
+  text-align: center;
+  font-size: 10px;
+  color: #467785;
+  letter-spacing: 2px;
+  padding: 12px 0 5px;
+}
 
-  .controls {
-    flex-wrap: wrap;
-  }
-
-  #sendBtn {
-    min-width: 75px;
-  }
+@media (max-width: 400px) {
+  .app { padding: 12px 9px 20px; }
+  .composer { padding: 8px; gap: 5px; }
+  .composer button { padding: 10px; }
+  #userInput { padding: 11px 9px; }
 }
 </style>
 </head>
 
 <body>
+<div class="app">
 
-<header>
-  <h1>J.A.R.V.I.S</h1>
-  <p>ASSISTENTE PESSOAL</p>
-  <div id="status" role="status" aria-live="polite">
-    Sistema online • A aguardar a IA local
+  <header>
+    <div class="brand">STARK TECHNOLOGY</div>
+    <h1>J.A.R.V.I.S.</h1>
+    <div class="subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+  </header>
+
+  <div class="radar-wrap">
+    <div class="radar" aria-label="Radar holográfico">
+      <div class="radar-sweep"></div>
+      <div class="radar-dot"></div>
+    </div>
   </div>
-</header>
 
-<div id="chat" aria-live="polite">
-  <div class="msg jarvis">
-    Olá! Sou o JARVIS. Carrega em "Carregar arquivo de IA"
-    para selecionar o modelo Gemma. Depois, podes conversar comigo.
+  <div class="statusbar">
+    <span class="dot" id="dot"></span>
+    <span id="status" role="status">Sistema inicializado</span>
   </div>
-</div>
 
-<div class="controls">
-  <input
-    id="msg"
-    placeholder="Fala comigo..."
-    autocomplete="off"
-    aria-label="Mensagem para o JARVIS"
-  >
-  <button id="sendBtn" onclick="send()">Enviar</button>
-</div>
+  <section class="panel">
+    <div class="panel-title">▸ TERMINAL DE CONVERSAÇÃO</div>
 
-<div class="actions">
-  <button onclick="startMic()">🎙️ Falar</button>
-  <button onclick="toggleVoice()" id="voiceBtn">🔊 Voz ligada</button>
-  <button onclick="sendCommand('ajuda')">❔ Ajuda</button>
-  <button onclick="clearChat()">🧹 Limpar</button>
+    <div id="chat" aria-live="polite">
+      <div class="message bot">
+        <span class="who">J.A.R.V.I.S.</span>
+        Olá! Sistema iniciado. Carrega o teu modelo de IA e faz uma pergunta para começarmos.
+      </div>
+    </div>
 
-  <button
-    class="ai-button"
-    id="loadAIButton"
-    onclick="chooseJarvisModel()"
-  >
-    📂 Carregar arquivo de IA
-  </button>
+    <div class="composer">
+      <input
+        id="userInput"
+        type="text"
+        placeholder="Escreve a tua mensagem..."
+        autocomplete="off"
+        aria-label="Mensagem"
+      >
+      <button id="micButton" type="button" onclick="startMic()" title="Falar">🎙️</button>
+      <button id="sendButton" class="send-button" type="button" onclick="send()">➤</button>
+    </div>
+  </section>
+
+  <div class="controls">
+    <button id="voiceButton" type="button" onclick="toggleVoice()">🔊 Voz: ligada</button>
+    <button type="button" onclick="showHelp()">❔ Ajuda</button>
+    <button type="button" onclick="clearChat()">🗑️ Limpar conversa</button>
+    <button type="button" onclick="stopSpeaking()">🔇 Parar voz</button>
+    <button id="loadAIButton" class="ai-button" type="button" onclick="chooseJarvisModel()">📂 Carregar arquivo de IA</button>
+  </div>
+
+  <div class="hint">
+    As perguntas gerais são enviadas para o modelo local quando estiver carregado.
+    A disponibilidade da IA depende do modelo e da integração Android.
+  </div>
+
+  <footer>J.A.R.V.I.S. • STARK TECHNOLOGY</footer>
 </div>
 
 <script>
 "use strict";
 
-let voiceOn = true;
 let waitingForModel = false;
-let modelSelectionRequested = false;
-let recognition = null;
+let voiceEnabled = true;
 let recognitionActive = false;
+let browserRecognition = null;
+let lastQuestion = "";
+let modelSelectionRequested = false;
 
-/* ESTADO DO JARVIS */
+const chat = document.getElementById("chat");
+const userInput = document.getElementById("userInput");
+const sendButton = document.getElementById("sendButton");
+const micButton = document.getElementById("micButton");
+const voiceButton = document.getElementById("voiceButton");
+const loadAIButton = document.getElementById("loadAIButton");
 
-function setStatus(text) {
-  document.getElementById("status").textContent = String(text);
+function normalizeText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-/* RECEBER ESTADOS DO ANDROID */
+function setStatus(message, state = "normal") {
+  document.getElementById("status").textContent = String(message || "");
+  const dot = document.getElementById("dot");
+  dot.className = "dot";
 
-function onNativeStatus(message) {
-  setStatus(message || "Estado não disponível.");
+  if (state === "online") dot.classList.add("online");
+  if (state === "busy") dot.classList.add("busy");
 }
 
-function onNativeSpeechError(message) {
-  setStatus(message || "Erro no reconhecimento de voz.");
+function addMessage(text, sender = "bot") {
+  const message = document.createElement("div");
+  message.className = "message " + (sender === "user" ? "user" : "bot");
+
+  const who = document.createElement("span");
+  who.className = "who";
+  who.textContent = sender === "user" ? "TU" : "J.A.R.V.I.S.";
+
+  const content = document.createElement("span");
+  content.textContent = String(text || "");
+
+  message.appendChild(who);
+  message.appendChild(content);
+  chat.appendChild(message);
+  chat.scrollTop = chat.scrollHeight;
 }
 
-/* SELECIONAR MODELO DE IA */
+function setWaiting(value) {
+  waitingForModel = Boolean(value);
+  sendButton.disabled = waitingForModel;
+  userInput.disabled = waitingForModel;
+  setStatus(
+    waitingForModel ? "A processar a pergunta..." : "Pronto",
+    waitingForModel ? "busy" : "online"
+  );
+}
+
+function speak(text) {
+  if (!voiceEnabled || !text) return;
+
+  // Preferir a voz Android, se estiver disponível.
+  try {
+    if (window.AndroidVoice &&
+        typeof window.AndroidVoice.speak === "function") {
+      window.AndroidVoice.speak(String(text));
+      return;
+    }
+  } catch (error) {
+    console.warn("Voz Android indisponível:", error);
+  }
+
+  // Alternativa para navegadores que suportam síntese de voz.
+  if ("speechSynthesis" in window) {
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(String(text));
+      utterance.lang = "pt-BR";
+      window.speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.warn("Síntese de voz indisponível:", error);
+    }
+  }
+}
+
+function stopSpeaking() {
+  try {
+    if (window.AndroidVoice &&
+        typeof window.AndroidVoice.stopSpeaking === "function") {
+      window.AndroidVoice.stopSpeaking();
+    }
+  } catch (error) {
+    console.warn(error);
+  }
+
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+
+  setStatus("Voz interrompida", "online");
+}
+
+function toggleVoice() {
+  voiceEnabled = !voiceEnabled;
+  voiceButton.textContent = voiceEnabled ? "🔊 Voz: ligada" : "🔇 Voz: desligada";
+
+  if (!voiceEnabled) stopSpeaking();
+
+  setStatus(voiceEnabled ? "Voz ativada" : "Voz desativada", "online");
+}
 
 function chooseJarvisModel() {
-  const button = document.getElementById("loadAIButton");
-
-  if (
-    !window.AndroidVoice ||
-    typeof window.AndroidVoice.chooseModel !== "function"
-  ) {
-    setStatus(
-      "Ponte AndroidVoice indisponível. " +
-      "Abre o JARVIS pela aplicação Android."
+  if (!window.AndroidVoice ||
+      typeof window.AndroidVoice.chooseModel !== "function") {
+    addMessage(
+      "Não consigo abrir o seletor de ficheiros. Confirma se o AndroidBridge está ligado ao WebView no MainActivity.kt.",
+      "bot"
     );
+    setStatus("Integração Android indisponível");
     return;
   }
 
   try {
     modelSelectionRequested = true;
-    button.disabled = true;
-
-    setStatus("A abrir os ficheiros do telemóvel...");
-
+    loadAIButton.disabled = true;
+    setStatus("Seleciona o ficheiro do modelo...", "busy");
     window.AndroidVoice.chooseModel();
-
   } catch (error) {
-    setStatus(
-      "Erro ao abrir o seletor: " +
-      (error.message || "erro desconhecido")
-    );
-  } finally {
-    button.disabled = false;
+    modelSelectionRequested = false;
+    loadAIButton.disabled = false;
+    setStatus("Não foi possível abrir o seletor");
+    addMessage("Erro ao selecionar o modelo: " + error.message);
   }
 }
 
-/* MENSAGENS */
-
-function addMessage(text, who) {
-  const el = document.createElement("div");
-
-  el.className = "msg " + who;
-  el.textContent = String(text);
-
-  const chat = document.getElementById("chat");
-  chat.appendChild(el);
-  chat.scrollTop = chat.scrollHeight;
+function isExactCommand(text, patterns) {
+  return patterns.some(pattern => pattern.test(text));
 }
-
-function speak(text) {
-  if (!voiceOn) return;
-
-  if (
-    window.AndroidVoice &&
-    typeof window.AndroidVoice.speak === "function"
-  ) {
-    try {
-      window.AndroidVoice.speak(String(text));
-      return;
-    } catch (error) {
-      console.error("Erro na voz Android:", error);
-    }
-  }
-
-  if ("speechSynthesis" in window) {
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(String(text));
-    utterance.lang = "pt-BR";
-    utterance.volume = 1;
-    utterance.rate = 1;
-
-    window.speechSynthesis.speak(utterance);
-  }
-}
-
-function reply(text) {
-  addMessage(text, "jarvis");
-  speak(text);
-}
-
-/* COMANDOS LOCAIS */
 
 function answer(raw) {
-  const msg = raw.toLowerCase().trim();
+  const msg = normalizeText(raw);
 
-  if (!msg) {
-    return "Escreve alguma coisa para começarmos.";
+  // Saudações simples, sem capturar perguntas mais longas.
+  if (/^(ola|oi|bom dia|boa tarde|boa noite|e ai|tudo bem)[!.?]*$/.test(msg)) {
+    return "Olá! Sou o JARVIS. Como posso ajudar-te?";
   }
 
-  if (
-    msg.includes("olá") ||
-    msg.includes("ola") ||
-    msg.includes("bom dia") ||
-    msg.includes("boa tarde") ||
-    msg.includes("boa noite") ||
-    msg === "oi" ||
-    msg.startsWith("oi ")
-  ) {
-    return "Olá! Estou pronto para ajudar. Qual é o teu comando?";
+  if (/^(qual e o teu nome|como te chamas|quem es|o que es)[?!.]*$/.test(msg)) {
+    return "Sou o JARVIS, o teu assistente de inteligência artificial.";
   }
 
-  if (msg.includes("teu nome") || msg.includes("quem és")) {
-    return "Sou o JARVIS, o teu assistente pessoal em desenvolvimento.";
+  if (/^(ajuda|ajuda-me|quais sao os comandos|como te posso usar)[?!.]*$/.test(msg)) {
+    return "Podes fazer perguntas por texto ou voz, pedir uma piada, solicitar uma frase de motivação e dar comandos explícitos para abrir aplicações. As perguntas gerais são enviadas para o modelo de IA.";
   }
 
-  if (msg.includes("horas") || msg.includes("hora agora")) {
-    return "São " + new Date().toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit"
-    }) + ".";
+  if (/^(conta|diz|quero) uma piada[!.?]*$/.test(msg)) {
+    return "Porque é que o computador foi ao médico? Porque tinha um vírus!";
   }
 
-  if (msg.includes("data") || msg.includes("dia de hoje")) {
-    return "Hoje é " + new Date().toLocaleDateString("pt-BR") + ".";
+  if (/^(da-me|manda-me|quero uma) frase de motivacao[!.?]*$/.test(msg)) {
+    return "Continua a aprender e a melhorar. Cada pequeno passo aproxima-te do teu objetivo!";
   }
 
-  if (msg.includes("piada")) {
-    return "Porque o computador foi ao médico? Porque tinha um vírus!";
+  // Hora e data são respondidas localmente apenas para pedidos explícitos.
+  if (/^(que horas sao|diz-me as horas|qual e a hora agora)[?!.]*$/.test(msg)) {
+    return "A hora indicada pelo dispositivo é " +
+      new Date().toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit"
+      }) + ".";
   }
 
-  if (msg.includes("motivação") || msg.includes("motivacional")) {
-    return "Continua a trabalhar no teu objetivo. Cada passo conta!";
-  }
-
-  if (msg.includes("ajuda") || msg.includes("comandos")) {
-    return (
-      "Podes pedir a hora, a data, uma piada, uma frase motivacional, " +
-      "abrir o Google ou YouTube, ou fazer perguntas ao Gemma local."
-    );
+  if (/^(que dia e hoje|qual e a data de hoje|diz-me a data)[?!.]*$/.test(msg)) {
+    return "A data indicada pelo dispositivo é " +
+      new Date().toLocaleDateString("pt-BR") + ".";
   }
 
   return null;
 }
 
-function isSettingsCommand(msg) {
-  return (
-    msg.includes("definições") ||
-    msg.includes("configurações") ||
-    msg.includes("configuracoes")
-  );
+function openNativeApp(appName, statusText) {
+  if (!window.AndroidVoice ||
+      typeof window.AndroidVoice.openApp !== "function") {
+    addMessage("A função de abrir aplicações não está disponível no Android.");
+    setStatus("Comando Android indisponível");
+    return true;
+  }
+
+  try {
+    window.AndroidVoice.openApp(appName);
+    setStatus(statusText, "online");
+  } catch (error) {
+    addMessage("Não foi possível executar o comando: " + error.message);
+    setStatus("Erro ao abrir aplicação");
+  }
+
+  return true;
 }
 
-/* ENVIAR MENSAGENS */
+function handleExplicitCommand(text) {
+  const msg = normalizeText(text);
+
+  // Apenas frases de comando completas abrem aplicações.
+  if (isExactCommand(msg, [
+    /^(abre|abrir|inicia|iniciar|vai para) o youtube$/,
+    /^(abre|abrir|inicia|iniciar|vai para) youtube$/,
+    /^abre o site do youtube$/
+  ])) {
+    return openNativeApp("youtube", "A abrir o YouTube...");
+  }
+
+  if (isExactCommand(msg, [
+    /^(abre|abrir|inicia|iniciar|vai para) o google$/,
+    /^(abre|abrir|inicia|iniciar|vai para) google$/,
+    /^abre o site do google$/
+  ])) {
+    return openNativeApp("google", "A abrir o Google...");
+  }
+
+  if (isExactCommand(msg, [
+    /^(abre|abrir|vai para) as definicoes$/,
+    /^(abre|abrir|vai para) as configuracoes$/,
+    /^(abre|abrir|vai para) definicoes$/,
+    /^(abre|abrir|vai para) configuracoes$/
+  ])) {
+    return openNativeApp("settings", "A abrir as definições...");
+  }
+
+  return false;
+}
 
 function send() {
-  if (waitingForModel) {
-    setStatus("Aguarda a resposta anterior do Gemma.");
-    return;
-  }
+  if (waitingForModel) return;
 
-  const input = document.getElementById("msg");
-  const text = input.value.trim();
+  const text = userInput.value.trim();
+  if (!text) return;
 
-  if (!text) {
-    setStatus("Escreve uma mensagem primeiro.");
-    return;
-  }
-
+  lastQuestion = text;
+  userInput.value = "";
   addMessage(text, "user");
-  input.value = "";
 
-  const msg = text.toLowerCase();
+  // Executa aplicações apenas para comandos explícitos.
+  if (handleExplicitCommand(text)) return;
 
-  /* YOUTUBE */
-
-  if (msg.includes("youtube") || msg.includes("you tube")) {
-    reply("A abrir o YouTube.");
-
-    if (window.AndroidVoice) {
-      window.AndroidVoice.openApp("youtube");
-    } else {
-      window.location.href = "https://m.youtube.com/";
-    }
-
-    return;
-  }
-
-  /* GOOGLE */
-
-  if (msg.includes("google")) {
-    reply("A abrir o Google.");
-
-    if (window.AndroidVoice) {
-      window.AndroidVoice.openApp("google");
-    } else {
-      window.location.href = "https://www.google.com/";
-    }
-
-    return;
-  }
-
-  /* DEFINIÇÕES */
-
-  if (isSettingsCommand(msg)) {
-    reply("A abrir as definições do Android.");
-
-    if (window.AndroidVoice) {
-      window.AndroidVoice.openApp("settings");
-    } else {
-      setStatus("Abre as definições no teu dispositivo.");
-    }
-
-    return;
-  }
-
-  /* RESPOSTAS LOCAIS */
-
+  // Respostas locais exatas; perguntas gerais seguem para o Gemma.
   const localAnswer = answer(text);
 
   if (localAnswer !== null) {
-    reply(localAnswer);
-    setStatus("Resposta dos comandos locais.");
+    addMessage(localAnswer, "bot");
+    speak(localAnswer);
+    setStatus("Resposta pronta", "online");
     return;
   }
 
-  /* MODELO GEMMA */
-
-  if (
-    window.AndroidVoice &&
-    typeof window.AndroidVoice.askModel === "function"
-  ) {
-    waitingForModel = true;
-    document.getElementById("sendBtn").disabled = true;
-
-    setStatus("A enviar pergunta ao Gemma...");
-
-    try {
-      window.AndroidVoice.askModel(text);
-    } catch (error) {
-      waitingForModel = false;
-      document.getElementById("sendBtn").disabled = false;
-
-      setStatus("Erro ao enviar pergunta ao Gemma.");
-
-      reply("Não consegui contactar o modelo local.");
-      console.error("Erro askModel:", error);
-    }
-
-    return;
-  }
-
-  reply(
-    "A IA local precisa da aplicação Android e da ponte nativa ativa. " +
-    "Podes continuar a usar os comandos básicos."
-  );
-
-  setStatus("Ponte Android indisponível.");
-}
-
-/* RESPOSTA DO GEMMA */
-
-function onNativeModelResponse(text) {
-  waitingForModel = false;
-  document.getElementById("sendBtn").disabled = false;
-
-  const response = String(text || "").trim();
-
-  if (!response) {
-    setStatus("O Gemma não devolveu uma resposta.");
-    reply("Não recebi uma resposta do modelo. Tenta novamente.");
-    return;
-  }
-
-  setStatus("Gemma local • Resposta recebida");
-  reply(response);
-}
-
-/* RESULTADO DO MICROFONE */
-
-function onNativeSpeechResult(text) {
-  const input = document.getElementById("msg");
-
-  input.value = String(text || "");
-  setStatus("Comando de voz reconhecido.");
-
-  if (input.value.trim()) {
-    send();
-  }
-}
-
-/* VOZ */
-
-function toggleVoice() {
-  voiceOn = !voiceOn;
-
-  document.getElementById("voiceBtn").textContent =
-    voiceOn ? "🔊 Voz ligada" : "🔇 Voz desligada";
-
-  if (!voiceOn && "speechSynthesis" in window) {
-    window.speechSynthesis.cancel();
-  }
-
-  if (voiceOn) {
-    reply("Voz ativada.");
-  } else {
-    addMessage("Voz desativada.", "jarvis");
-  }
-}
-
-/* LIMPAR CONVERSA */
-
-function clearChat() {
-  document.getElementById("chat").innerHTML = "";
-  addMessage("Conversa limpa. Estou pronto!", "jarvis");
-}
-
-/* MICROFONE */
-
-function startMic() {
-  setStatus("A tentar ativar o microfone...");
-
-  if (
-    window.AndroidVoice &&
-    typeof window.AndroidVoice.startListening === "function"
-  ) {
-    try {
-      window.AndroidVoice.startListening();
-    } catch (error) {
-      setStatus("Não foi possível ativar o microfone.");
-      console.error("Erro de microfone Android:", error);
-    }
-
-    return;
-  }
-
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  if (!SpeechRecognition) {
-    setStatus("Reconhecimento de voz indisponível neste navegador.");
+  if (!window.AndroidVoice ||
+      typeof window.AndroidVoice.askModel !== "function") {
+    const message =
+      "O modelo de IA não está ligado. Carrega o ficheiro .litertlm e confirma a integração do MainActivity.kt.";
+    addMessage(message, "bot");
+    setStatus("Modelo de IA indisponível");
     return;
   }
 
   try {
-    recognition = new SpeechRecognition();
-    recognition.lang = "pt-BR";
-    recognition.interimResults = false;
-    recognitionActive = true;
-
-    recognition.onresult = function(event) {
-      const transcript = event.results[0][0].transcript;
-
-      document.getElementById("msg").value = transcript;
-      setStatus("Comando de voz reconhecido.");
-      send();
-    };
-
-    recognition.onerror = function(event) {
-      setStatus("Erro de reconhecimento: " + event.error);
-    };
-
-    recognition.onend = function() {
-      recognitionActive = false;
-    };
-
-    recognition.start();
-
+    setWaiting(true);
+    window.AndroidVoice.askModel(text);
   } catch (error) {
-    recognitionActive = false;
-    setStatus("Não foi possível iniciar o reconhecimento de voz.");
-    console.error("Erro de reconhecimento:", error);
+    setWaiting(false);
+    addMessage("Não consegui enviar a pergunta ao modelo: " + error.message);
+    setStatus("Erro ao consultar o modelo");
   }
 }
 
-/* TECLA ENTER */
+function startMic() {
+  if (recognitionActive) return;
 
-document.getElementById("msg").addEventListener("keydown", function(event) {
-  if (event.key === "Enter") {
+  // Preferir o reconhecimento de voz Android.
+  if (window.AndroidVoice &&
+      typeof window.AndroidVoice.startListening === "function") {
+    try {
+      recognitionActive = true;
+      micButton.disabled = true;
+      setStatus("A ouvir...", "busy");
+      window.AndroidVoice.startListening();
+      return;
+    } catch (error) {
+      recognitionActive = false;
+      micButton.disabled = false;
+      console.warn("Microfone Android indisponível:", error);
+    }
+  }
+
+  // Alternativa para navegadores com Web Speech API.
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    addMessage("O reconhecimento de voz não está disponível. Verifica as permissões do microfone.");
+    setStatus("Microfone indisponível");
+    return;
+  }
+
+  try {
+    browserRecognition = new SpeechRecognition();
+    browserRecognition.lang = "pt-BR";
+    browserRecognition.interimResults = false;
+    browserRecognition.maxAlternatives = 1;
+    recognitionActive = true;
+    micButton.disabled = true;
+    setStatus("A ouvir...", "busy");
+
+    browserRecognition.onresult = function(event) {
+      const transcript = event.results[0][0].transcript;
+      userInput.value = transcript;
+      recognitionActive = false;
+      micButton.disabled = false;
+      send();
+    };
+
+    browserRecognition.onerror = function(event) {
+      recognitionActive = false;
+      micButton.disabled = false;
+      setStatus("Erro de voz: " + (event.error || "desconhecido"));
+    };
+
+    browserRecognition.onend = function() {
+      recognitionActive = false;
+      micButton.disabled = false;
+      if (!waitingForModel) setStatus("Pronto", "online");
+    };
+
+    browserRecognition.start();
+  } catch (error) {
+    recognitionActive = false;
+    micButton.disabled = false;
+    setStatus("Não foi possível iniciar o microfone");
+    addMessage("Erro no microfone: " + error.message);
+  }
+}
+
+function clearChat() {
+  chat.replaceChildren();
+  addMessage("Conversa limpa. Estou pronto para uma nova pergunta.", "bot");
+  setStatus("Conversa limpa", "online");
+}
+
+function showHelp() {
+  const help =
+    "Comandos disponíveis:\n" +
+    "• Olá\n" +
+    "• Que horas são?\n" +
+    "• Que dia é hoje?\n" +
+    "• Conta uma piada\n" +
+    "• Dá-me uma frase de motivação\n" +
+    "• Abre o YouTube\n" +
+    "• Abre o Google\n" +
+    "• Abre as definições\n\n" +
+    "Para outras perguntas, carrega o modelo local .litertlm.";
+
+  addMessage(help, "bot");
+  speak("Estou pronto. Podes fazer perguntas ou usar os comandos disponíveis.");
+}
+
+function onNativeModelResponse(text) {
+  setWaiting(false);
+  addMessage(text || "O modelo não devolveu uma resposta.");
+  if (text) speak(text);
+  setStatus("Resposta do modelo recebida", "online");
+}
+
+function onNativeStatus(message) {
+  setStatus(message || "Estado atualizado", "online");
+  modelSelectionRequested = false;
+  loadAIButton.disabled = false;
+}
+
+function onNativeSpeechResult(text) {
+  recognitionActive = false;
+  micButton.disabled = false;
+
+  if (text) {
+    userInput.value = text;
+    send();
+  } else {
+    setStatus("Não foi reconhecida nenhuma frase");
+  }
+}
+
+function onNativeSpeechError(message) {
+  recognitionActive = false;
+  micButton.disabled = false;
+  setStatus(message || "Erro no reconhecimento de voz");
+}
+
+function onNativeModelError(message) {
+  setWaiting(false);
+  addMessage("Erro do modelo: " + (message || "erro desconhecido"));
+  setStatus("Falha ao consultar o modelo");
+}
+
+// Compatibilidade com respostas nativas que chamem este nome.
+function onNativeModelLoaded(message) {
+  modelSelectionRequested = false;
+  loadAIButton.disabled = false;
+  setStatus(message || "Modelo carregado", "online");
+}
+
+userInput.addEventListener("keydown", function(event) {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
     send();
   }
 });
 
-/* INICIALIZAÇÃO */
-
 window.addEventListener("load", function() {
-  if (
-    window.AndroidVoice &&
-    typeof window.AndroidVoice.chooseModel === "function"
-  ) {
-    setStatus("Aplicação Android ligada • A aguardar o modelo local");
-  } else {
-    setStatus("Interface carregada • Ponte Android não detetada");
-  }
+  setStatus("Interface pronta. Carrega o modelo de IA.", "online");
 });
 </script>
-
 </body>
 </html>

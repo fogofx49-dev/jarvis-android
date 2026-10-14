@@ -1,6 +1,13 @@
 
 package com.fogofx.jarvis
 
+import android.content.Context
+import android.content.IntentFilter
+import android.media.AudioManager
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.os.BatteryManager
+import android.provider.Settings
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
@@ -209,6 +216,83 @@ class MainActivity : Activity() {
         return result.toString()
     }
 
+   private fun getBatteryLevel(): Int {
+    val battery = registerReceiver(
+        null,
+        IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+    )
+
+    return battery?.getIntExtra(
+        BatteryManager.EXTRA_LEVEL, -1
+    ) ?: -1
+}
+
+  private fun changeMediaVolume(action: String): String {
+    val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    val current = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+    val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+
+    when (action.lowercase(Locale.ROOT)) {
+        "up" -> audio.adjustStreamVolume(
+            AudioManager.STREAM_MUSIC,
+            AudioManager.ADJUST_RAISE,
+            0
+        )
+
+        "down" -> audio.adjustStreamVolume(
+            AudioManager.STREAM_MUSIC,
+            AudioManager.ADJUST_LOWER,
+            0
+        )
+
+        "mute" -> audio.adjustStreamVolume(
+            AudioManager.STREAM_MUSIC,
+            AudioManager.ADJUST_MUTE,
+            0
+        )
+
+        "unmute" -> audio.adjustStreamVolume(
+            AudioManager.STREAM_MUSIC,
+            AudioManager.ADJUST_UNMUTE,
+            0
+        )
+
+        else -> return "Comando de volume desconhecido."
+    }
+
+    val updated = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+    return "Volume multimédia: $updated de $max."
+}
+
+  private fun openWifiSettings() {
+    try {
+        startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
+    } catch (e: Exception) {
+        startActivity(Intent(Settings.ACTION_SETTINGS))
+    }
+}
+
+  private fun toggleFlashlight(enable: Boolean): String {
+    if (
+        android.os.Build.VERSION.SDK_INT >=
+        android.os.Build.VERSION_CODES.M
+    ) {
+        val cameraManager =
+            getSystemService(Context.CAMERA_SERVICE) as CameraManager
+
+        val cameraId = cameraManager.cameraIdList.firstOrNull { id ->
+            cameraManager.getCameraCharacteristics(id)
+                .get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+        } ?: return "Este dispositivo não disponibiliza uma lanterna compatível."
+
+        cameraManager.setTorchMode(cameraId, enable)
+
+        return if (enable) "Lanterna ligada." else "Lanterna desligada."
+    }
+
+    return "A lanterna precisa de uma versão mais recente do Android."
+}
+
     // PONTE JAVASCRIPT / ANDROID
 
     inner class AndroidBridge {
@@ -259,6 +343,50 @@ class MainActivity : Activity() {
             this@MainActivity.askModel(prompt)
         }
     }
+
+@JavascriptInterface
+fun getBattery(): String {
+    val level = getBatteryLevel()
+    return if (level in 0..100) {
+        "A bateria está em $level por cento."
+    } else {
+        "Não foi possível consultar a bateria."
+    }
+}
+
+@JavascriptInterface
+fun changeVolume(action: String) {
+    runOnUiThread {
+        try {
+            val message = changeMediaVolume(action)
+            showStatus(message)
+        } catch (e: Exception) {
+            showStatus("Não foi possível alterar o volume.")
+        }
+    }
+}
+
+@JavascriptInterface
+fun setFlashlight(enabled: Boolean) {
+    runOnUiThread {
+        try {
+            showStatus(toggleFlashlight(enabled))
+        } catch (e: SecurityException) {
+            showStatus(
+                "É necessária autorização para controlar a lanterna."
+            )
+        } catch (e: Exception) {
+            showStatus("Não foi possível controlar a lanterna.")
+        }
+    }
+}
+
+@JavascriptInterface
+fun openWifiSettings() {
+    runOnUiThread {
+        this@MainActivity.openWifiSettings()
+    }
+}
 
     // ABRIR APLICAÇÕES
 

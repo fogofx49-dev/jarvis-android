@@ -32,9 +32,12 @@ kotlin {
 }
 
 dependencies {
+    implementation("ai.picovoice:porcupine-android:2.1.0")
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
     implementation("androidx.core:core-ktx:1.15.0")
 }
+
+
 
 
 

@@ -1,4 +1,4 @@
-
+  
 package com.fogofx.jarvis
 
 import android.Manifest
@@ -16,6 +16,12 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.app.ActivityCompat
+import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Contents
+import com.google.ai.edge.litertlm.Conversation
+import com.google.ai.edge.litertlm.ConversationConfig
+import com.google.ai.edge.litertlm.Engine
+import com.google.ai.edge.litertlm.EngineConfig
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -23,11 +29,6 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.Executors
-
-import com.google.ai.edge.litertlm.Backend
-import com.google.ai.edge.litertlm.Engine
-import com.google.ai.edge.litertlm.EngineConfig
-import com.google.ai.edge.litertlm.Conversation
 
 class MainActivity : Activity() {
 
@@ -41,7 +42,11 @@ class MainActivity : Activity() {
 
     private var modelUri: Uri? = null
     private var modelFile: File? = null
+
+    @Volatile
     private var modelEngine: Engine? = null
+
+    @Volatile
     private var modelConversation: Conversation? = null
 
     @Volatile
@@ -56,8 +61,37 @@ class MainActivity : Activity() {
         private const val MIC_PERMISSION = 101
         private const val MODEL_PICKER = 102
 
-        // Preenche apenas se quiseres selecionar uma voz específica.
+        private const val MODEL_FILENAME = "model.litertlm"
+
+        // Deixa vazio para usar a voz padrão do Android.
         private const val PREFERRED_VOICE_ID = ""
+
+        private const val SYSTEM_INSTRUCTION = """
+És o JARVIS, um assistente de inteligência artificial útil,
+educado, rigoroso e objetivo.
+
+REGRAS OBRIGATÓRIAS:
+1. Responde sempre em português do Brasil.
+2. Responde à pergunta que o utilizador realmente fez.
+3. Não mudes de assunto nem respondas com informação irrelevante.
+4. Não inventes factos, fontes, datas, estatísticas ou acontecimentos.
+5. Se não souberes uma resposta ou não tiveres informação suficiente,
+   diz isso claramente e pede esclarecimentos quando necessário.
+6. Se a pergunta for ambígua, explica brevemente o que precisas de saber.
+7. Usa linguagem natural, frases claras e parágrafos curtos.
+8. Para perguntas simples, responde de forma breve e direta.
+9. Para perguntas complexas, organiza a resposta em passos.
+10. Não afirmes que consultaste a Internet ou informações em tempo real
+    quando não o fizeste.
+11. Não repitas a pergunta sem necessidade.
+12. Não inventes capacidades, ações ou resultados que não executaste.
+13. Mantém o contexto da conversa e interpreta a mensagem mais recente
+    tendo em conta as mensagens anteriores.
+14. Não apresentes uma suposição como se fosse um facto confirmado.
+
+O teu objetivo é ajudar corretamente. A precisão é mais importante
+do que dar uma resposta inventada.
+"""
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,7 +127,10 @@ class MainActivity : Activity() {
         webView.loadUrl("file:///android_asset/index.html")
     }
 
-    // Configura a voz do JARVIS em português.
+    // ---------------------------------------------------------
+    // VOZ DO JARVIS
+    // ---------------------------------------------------------
+
     private fun configureJarvisVoice(status: Int) {
         if (status != TextToSpeech.SUCCESS) {
             ttsReady = false
@@ -127,11 +164,8 @@ class MainActivity : Activity() {
             availableVoices.forEach { voice ->
                 android.util.Log.d(
                     "JARVIS_VOICES",
-                    "ID=${voice.name}, " +
-                    "Idioma=${voice.locale}, " +
-                    "Rede=${voice.isNetworkConnectionRequired}, " +
-                    "Qualidade=${voice.quality}, " +
-                    "Latência=${voice.latency}"
+                    "ID=${voice.name}, idioma=${voice.locale}, " +
+                    "qualidade=${voice.quality}, latência=${voice.latency}"
                 )
             }
 
@@ -161,86 +195,55 @@ class MainActivity : Activity() {
                 }
             )
 
-            android.util.Log.d(
-                "JARVIS_VOICES",
-                "Vozes pt-BR: " +
-                    availableVoices.joinToString(", ") {
-                        it.name
-                    }
-            )
-
         } catch (e: Exception) {
             ttsReady = false
-
-            showStatus("Erro ao configurar a voz do JARVIS.")
 
             android.util.Log.e(
                 "JARVIS_VOICES",
                 "Erro ao configurar voz",
                 e
             )
+
+            showStatus("Erro ao configurar a voz do JARVIS.")
         }
     }
 
-    // Funções chamadas pelo JavaScript da interface HTML.
+    // ---------------------------------------------------------
+    // INTERFACE JAVASCRIPT / HTML
+    // ---------------------------------------------------------
+
     inner class AndroidBridge {
 
         @JavascriptInterface
         fun listVoices() {
             runOnUiThread {
                 try {
-                    if (!::tts.isInitialized || !ttsReady) {
+                    if (!ttsReady) {
                         showStatus("A voz do Android ainda está a iniciar.")
                         return@runOnUiThread
                     }
 
                     val voices = tts.voices
-                        ?.filter {
-                            it.locale.language == "pt"
-                        }
+                        ?.filter { it.locale.language == "pt" }
                         .orEmpty()
-
-                    if (voices.isEmpty()) {
-                        showStatus(
-                            "Nenhuma voz portuguesa encontrada."
-                        )
-                        return@runOnUiThread
-                    }
 
                     val json = JSONArray()
 
                     voices.forEach { voice ->
-                        val item = JSONObject().apply {
-                            put("name", voice.name)
-                            put("id", voice.name)
-                            put("locale", voice.locale.toString())
-                            put("quality", voice.quality)
-                            put("latency", voice.latency)
-                            put(
-                                "network",
-                                voice.isNetworkConnectionRequired
-                            )
-                            put(
-                                "features",
-                                JSONArray(voice.features ?: emptySet<String>())
-                            )
-                        }
-
-                        json.put(item)
+                        json.put(
+                            JSONObject().apply {
+                                put("name", voice.name)
+                                put("id", voice.name)
+                                put("locale", voice.locale.toString())
+                                put("quality", voice.quality)
+                                put("latency", voice.latency)
+                                put(
+                                    "network",
+                                    voice.isNetworkConnectionRequired
+                                )
+                            }
+                        )
                     }
-
-                    val report = voices.joinToString("\n") {
-                        "ID=${it.name} | " +
-                        "Idioma=${it.locale} | " +
-                        "Qualidade=${it.quality} | " +
-                        "Latência=${it.latency} | " +
-                        "Rede=${it.isNetworkConnectionRequired}"
-                    }
-
-                    android.util.Log.d(
-                        "JARVIS_VOICES",
-                        "LISTA COMPLETA:\n$report"
-                    )
 
                     webView.evaluateJavascript(
                         "if (typeof onNativeVoicesListed === 'function') " +
@@ -254,15 +257,12 @@ class MainActivity : Activity() {
                     )
 
                 } catch (e: Exception) {
-                    showStatus(
-                        "Erro ao consultar as vozes disponíveis."
-                    )
-
                     android.util.Log.e(
                         "JARVIS_VOICES",
                         "Erro ao listar vozes",
                         e
                     )
+                    showStatus("Erro ao consultar as vozes disponíveis.")
                 }
             }
         }
@@ -281,6 +281,15 @@ class MainActivity : Activity() {
                         null,
                         "jarvis-voice"
                     )
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun stopSpeaking() {
+            runOnUiThread {
+                if (::tts.isInitialized) {
+                    tts.stop()
                 }
             }
         }
@@ -314,9 +323,12 @@ class MainActivity : Activity() {
                     }
 
                 } catch (e: Exception) {
-                    showStatus(
-                        "Não consegui abrir essa aplicação."
+                    android.util.Log.e(
+                        "JARVIS_APP",
+                        "Erro ao abrir aplicação",
+                        e
                     )
+                    showStatus("Não consegui abrir essa aplicação.")
                 }
             }
         }
@@ -329,7 +341,7 @@ class MainActivity : Activity() {
                         this@MainActivity
                     )
                 ) {
-                    showStatus(
+                    notifySpeechError(
                         "Não há serviço de reconhecimento de voz disponível."
                     )
                     return@runOnUiThread
@@ -352,7 +364,6 @@ class MainActivity : Activity() {
             }
         }
 
-        // Abre o seletor de ficheiros do Android.
         @JavascriptInterface
         fun chooseModel() {
             runOnUiThread {
@@ -360,17 +371,20 @@ class MainActivity : Activity() {
             }
         }
 
-        // Envia a pergunta para o modelo local.
+        // Recebe a pergunta enviada pelo HTML.
         @JavascriptInterface
         fun askModel(prompt: String) {
             val question = prompt.trim()
 
-            if (question.isBlank()) return
+            if (question.isBlank()) {
+                showModelError("Escreve uma pergunta antes de enviar.")
+                return
+            }
 
             if (!modelReady) {
-                showModelResponse(
+                showModelError(
                     "O Gemma ainda não está pronto. " +
-                    "Seleciona o ficheiro .litertlm e aguarda a inicialização."
+                    "Carrega o ficheiro .litertlm e aguarda a inicialização."
                 )
                 return
             }
@@ -380,19 +394,32 @@ class MainActivity : Activity() {
                     try {
                         val conversation = modelConversation
                             ?: throw IllegalStateException(
-                                "Conversa com o Gemma indisponível."
+                                "A conversa com o Gemma não está disponível."
                             )
+
+                        android.util.Log.d(
+                            "JARVIS_MODEL",
+                            "Pergunta recebida: $question"
+                        )
 
                         val result = conversation.sendMessage(
                             question,
-                            maxOutputToken = 256
+                            maxOutputToken = 512
                         )
 
-                        val answer = result.toString().trim()
+                        // A API devolve um Message.
+                        // Usa text para obter o texto da resposta.
+                        val answer = result.text.trim()
+
+                        android.util.Log.d(
+                            "JARVIS_MODEL",
+                            "Resposta recebida (${answer.length} caracteres)"
+                        )
 
                         showModelResponse(
                             answer.ifBlank {
-                                "Não consegui gerar uma resposta."
+                                "Não consegui produzir uma resposta útil. " +
+                                "Tenta reformular a pergunta."
                             }
                         )
 
@@ -403,20 +430,30 @@ class MainActivity : Activity() {
                             e
                         )
 
-                        showModelResponse(
-                            "Ocorreu um erro ao gerar a resposta do Gemma."
+                        showModelError(
+                            "O Gemma encontrou um erro ao responder. " +
+                            "Verifica o Logcat para ver os detalhes."
                         )
                     }
                 }
             } catch (e: Exception) {
-                showModelResponse(
+                android.util.Log.e(
+                    "JARVIS_MODEL",
+                    "Não foi possível colocar a pergunta na fila",
+                    e
+                )
+
+                showModelError(
                     "Não foi possível iniciar a tarefa de IA."
                 )
             }
         }
     }
 
-    // Devolve a resposta do modelo à interface HTML.
+    // ---------------------------------------------------------
+    // RESPOSTAS E ESTADO DA INTERFACE
+    // ---------------------------------------------------------
+
     private fun showModelResponse(answer: String) {
         runOnUiThread {
             if (!isFinishing && ::webView.isInitialized) {
@@ -430,20 +467,51 @@ class MainActivity : Activity() {
         }
     }
 
-    // Atualiza o estado apresentado na interface HTML.
-    private fun showStatus(message: String) {
+    private fun showModelError(message: String) {
+        android.util.Log.e("JARVIS_MODEL", message)
+
         runOnUiThread {
             if (!isFinishing && ::webView.isInitialized) {
                 webView.evaluateJavascript(
-                    "if (typeof onNativeStatus === 'function') " +
-                    "onNativeStatus(${JSONObject.quote(message)});",
+                    "if (typeof onNativeModelError === 'function') " +
+                    "onNativeModelError(" +
+                    "${JSONObject.quote(message)});",
                     null
                 )
             }
         }
     }
 
-    // Inicia o reconhecimento de voz do Android.
+    private fun showStatus(message: String) {
+        runOnUiThread {
+            if (!isFinishing && ::webView.isInitialized) {
+                webView.evaluateJavascript(
+                    "if (typeof onNativeStatus === 'function') " +
+                    "onNativeStatus(" +
+                    "${JSONObject.quote(message)});",
+                    null
+                )
+            }
+        }
+    }
+
+    private fun notifySpeechError(message: String) {
+        runOnUiThread {
+            if (!isFinishing && ::webView.isInitialized) {
+                webView.evaluateJavascript(
+                    "if (typeof onNativeSpeechError === 'function') " +
+                    "onNativeSpeechError(" +
+                    "${JSONObject.quote(message)});",
+                    null
+                )
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
+    // RECONHECIMENTO DE VOZ
+    // ---------------------------------------------------------
+
     private fun beginRecognition() {
         try {
             recognizer?.destroy()
@@ -453,7 +521,7 @@ class MainActivity : Activity() {
                 object : RecognitionListener {
 
                     override fun onReadyForSpeech(params: Bundle?) {
-                        showStatus("Estou a ouvir…")
+                        showStatus("Estou a ouvir...")
                     }
 
                     override fun onBeginningOfSpeech() {}
@@ -463,12 +531,34 @@ class MainActivity : Activity() {
                     override fun onBufferReceived(buffer: ByteArray?) {}
 
                     override fun onEndOfSpeech() {
-                        showStatus("A processar a voz…")
+                        showStatus("A processar a voz...")
                     }
 
                     override fun onError(error: Int) {
-                        showStatus(
-                            "Não consegui reconhecer a voz. Tenta novamente."
+                        android.util.Log.w(
+                            "JARVIS_VOICE",
+                            "Erro de reconhecimento: $error"
+                        )
+
+                        notifySpeechError(
+                            when (error) {
+                                SpeechRecognizer.ERROR_AUDIO ->
+                                    "Erro de áudio. Verifica o microfone."
+
+                                SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
+                                    "O JARVIS precisa da permissão do microfone."
+
+                                SpeechRecognizer.ERROR_NETWORK,
+                                SpeechRecognizer.ERROR_NETWORK_TIMEOUT ->
+                                    "O serviço de reconhecimento de voz teve um erro de rede."
+
+                                SpeechRecognizer.ERROR_NO_MATCH,
+                                SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
+                                    "Não reconheci a frase. Tenta novamente."
+
+                                else ->
+                                    "O reconhecimento de voz falhou. Tenta novamente."
+                            }
                         )
                     }
 
@@ -494,7 +584,7 @@ class MainActivity : Activity() {
                                 }
                             }
                         } else {
-                            showStatus(
+                            notifySpeechError(
                                 "Não ouvi uma frase. Tenta novamente."
                             )
                         }
@@ -537,11 +627,16 @@ class MainActivity : Activity() {
                 e
             )
 
-            showStatus("Não foi possível iniciar o microfone.")
+            notifySpeechError(
+                "Não foi possível iniciar o microfone."
+            )
         }
     }
 
-    // Abre o gestor de ficheiros para escolher o modelo.
+    // ---------------------------------------------------------
+    // SELEÇÃO E CÓPIA DO MODELO
+    // ---------------------------------------------------------
+
     private fun openModelPicker() {
         try {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -552,115 +647,18 @@ class MainActivity : Activity() {
             startActivityForResult(intent, MODEL_PICKER)
 
         } catch (e: Exception) {
+            android.util.Log.e(
+                "JARVIS_MODEL",
+                "Erro ao abrir seletor",
+                e
+            )
+
             showStatus(
                 "Não foi possível abrir o seletor de ficheiros."
             )
         }
     }
 
-    // Inicializa o modelo guardado no armazenamento privado da aplicação.
-    private fun initializeGemma() {
-    val file = File(filesDir, "model.litertlm")
-
-    if (!file.exists() || file.length() == 0L) {
-        showStatus("Modelo não encontrado ou ficheiro vazio. Seleciona o ficheiro .litertlm.")
-        return
-    }
-
-    if (modelReady || modelLoading) {
-        showStatus(
-            if (modelReady) "O modelo de IA já está iniciado."
-            else "O modelo de IA está a carregar..."
-        )
-        return
-    }
-
-    modelLoading = true
-    showStatus("A iniciar o Gemma...")
-
-    try {
-        aiExecutor.execute {
-            var newEngine: Engine? = null
-
-            try {
-                android.util.Log.i(
-                    "JARVIS_MODEL",
-                    "Ficheiro: ${file.absolutePath}, tamanho: ${file.length()} bytes"
-                )
-
-                val config = EngineConfig(
-                    modelPath = file.absolutePath,
-                    backend = Backend.CPU()
-                )
-
-                val engine = Engine(config)
-                newEngine = engine
-
-                showStatus("A carregar o motor de IA...")
-                engine.initialize()
-
-                showStatus("A preparar a conversa...")
-                val conversation = engine.createConversation()
-
-                modelEngine = engine
-                modelConversation = conversation
-                modelFile = file
-                modelReady = true
-
-                android.util.Log.i(
-                    "JARVIS_MODEL",
-                    "Modelo iniciado com sucesso."
-                )
-
-                showStatus("Gemma iniciado com sucesso! Já podes conversar com a IA.")
-
-            } catch (e: Exception) {
-                android.util.Log.e(
-                    "JARVIS_MODEL",
-                    "Falha ao inicializar o modelo",
-                    e
-                )
-
-                try {
-                    newEngine?.close()
-                } catch (closeError: Exception) {
-                    android.util.Log.e(
-                        "JARVIS_MODEL",
-                        "Falha ao fechar o motor",
-                        closeError
-                    )
-                }
-
-                modelEngine = null
-                modelConversation = null
-                modelReady = false
-
-                val errorDetails =
-                    "${e.javaClass.simpleName}: " +
-                    (e.message ?: "Sem detalhes disponíveis")
-
-                showStatus("Erro ao iniciar o Gemma: $errorDetails")
-
-            } finally {
-                modelLoading = false
-            }
-        }
-    } catch (e: Exception) {
-        modelLoading = false
-
-        android.util.Log.e(
-            "JARVIS_MODEL",
-            "Não foi possível iniciar a tarefa de IA",
-            e
-        )
-
-        showStatus(
-            "Erro ao iniciar a tarefa de IA: " +
-            "${e.javaClass.simpleName}: " +
-            (e.message ?: "Sem detalhes disponíveis")
-        )
-    }
-    }
     @Suppress("DEPRECATION")
     override fun onActivityResult(
         requestCode: Int,
@@ -673,51 +671,95 @@ class MainActivity : Activity() {
             requestCode != MODEL_PICKER ||
             resultCode != RESULT_OK
         ) {
+            showStatus("Seleção de modelo cancelada.")
             return
         }
 
-        val uri = data?.data ?: return
-        modelUri = uri
+        val uri = data?.data ?: run {
+            showStatus("Não foi selecionado nenhum ficheiro.")
+            return
+        }
 
+        modelUri = uri
         showStatus("A copiar o modelo para o JARVIS...")
 
         Thread {
-            try {
-                val destination = File(
-                    filesDir,
-                    "model.litertlm"
-                )
+            val temporaryFile = File(
+                filesDir,
+                "$MODEL_FILENAME.tmp"
+            )
 
+            try {
                 val input = contentResolver.openInputStream(uri)
                     ?: throw IOException(
                         "Não foi possível abrir o ficheiro selecionado."
                     )
 
                 input.use { source ->
-                    FileOutputStream(destination).use { output ->
+                    FileOutputStream(temporaryFile).use { output ->
                         source.copyTo(output)
                     }
                 }
 
                 if (
-                    !destination.exists() ||
-                    destination.length() == 0L
+                    !temporaryFile.exists() ||
+                    temporaryFile.length() == 0L
                 ) {
                     throw IOException(
                         "O ficheiro copiado está vazio."
                     )
                 }
 
-                modelFile = destination
+                // A fila serializa o encerramento do modelo antigo
+                // e a inicialização do novo.
+                aiExecutor.execute {
+                    modelLoading = true
+                    modelReady = false
 
-                runOnUiThread {
-                    showStatus(
-                        "Modelo copiado! A iniciar o Gemma..."
-                    )
-                    initializeGemma()
+                    try {
+                        closeCurrentModel()
+
+                        val destination = File(
+                            filesDir,
+                            MODEL_FILENAME
+                        )
+
+                        if (destination.exists() && !destination.delete()) {
+                            throw IOException(
+                                "Não foi possível substituir o modelo antigo."
+                            )
+                        }
+
+                        if (!temporaryFile.renameTo(destination)) {
+                            throw IOException(
+                                "Não foi possível guardar o novo modelo."
+                            )
+                        }
+
+                        modelFile = destination
+
+                        initializeGemmaOnExecutor(destination)
+
+                    } catch (e: Exception) {
+                        android.util.Log.e(
+                            "JARVIS_MODEL",
+                            "Erro ao instalar o modelo",
+                            e
+                        )
+
+                        modelReady = false
+                        showStatus(
+                            "Erro ao preparar o modelo: " +
+                            (e.message ?: e.javaClass.simpleName)
+                        )
+                    } finally {
+                        modelLoading = false
+                    }
                 }
 
             } catch (e: Exception) {
+                temporaryFile.delete()
+
                 android.util.Log.e(
                     "JARVIS_MODEL",
                     "Erro ao copiar o modelo",
@@ -725,12 +767,188 @@ class MainActivity : Activity() {
                 )
 
                 showStatus(
-                    "Erro ao copiar: " +
+                    "Erro ao copiar o modelo: " +
                     (e.message ?: e.javaClass.simpleName)
                 )
             }
         }.start()
     }
+
+    // ---------------------------------------------------------
+    // INICIALIZAÇÃO DO GEMMA
+    // ---------------------------------------------------------
+
+    private fun initializeGemma() {
+        val file = File(filesDir, MODEL_FILENAME)
+
+        if (!file.exists() || file.length() == 0L) {
+            showStatus(
+                "Modelo não encontrado. Carrega um ficheiro .litertlm."
+            )
+            return
+        }
+
+        if (modelReady) {
+            showStatus("O Gemma já está pronto.")
+            return
+        }
+
+        if (modelLoading) {
+            showStatus("O Gemma está a carregar...")
+            return
+        }
+
+        modelLoading = true
+        showStatus("A iniciar o Gemma...")
+
+        try {
+            aiExecutor.execute {
+                try {
+                    initializeGemmaOnExecutor(file)
+                } catch (e: Exception) {
+                    android.util.Log.e(
+                        "JARVIS_MODEL",
+                        "Falha ao inicializar o Gemma",
+                        e
+                    )
+
+                    modelReady = false
+
+                    showStatus(
+                        "Erro ao iniciar o Gemma: " +
+                        (e.message ?: e.javaClass.simpleName)
+                    )
+                } finally {
+                    modelLoading = false
+                }
+            }
+        } catch (e: Exception) {
+            modelLoading = false
+
+            android.util.Log.e(
+                "JARVIS_MODEL",
+                "Não foi possível agendar a inicialização",
+                e
+            )
+
+            showStatus("Não foi possível iniciar a tarefa do Gemma.")
+        }
+    }
+
+    // Executado apenas dentro de aiExecutor.
+    private fun initializeGemmaOnExecutor(file: File) {
+        var newEngine: Engine? = null
+        var newConversation: Conversation? = null
+
+        try {
+            if (!file.exists() || file.length() == 0L) {
+                throw IOException(
+                    "O ficheiro do modelo não existe ou está vazio."
+                )
+            }
+
+            android.util.Log.i(
+                "JARVIS_MODEL",
+                "A carregar ${file.absolutePath}; " +
+                "tamanho=${file.length()} bytes"
+            )
+
+            showStatus("A carregar o motor de IA...")
+
+            val config = EngineConfig(
+                modelPath = file.absolutePath,
+                backend = Backend.CPU()
+            )
+
+            newEngine = Engine(config)
+            newEngine.initialize()
+
+            showStatus("A preparar a conversa com o Gemma...")
+
+            val conversationConfig = ConversationConfig(
+                systemInstruction = Contents.of(SYSTEM_INSTRUCTION)
+            )
+
+            newConversation = newEngine.createConversation(
+                conversationConfig
+            )
+
+            modelEngine = newEngine
+            modelConversation = newConversation
+            modelFile = file
+            modelReady = true
+
+            // A propriedade do motor e da conversa passa
+            // para os campos da Activity.
+            newEngine = null
+            newConversation = null
+
+            android.util.Log.i(
+                "JARVIS_MODEL",
+                "Gemma iniciado com sucesso."
+            )
+
+            showStatus(
+                "Gemma iniciado com sucesso! Já podes conversar com a IA."
+            )
+
+        } catch (e: Exception) {
+            try {
+                newConversation?.close()
+            } catch (_: Exception) {
+            }
+
+            try {
+                newEngine?.close()
+            } catch (_: Exception) {
+            }
+
+            modelReady = false
+            modelConversation = null
+            modelEngine = null
+
+            android.util.Log.e(
+                "JARVIS_MODEL",
+                "Erro de inicialização",
+                e
+            )
+
+            throw e
+        }
+    }
+
+    // Executado apenas dentro de aiExecutor.
+    private fun closeCurrentModel() {
+        modelReady = false
+
+        try {
+            modelConversation?.close()
+        } catch (e: Exception) {
+            android.util.Log.w(
+                "JARVIS_MODEL",
+                "Erro ao fechar a conversa anterior",
+                e
+            )
+        }
+
+        modelConversation = null
+
+        try {
+            modelEngine?.close()
+        } catch (e: Exception) {
+            android.util.Log.w(
+                "JARVIS_MODEL",
+                "Erro ao fechar o motor anterior",
+                e
+            )
+        }
+
+        modelEngine = null
+    }
+
+    // ---------------------------------------------------------
+    // PERMISSÕES
+    // ---------------------------------------------------------
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -750,14 +968,19 @@ class MainActivity : Activity() {
             ) {
                 beginRecognition()
             } else {
-                showStatus(
+                notifySpeechError(
                     "A permissão do microfone foi recusada."
                 )
             }
         }
     }
 
+    // ---------------------------------------------------------
+    // ENCERRAMENTO
+    // ---------------------------------------------------------
+
     override fun onDestroy() {
+        recognizer?.cancel()
         recognizer?.destroy()
         recognizer = null
 
@@ -766,37 +989,24 @@ class MainActivity : Activity() {
             tts.shutdown()
         }
 
-        // Impede que novas tarefas sejam aceites.
-        aiExecutor.shutdownNow()
+        // Evita aceitar novas tarefas depois do encerramento.
+        aiExecutor.shutdown()
 
+        // Fecha o modelo na mesma fila que executa as inferências,
+        // para evitar fechar a conversa durante uma resposta.
         try {
-            modelConversation?.close()
+            aiExecutor.execute {
+                closeCurrentModel()
+            }
         } catch (e: Exception) {
-            android.util.Log.e(
+            android.util.Log.w(
                 "JARVIS_MODEL",
-                "Erro ao fechar a conversa",
+                "A fila de IA já está encerrada.",
                 e
             )
         }
-
-        try {
-            modelEngine?.close()
-        } catch (e: Exception) {
-            android.util.Log.e(
-                "JARVIS_MODEL",
-                "Erro ao fechar o motor",
-                e
-            )
-        }
-
-        modelConversation = null
-        modelEngine = null
-        modelReady = false
 
         super.onDestroy()
     }
 }
-
-
-
-
+    

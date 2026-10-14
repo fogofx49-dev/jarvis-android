@@ -1,19 +1,20 @@
 
 package com.fogofx.jarvis
 
-import android.content.Context
-import android.content.IntentFilter
-import android.media.AudioManager
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraManager
-import android.os.BatteryManager
-import android.provider.Settings
 import android.Manifest
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.media.AudioManager
 import android.net.Uri
+import android.os.BatteryManager
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -64,6 +65,8 @@ class MainActivity : Activity() {
     @Volatile
     private var modelLoading = false
 
+    private var pendingFlashlightState: Boolean? = null
+
     private val aiExecutor = Executors.newSingleThreadExecutor()
 
     companion object {
@@ -72,6 +75,7 @@ class MainActivity : Activity() {
 
         private const val MIC_PERMISSION = 101
         private const val MODEL_PICKER = 102
+        private const val FLASH_PERMISSION = 103
 
         private const val MODEL_FILENAME = "model.litertlm"
         private const val PREFERRED_VOICE_ID = ""
@@ -86,17 +90,25 @@ class MainActivity : Activity() {
         """
     }
 
+    // =========================================================
+    // INICIALIZAÇÃO
+    // =========================================================
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         initializeTts()
 
         webView = WebView(this)
+
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
 
         webView.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
+            override fun onPageFinished(
+                view: WebView?,
+                url: String?
+            ) {
                 super.onPageFinished(view, url)
                 initializeGemma()
             }
@@ -104,13 +116,21 @@ class MainActivity : Activity() {
 
         webView.webChromeClient = WebChromeClient()
 
-        webView.addJavascriptInterface(AndroidBridge(), "AndroidVoice")
+        webView.addJavascriptInterface(
+            AndroidBridge(),
+            "AndroidVoice"
+        )
 
         setContentView(webView)
-        webView.loadUrl("file:///android_asset/index.html")
+
+        webView.loadUrl(
+            "file:///android_asset/index.html"
+        )
     }
 
+    // =========================================================
     // VOZ DO JARVIS
+    // =========================================================
 
     private fun initializeTts() {
         tts = TextToSpeech(this) { status ->
@@ -131,21 +151,34 @@ class MainActivity : Activity() {
             result == TextToSpeech.LANG_NOT_SUPPORTED
         ) {
             ttsReady = false
-            showStatus("A voz em português do Brasil não está disponível.")
+            showStatus(
+                "A voz em português do Brasil não está disponível."
+            )
             return
         }
 
         val voices = tts.voices ?: emptySet<Voice>()
 
         val brazilianVoices = voices.filter { voice ->
-            voice.locale.language.equals("pt", ignoreCase = true) &&
-                voice.locale.country.equals("BR", ignoreCase = true)
+            voice.locale.language.equals(
+                "pt",
+                ignoreCase = true
+            ) && voice.locale.country.equals(
+                "BR",
+                ignoreCase = true
+            )
         }
 
-        Log.d(TAG, "Vozes pt-BR encontradas: ${brazilianVoices.size}")
+        Log.d(
+            TAG,
+            "Vozes pt-BR encontradas: ${brazilianVoices.size}"
+        )
 
         for (voice in brazilianVoices) {
-            Log.d(TAG, "Voz: ${voice.name}, qualidade=${voice.quality}")
+            Log.d(
+                TAG,
+                "Voz: ${voice.name}, qualidade=${voice.quality}"
+            )
         }
 
         if (PREFERRED_VOICE_ID.isNotBlank()) {
@@ -194,7 +227,9 @@ class MainActivity : Activity() {
 
     private fun stopSpeaking() {
         if (::tts.isInitialized) {
-            runOnUiThread { tts.stop() }
+            runOnUiThread {
+                tts.stop()
+            }
         }
     }
 
@@ -207,7 +242,10 @@ class MainActivity : Activity() {
         for (voice in voices) {
             val item = JSONObject()
             item.put("name", voice.name)
-            item.put("language", voice.locale.toLanguageTag())
+            item.put(
+                "language",
+                voice.locale.toLanguageTag()
+            )
             item.put("quality", voice.quality)
             item.put("latency", voice.latency)
             result.put(item)
@@ -216,69 +254,145 @@ class MainActivity : Activity() {
         return result.toString()
     }
 
-   private fun getBatteryLevel(): Int {
-    val battery = registerReceiver(
-        null,
-        IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-    )
+    // =========================================================
+    // BATERIA
+    // =========================================================
 
-    return battery?.getIntExtra(
-        BatteryManager.EXTRA_LEVEL, -1
-    ) ?: -1
-}
-
-  private fun changeMediaVolume(action: String): String {
-    val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    val current = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-    val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-
-    when (action.lowercase(Locale.ROOT)) {
-        "up" -> audio.adjustStreamVolume(
-            AudioManager.STREAM_MUSIC,
-            AudioManager.ADJUST_RAISE,
-            0
+    private fun getBatteryLevel(): Int {
+        val battery = registerReceiver(
+            null,
+            IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         )
 
-        "down" -> audio.adjustStreamVolume(
-            AudioManager.STREAM_MUSIC,
-            AudioManager.ADJUST_LOWER,
-            0
-        )
-
-        "mute" -> audio.adjustStreamVolume(
-            AudioManager.STREAM_MUSIC,
-            AudioManager.ADJUST_MUTE,
-            0
-        )
-
-        "unmute" -> audio.adjustStreamVolume(
-            AudioManager.STREAM_MUSIC,
-            AudioManager.ADJUST_UNMUTE,
-            0
-        )
-
-        else -> return "Comando de volume desconhecido."
+        return battery?.getIntExtra(
+            BatteryManager.EXTRA_LEVEL,
+            -1
+        ) ?: -1
     }
 
-    val updated = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-    return "Volume multimédia: $updated de $max."
-}
+    // =========================================================
+    // VOLUME MULTIMÉDIA
+    // =========================================================
 
-  private fun openWifiSettings() {
-    try {
-        startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
-    } catch (e: Exception) {
-        startActivity(Intent(Settings.ACTION_SETTINGS))
+    private fun changeMediaVolume(action: String): String {
+        val audio = getSystemService(
+            Context.AUDIO_SERVICE
+        ) as AudioManager
+
+        val max = audio.getStreamMaxVolume(
+            AudioManager.STREAM_MUSIC
+        )
+
+        when (action.lowercase(Locale.ROOT)) {
+            "up" -> audio.adjustStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                AudioManager.ADJUST_RAISE,
+                0
+            )
+
+            "down" -> audio.adjustStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                AudioManager.ADJUST_LOWER,
+                0
+            )
+
+            "mute" -> audio.adjustStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                AudioManager.ADJUST_MUTE,
+                0
+            )
+
+            "unmute" -> audio.adjustStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                AudioManager.ADJUST_UNMUTE,
+                0
+            )
+
+            else -> return "Comando de volume desconhecido."
+        }
+
+        val updated = audio.getStreamVolume(
+            AudioManager.STREAM_MUSIC
+        )
+
+        return "Volume multimédia: $updated de $max."
     }
-}
 
-  private fun toggleFlashlight(enable: Boolean): String {
-    if (
-        android.os.Build.VERSION.SDK_INT >=
-        android.os.Build.VERSION_CODES.M
-    ) {
-        val cameraManager =
-            getSystemService(Context.CAMERA_SERVICE) as CameraManager
+    // =========================================================
+    // DEFINIÇÕES DE WI-FI
+    // =========================================================
+
+    private fun openWifiSettings() {
+        try {
+            startActivity(
+                Intent(Settings.ACTION_WIFI_SETTINGS)
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro ao abrir definições de Wi-Fi.", e)
+
+            try {
+                startActivity(
+                    Intent(Settings.ACTION_SETTINGS)
+                )
+            } catch (fallback: Exception) {
+                showStatus(
+                    "Não foi possível abrir as definições."
+                )
+            }
+        }
+    }
+
+    // =========================================================
+    // LANTERNA
+    // =========================================================
+
+    private fun requestFlashlight(enabled: Boolean) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            showStatus(
+                "A lanterna requer Android 6.0 ou superior."
+            )
+            return
+        }
+
+        if (
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CAMERA
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingFlashlightState = enabled
+
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA),
+                FLASH_PERMISSION
+            )
+
+            showStatus(
+                "Autoriza a câmara para controlar a lanterna."
+            )
+            return
+        }
+
+        try {
+            showStatus(toggleFlashlight(enabled))
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro ao controlar a lanterna.", e)
+
+            showStatus(
+                "Não foi possível controlar a lanterna."
+            )
+        }
+    }
+
+    private fun toggleFlashlight(enable: Boolean): String {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return "A lanterna requer Android 6.0 ou superior."
+        }
+
+        val cameraManager = getSystemService(
+            Context.CAMERA_SERVICE
+        ) as CameraManager
 
         val cameraId = cameraManager.cameraIdList.firstOrNull { id ->
             cameraManager.getCameraCharacteristics(id)
@@ -287,20 +401,21 @@ class MainActivity : Activity() {
 
         cameraManager.setTorchMode(cameraId, enable)
 
-        return if (enable) "Lanterna ligada." else "Lanterna desligada."
+        return if (enable) {
+            "Lanterna ligada."
+        } else {
+            "Lanterna desligada."
+        }
     }
 
-    return "A lanterna precisa de uma versão mais recente do Android."
-}
-
+    // =========================================================
     // PONTE JAVASCRIPT / ANDROID
+    // =========================================================
 
     inner class AndroidBridge {
 
         @JavascriptInterface
         fun listVoices() {
-            // CORREÇÃO: chama o método da MainActivity,
-            // em vez de chamar este próprio método.
             val voicesJson = this@MainActivity.listVoices()
 
             runOnUiThread {
@@ -325,74 +440,75 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun openApp(app: String) {
-            runOnUiThread { openApplication(app) }
+            runOnUiThread {
+                openApplication(app)
+            }
         }
 
         @JavascriptInterface
         fun startListening() {
-            runOnUiThread { checkMicrophonePermission() }
+            runOnUiThread {
+                checkMicrophonePermission()
+            }
         }
 
         @JavascriptInterface
         fun chooseModel() {
-            runOnUiThread { openModelPicker() }
+            runOnUiThread {
+                openModelPicker()
+            }
         }
 
         @JavascriptInterface
         fun askModel(prompt: String) {
             this@MainActivity.askModel(prompt)
         }
-    }
 
-@JavascriptInterface
-fun getBattery(): String {
-    val level = getBatteryLevel()
-    return if (level in 0..100) {
-        "A bateria está em $level por cento."
-    } else {
-        "Não foi possível consultar a bateria."
-    }
-}
+        @JavascriptInterface
+        fun getBattery(): String {
+            val level = getBatteryLevel()
 
-@JavascriptInterface
-fun changeVolume(action: String) {
-    runOnUiThread {
-        try {
-            val message = changeMediaVolume(action)
-            showStatus(message)
-        } catch (e: Exception) {
-            showStatus("Não foi possível alterar o volume.")
+            return if (level in 0..100) {
+                "A bateria está em $level por cento."
+            } else {
+                "Não foi possível consultar a bateria."
+            }
+        }
+
+        @JavascriptInterface
+        fun changeVolume(action: String): String {
+            return try {
+                this@MainActivity.changeMediaVolume(action)
+            } catch (e: Exception) {
+                Log.e(TAG, "Erro ao alterar volume.", e)
+                "Não foi possível alterar o volume."
+            }
+        }
+
+        @JavascriptInterface
+        fun setFlashlight(enabled: Boolean) {
+            runOnUiThread {
+                requestFlashlight(enabled)
+            }
+        }
+
+        @JavascriptInterface
+        fun openWifiSettings() {
+            runOnUiThread {
+                this@MainActivity.openWifiSettings()
+            }
         }
     }
-}
 
-@JavascriptInterface
-fun setFlashlight(enabled: Boolean) {
-    runOnUiThread {
-        try {
-            showStatus(toggleFlashlight(enabled))
-        } catch (e: SecurityException) {
-            showStatus(
-                "É necessária autorização para controlar a lanterna."
-            )
-        } catch (e: Exception) {
-            showStatus("Não foi possível controlar a lanterna.")
-        }
-    }
-}
-
-@JavascriptInterface
-fun openWifiSettings() {
-    runOnUiThread {
-        this@MainActivity.openWifiSettings()
-    }
-}
-
+    // =========================================================
     // ABRIR APLICAÇÕES
+    // =========================================================
 
     private fun openApplication(app: String) {
         try {
-            val intent = when (app.lowercase(Locale.ROOT)) {
+            val intent = when (
+                app.lowercase(Locale.ROOT)
+            ) {
                 "youtube" -> Intent(
                     Intent.ACTION_VIEW,
                     Uri.parse("https://www.youtube.com")
@@ -403,17 +519,26 @@ fun openWifiSettings() {
                     Uri.parse("https://www.google.com")
                 )
 
-                "settings", "configurações", "configuracoes" -> Intent(
-                    android.provider.Settings.ACTION_SETTINGS
+                "settings",
+                "configurações",
+                "configuracoes" -> Intent(
+                    Settings.ACTION_SETTINGS
+                )
+
+                "camera",
+                "camara",
+                "câmara" -> Intent(
+                    android.provider.MediaStore.ACTION_IMAGE_CAPTURE
                 )
 
                 else -> {
-                    showStatus("Não reconheço essa aplicação: $app")
+                    showStatus(
+                        "Não reconheço essa aplicação: $app"
+                    )
                     return
                 }
             }
 
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             startActivity(intent)
             showStatus("A abrir $app.")
         } catch (e: Exception) {
@@ -422,7 +547,9 @@ fun openWifiSettings() {
         }
     }
 
+    // =========================================================
     // RECONHECIMENTO DE VOZ
+    // =========================================================
 
     private fun checkMicrophonePermission() {
         if (
@@ -452,6 +579,7 @@ fun openWifiSettings() {
 
         try {
             recognizer?.destroy()
+
             recognizer = SpeechRecognizer.createSpeechRecognizer(this)
 
             recognizer?.setRecognitionListener(
@@ -531,10 +659,15 @@ fun openWifiSettings() {
                         }
                     }
 
-                    override fun onPartialResults(partialResults: Bundle?) {
+                    override fun onPartialResults(
+                        partialResults: Bundle?
+                    ) {
                     }
 
-                    override fun onEvent(eventType: Int, params: Bundle?) {
+                    override fun onEvent(
+                        eventType: Int,
+                        params: Bundle?
+                    ) {
                     }
                 }
             )
@@ -546,18 +679,29 @@ fun openWifiSettings() {
                     RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                     RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
                 )
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE,
+                    "pt-BR"
+                )
                 putExtra(
                     RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
                     "pt-BR"
                 )
-                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+                putExtra(
+                    RecognizerIntent.EXTRA_PARTIAL_RESULTS,
+                    true
+                )
+                putExtra(
+                    RecognizerIntent.EXTRA_MAX_RESULTS,
+                    3
+                )
             }
 
             recognizer?.startListening(intent)
+
         } catch (e: Exception) {
             Log.e(TAG, "Erro ao iniciar reconhecimento.", e)
+
             notifySpeechError(
                 "Não foi possível iniciar o reconhecimento de voz."
             )
@@ -575,33 +719,60 @@ fun openWifiSettings() {
             grantResults
         )
 
-        if (requestCode == MIC_PERMISSION) {
-            if (
-                grantResults.isNotEmpty() &&
-                grantResults[0] == PackageManager.PERMISSION_GRANTED
-            ) {
-                beginRecognition()
-            } else {
-                notifySpeechError(
-                    "A permissão do microfone foi recusada."
-                )
+        when (requestCode) {
+            MIC_PERMISSION -> {
+                if (
+                    grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED
+                ) {
+                    beginRecognition()
+                } else {
+                    notifySpeechError(
+                        "A permissão do microfone foi recusada."
+                    )
+                }
+            }
+
+            FLASH_PERMISSION -> {
+                val granted =
+                    grantResults.isNotEmpty() &&
+                    grantResults[0] == PackageManager.PERMISSION_GRANTED
+
+                val requestedState = pendingFlashlightState
+                pendingFlashlightState = null
+
+                if (granted && requestedState != null) {
+                    requestFlashlight(requestedState)
+                } else {
+                    showStatus(
+                        "Permissão da câmara recusada. A lanterna não foi alterada."
+                    )
+                }
             }
         }
     }
 
+    // =========================================================
     // MODELO LOCAL LITERT-LM
+    // =========================================================
 
     private fun openModelPicker() {
         try {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            val intent = Intent(
+                Intent.ACTION_OPEN_DOCUMENT
+            ).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "*/*"
             }
 
             startActivityForResult(intent, MODEL_PICKER)
+
         } catch (e: Exception) {
             Log.e(MODEL_TAG, "Erro ao abrir seletor.", e)
-            showModelError("Não consegui abrir o seletor de ficheiros.")
+
+            showModelError(
+                "Não consegui abrir o seletor de ficheiros."
+            )
         }
     }
 
@@ -613,7 +784,10 @@ fun openWifiSettings() {
     ) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (requestCode != MODEL_PICKER || resultCode != RESULT_OK) {
+        if (
+            requestCode != MODEL_PICKER ||
+            resultCode != RESULT_OK
+        ) {
             return
         }
 
@@ -643,6 +817,8 @@ fun openWifiSettings() {
                     }
                 }
 
+                val copiedFile = temporaryFile
+
                 aiExecutor.execute {
                     modelLoading = true
                     modelReady = false
@@ -659,18 +835,25 @@ fun openWifiSettings() {
                             destination.delete()
                         }
 
-                        if (!temporaryFile.renameTo(destination)) {
-                            temporaryFile.copyTo(
+                        if (!copiedFile.renameTo(destination)) {
+                            copiedFile.copyTo(
                                 destination,
                                 overwrite = true
                             )
-                            temporaryFile.delete()
+                            copiedFile.delete()
                         }
 
                         modelFile = destination
+
                         initializeGemmaOnExecutor(destination)
+
                     } catch (e: Exception) {
-                        Log.e(MODEL_TAG, "Erro ao instalar o modelo.", e)
+                        Log.e(
+                            MODEL_TAG,
+                            "Erro ao instalar o modelo.",
+                            e
+                        )
+
                         modelLoading = false
                         modelReady = false
 
@@ -680,8 +863,14 @@ fun openWifiSettings() {
                         )
                     }
                 }
+
             } catch (e: Exception) {
-                Log.e(MODEL_TAG, "Erro ao copiar o modelo.", e)
+                Log.e(
+                    MODEL_TAG,
+                    "Erro ao copiar o modelo.",
+                    e
+                )
+
                 temporaryFile?.delete()
 
                 showModelError(
@@ -693,7 +882,11 @@ fun openWifiSettings() {
     }
 
     private fun initializeGemma() {
-        val file = File(filesDir, MODEL_FILENAME)
+        val file = File(
+            filesDir,
+            MODEL_FILENAME
+        )
+
         modelFile = file
 
         if (!file.exists()) {
@@ -712,7 +905,12 @@ fun openWifiSettings() {
             try {
                 initializeGemmaOnExecutor(file)
             } catch (e: Exception) {
-                Log.e(MODEL_TAG, "Erro ao iniciar o modelo local.", e)
+                Log.e(
+                    MODEL_TAG,
+                    "Erro ao iniciar o modelo local.",
+                    e
+                )
+
                 modelReady = false
                 modelLoading = false
 
@@ -740,7 +938,9 @@ fun openWifiSettings() {
             newEngine.initialize()
 
             val conversationConfig = ConversationConfig(
-                systemInstruction = Contents.of(SYSTEM_INSTRUCTION)
+                systemInstruction = Contents.of(
+                    SYSTEM_INSTRUCTION
+                )
             )
 
             newConversation = newEngine.createConversation(
@@ -749,10 +949,14 @@ fun openWifiSettings() {
 
             modelEngine = newEngine
             modelConversation = newConversation
+
             modelReady = true
             modelLoading = false
 
-            showStatus("JARVIS pronto. Modelo local carregado.")
+            showStatus(
+                "JARVIS pronto. Modelo local carregado."
+            )
+
         } catch (e: Exception) {
             try {
                 newConversation?.close()
@@ -766,6 +970,7 @@ fun openWifiSettings() {
 
             modelReady = false
             modelLoading = false
+
             throw e
         }
     }
@@ -810,8 +1015,13 @@ fun openWifiSettings() {
                         "Não consegui gerar uma resposta. Tenta novamente."
                     }
                 )
+
             } catch (e: Exception) {
-                Log.e(MODEL_TAG, "Erro ao consultar o modelo.", e)
+                Log.e(
+                    MODEL_TAG,
+                    "Erro ao consultar o modelo.",
+                    e
+                )
 
                 showModelError(
                     "Erro ao consultar a IA: " +
@@ -825,7 +1035,11 @@ fun openWifiSettings() {
         try {
             modelConversation?.close()
         } catch (e: Exception) {
-            Log.w(MODEL_TAG, "Erro ao fechar a conversa.", e)
+            Log.w(
+                MODEL_TAG,
+                "Erro ao fechar a conversa.",
+                e
+            )
         } finally {
             modelConversation = null
         }
@@ -833,7 +1047,11 @@ fun openWifiSettings() {
         try {
             modelEngine?.close()
         } catch (e: Exception) {
-            Log.w(MODEL_TAG, "Erro ao fechar o motor do modelo.", e)
+            Log.w(
+                MODEL_TAG,
+                "Erro ao fechar o motor do modelo.",
+                e
+            )
         } finally {
             modelEngine = null
         }
@@ -841,7 +1059,9 @@ fun openWifiSettings() {
         modelReady = false
     }
 
+    // =========================================================
     // RESPOSTAS PARA O HTML
+    // =========================================================
 
     private fun showModelResponse(answer: String) {
         runOnUiThread {
@@ -887,7 +1107,9 @@ fun openWifiSettings() {
         }
     }
 
+    // =========================================================
     // ENCERRAMENTO
+    // =========================================================
 
     override fun onDestroy() {
         recognizer?.cancel()
@@ -903,13 +1125,16 @@ fun openWifiSettings() {
             aiExecutor.execute {
                 closeCurrentModel()
             }
+
             aiExecutor.shutdown()
+
         } catch (e: Exception) {
             Log.w(
                 MODEL_TAG,
                 "Não foi possível fechar o modelo normalmente.",
                 e
             )
+
             aiExecutor.shutdownNow()
         }
 

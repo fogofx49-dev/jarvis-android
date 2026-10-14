@@ -67,7 +67,6 @@ class MainActivity : Activity() {
         private const val MODEL_PICKER = 102
 
         private const val MODEL_FILENAME = "model.litertlm"
-
         private const val PREFERRED_VOICE_ID = ""
 
         private const val SYSTEM_INSTRUCTION = """
@@ -86,15 +85,11 @@ class MainActivity : Activity() {
         initializeTts()
 
         webView = WebView(this)
-
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
 
         webView.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(
-                view: WebView?,
-                url: String?
-            ) {
+            override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 initializeGemma()
             }
@@ -102,19 +97,13 @@ class MainActivity : Activity() {
 
         webView.webChromeClient = WebChromeClient()
 
-        webView.addJavascriptInterface(
-            AndroidBridge(),
-            "AndroidVoice"
-        )
+        webView.addJavascriptInterface(AndroidBridge(), "AndroidVoice")
 
         setContentView(webView)
-
         webView.loadUrl("file:///android_asset/index.html")
     }
 
-    // ---------------------------------------------------------
     // VOZ DO JARVIS
-    // ---------------------------------------------------------
 
     private fun initializeTts() {
         tts = TextToSpeech(this) { status ->
@@ -128,44 +117,28 @@ class MainActivity : Activity() {
     }
 
     private fun configureJarvisVoice() {
-        val result = tts.setLanguage(
-            Locale("pt", "BR")
-        )
+        val result = tts.setLanguage(Locale("pt", "BR"))
 
         if (
             result == TextToSpeech.LANG_MISSING_DATA ||
             result == TextToSpeech.LANG_NOT_SUPPORTED
         ) {
             ttsReady = false
-            showStatus(
-                "A voz em português do Brasil não está disponível."
-            )
+            showStatus("A voz em português do Brasil não está disponível.")
             return
         }
 
         val voices = tts.voices ?: emptySet<Voice>()
 
         val brazilianVoices = voices.filter { voice ->
-            voice.locale.language.equals(
-                "pt",
-                ignoreCase = true
-            ) &&
-                voice.locale.country.equals(
-                    "BR",
-                    ignoreCase = true
-                )
+            voice.locale.language.equals("pt", ignoreCase = true) &&
+                voice.locale.country.equals("BR", ignoreCase = true)
         }
 
-        Log.d(
-            TAG,
-            "Vozes pt-BR encontradas: ${brazilianVoices.size}"
-        )
+        Log.d(TAG, "Vozes pt-BR encontradas: ${brazilianVoices.size}")
 
         for (voice in brazilianVoices) {
-            Log.d(
-                TAG,
-                "Voz: ${voice.name}, qualidade=${voice.quality}"
-            )
+            Log.d(TAG, "Voz: ${voice.name}, qualidade=${voice.quality}")
         }
 
         if (PREFERRED_VOICE_ID.isNotBlank()) {
@@ -200,7 +173,6 @@ class MainActivity : Activity() {
         }
 
         val cleanText = text.trim()
-
         if (cleanText.isBlank()) return
 
         runOnUiThread {
@@ -215,46 +187,37 @@ class MainActivity : Activity() {
 
     private fun stopSpeaking() {
         if (::tts.isInitialized) {
-            runOnUiThread {
-                tts.stop()
-            }
+            runOnUiThread { tts.stop() }
         }
     }
 
     private fun listVoices(): String {
-        if (!::tts.isInitialized) {
-            return "[]"
-        }
+        if (!::tts.isInitialized) return "[]"
 
         val result = JSONArray()
         val voices = tts.voices ?: emptySet<Voice>()
 
         for (voice in voices) {
             val item = JSONObject()
-
             item.put("name", voice.name)
-            item.put(
-                "language",
-                voice.locale.toLanguageTag()
-            )
+            item.put("language", voice.locale.toLanguageTag())
             item.put("quality", voice.quality)
             item.put("latency", voice.latency)
-
             result.put(item)
         }
 
         return result.toString()
     }
 
-    // ---------------------------------------------------------
-    // PONTE ENTRE JAVASCRIPT E ANDROID
-    // ---------------------------------------------------------
+    // PONTE JAVASCRIPT / ANDROID
 
     inner class AndroidBridge {
 
         @JavascriptInterface
         fun listVoices() {
-            val voicesJson = listVoices()
+            // CORREÇÃO: chama o método da MainActivity,
+            // em vez de chamar este próprio método.
+            val voicesJson = this@MainActivity.listVoices()
 
             runOnUiThread {
                 webView.evaluateJavascript(
@@ -278,23 +241,17 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun openApp(app: String) {
-            runOnUiThread {
-                openApplication(app)
-            }
+            runOnUiThread { openApplication(app) }
         }
 
         @JavascriptInterface
         fun startListening() {
-            runOnUiThread {
-                checkMicrophonePermission()
-            }
+            runOnUiThread { checkMicrophonePermission() }
         }
 
         @JavascriptInterface
         fun chooseModel() {
-            runOnUiThread {
-                openModelPicker()
-            }
+            runOnUiThread { openModelPicker() }
         }
 
         @JavascriptInterface
@@ -303,9 +260,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // ---------------------------------------------------------
     // ABRIR APLICAÇÕES
-    // ---------------------------------------------------------
 
     private fun openApplication(app: String) {
         try {
@@ -320,24 +275,17 @@ class MainActivity : Activity() {
                     Uri.parse("https://www.google.com")
                 )
 
-                "settings",
-                "configurações",
-                "configuracoes" -> Intent(
+                "settings", "configurações", "configuracoes" -> Intent(
                     android.provider.Settings.ACTION_SETTINGS
                 )
 
                 else -> {
-                    showStatus(
-                        "Não reconheço essa aplicação: $app"
-                    )
+                    showStatus("Não reconheço essa aplicação: $app")
                     return
                 }
             }
 
-            intent.addFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK
-            )
-
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             startActivity(intent)
             showStatus("A abrir $app.")
         } catch (e: Exception) {
@@ -346,9 +294,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // ---------------------------------------------------------
     // RECONHECIMENTO DE VOZ
-    // ---------------------------------------------------------
 
     private fun checkMicrophonePermission() {
         if (
@@ -378,15 +324,12 @@ class MainActivity : Activity() {
 
         try {
             recognizer?.destroy()
-
             recognizer = SpeechRecognizer.createSpeechRecognizer(this)
 
             recognizer?.setRecognitionListener(
                 object : RecognitionListener {
 
-                    override fun onReadyForSpeech(
-                        params: Bundle?
-                    ) {
+                    override fun onReadyForSpeech(params: Bundle?) {
                         showStatus("Estou a ouvir...")
                     }
 
@@ -394,15 +337,10 @@ class MainActivity : Activity() {
                         showStatus("A reconhecer a tua voz...")
                     }
 
-                    override fun onRmsChanged(
-                        rmsdB: Float
-                    ) {
-                        // Pode ser usado para animar o indicador de voz.
+                    override fun onRmsChanged(rmsdB: Float) {
                     }
 
-                    override fun onBufferReceived(
-                        buffer: ByteArray?
-                    ) {
+                    override fun onBufferReceived(buffer: ByteArray?) {
                     }
 
                     override fun onEndOfSpeech() {
@@ -442,16 +380,12 @@ class MainActivity : Activity() {
                         notifySpeechError(message)
                     }
 
-                    override fun onResults(
-                        results: Bundle?
-                    ) {
+                    override fun onResults(results: Bundle?) {
                         val matches = results?.getStringArrayList(
                             SpeechRecognizer.RESULTS_RECOGNITION
                         )
 
-                        val spokenText = matches
-                            ?.firstOrNull()
-                            .orEmpty()
+                        val spokenText = matches?.firstOrNull().orEmpty()
 
                         if (spokenText.isNotBlank()) {
                             runOnUiThread {
@@ -469,15 +403,10 @@ class MainActivity : Activity() {
                         }
                     }
 
-                    override fun onPartialResults(
-                        partialResults: Bundle?
-                    ) {
+                    override fun onPartialResults(partialResults: Bundle?) {
                     }
 
-                    override fun onEvent(
-                        eventType: Int,
-                        params: Bundle?
-                    ) {
+                    override fun onEvent(eventType: Int, params: Bundle?) {
                     }
                 }
             )
@@ -489,26 +418,13 @@ class MainActivity : Activity() {
                     RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                     RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
                 )
-
-                putExtra(
-                    RecognizerIntent.EXTRA_LANGUAGE,
-                    "pt-BR"
-                )
-
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
                 putExtra(
                     RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
                     "pt-BR"
                 )
-
-                putExtra(
-                    RecognizerIntent.EXTRA_PARTIAL_RESULTS,
-                    true
-                )
-
-                putExtra(
-                    RecognizerIntent.EXTRA_MAX_RESULTS,
-                    3
-                )
+                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
             }
 
             recognizer?.startListening(intent)
@@ -545,28 +461,19 @@ class MainActivity : Activity() {
         }
     }
 
-    // ---------------------------------------------------------
     // MODELO LOCAL LITERT-LM
-    // ---------------------------------------------------------
 
     private fun openModelPicker() {
         try {
-            val intent = Intent(
-                Intent.ACTION_OPEN_DOCUMENT
-            ).apply {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "*/*"
             }
 
-            startActivityForResult(
-                intent,
-                MODEL_PICKER
-            )
+            startActivityForResult(intent, MODEL_PICKER)
         } catch (e: Exception) {
             Log.e(MODEL_TAG, "Erro ao abrir seletor.", e)
-            showModelError(
-                "Não consegui abrir o seletor de ficheiros."
-            )
+            showModelError("Não consegui abrir o seletor de ficheiros.")
         }
     }
 
@@ -576,16 +483,9 @@ class MainActivity : Activity() {
         resultCode: Int,
         data: Intent?
     ) {
-        super.onActivityResult(
-            requestCode,
-            resultCode,
-            data
-        )
+        super.onActivityResult(requestCode, resultCode, data)
 
-        if (
-            requestCode != MODEL_PICKER ||
-            resultCode != RESULT_OK
-        ) {
+        if (requestCode != MODEL_PICKER || resultCode != RESULT_OK) {
             return
         }
 
@@ -640,15 +540,9 @@ class MainActivity : Activity() {
                         }
 
                         modelFile = destination
-
                         initializeGemmaOnExecutor(destination)
                     } catch (e: Exception) {
-                        Log.e(
-                            MODEL_TAG,
-                            "Erro ao instalar o modelo.",
-                            e
-                        )
-
+                        Log.e(MODEL_TAG, "Erro ao instalar o modelo.", e)
                         modelLoading = false
                         modelReady = false
 
@@ -659,12 +553,7 @@ class MainActivity : Activity() {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(
-                    MODEL_TAG,
-                    "Erro ao copiar o modelo.",
-                    e
-                )
-
+                Log.e(MODEL_TAG, "Erro ao copiar o modelo.", e)
                 temporaryFile?.delete()
 
                 showModelError(
@@ -676,11 +565,7 @@ class MainActivity : Activity() {
     }
 
     private fun initializeGemma() {
-        val file = File(
-            filesDir,
-            MODEL_FILENAME
-        )
-
+        val file = File(filesDir, MODEL_FILENAME)
         modelFile = file
 
         if (!file.exists()) {
@@ -690,9 +575,7 @@ class MainActivity : Activity() {
             return
         }
 
-        if (modelReady || modelLoading) {
-            return
-        }
+        if (modelReady || modelLoading) return
 
         modelLoading = true
         showStatus("A iniciar o modelo local...")
@@ -701,12 +584,7 @@ class MainActivity : Activity() {
             try {
                 initializeGemmaOnExecutor(file)
             } catch (e: Exception) {
-                Log.e(
-                    MODEL_TAG,
-                    "Erro ao iniciar o modelo local.",
-                    e
-                )
-
+                Log.e(MODEL_TAG, "Erro ao iniciar o modelo local.", e)
                 modelReady = false
                 modelLoading = false
 
@@ -718,9 +596,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun initializeGemmaOnExecutor(
-        file: File
-    ) {
+    private fun initializeGemmaOnExecutor(file: File) {
         var newEngine: Engine? = null
         var newConversation: Conversation? = null
 
@@ -736,9 +612,7 @@ class MainActivity : Activity() {
             newEngine.initialize()
 
             val conversationConfig = ConversationConfig(
-                systemInstruction = Contents.of(
-                    SYSTEM_INSTRUCTION
-                )
+                systemInstruction = Contents.of(SYSTEM_INSTRUCTION)
             )
 
             newConversation = newEngine.createConversation(
@@ -747,7 +621,6 @@ class MainActivity : Activity() {
 
             modelEngine = newEngine
             modelConversation = newConversation
-
             modelReady = true
             modelLoading = false
 
@@ -765,7 +638,6 @@ class MainActivity : Activity() {
 
             modelReady = false
             modelLoading = false
-
             throw e
         }
     }
@@ -811,11 +683,7 @@ class MainActivity : Activity() {
                     }
                 )
             } catch (e: Exception) {
-                Log.e(
-                    MODEL_TAG,
-                    "Erro ao consultar o modelo.",
-                    e
-                )
+                Log.e(MODEL_TAG, "Erro ao consultar o modelo.", e)
 
                 showModelError(
                     "Erro ao consultar a IA: " +
@@ -829,11 +697,7 @@ class MainActivity : Activity() {
         try {
             modelConversation?.close()
         } catch (e: Exception) {
-            Log.w(
-                MODEL_TAG,
-                "Erro ao fechar a conversa.",
-                e
-            )
+            Log.w(MODEL_TAG, "Erro ao fechar a conversa.", e)
         } finally {
             modelConversation = null
         }
@@ -841,11 +705,7 @@ class MainActivity : Activity() {
         try {
             modelEngine?.close()
         } catch (e: Exception) {
-            Log.w(
-                MODEL_TAG,
-                "Erro ao fechar o motor do modelo.",
-                e
-            )
+            Log.w(MODEL_TAG, "Erro ao fechar o motor do modelo.", e)
         } finally {
             modelEngine = null
         }
@@ -853,9 +713,7 @@ class MainActivity : Activity() {
         modelReady = false
     }
 
-    // ---------------------------------------------------------
-    // RESPOSTAS PARA A INTERFACE HTML
-    // ---------------------------------------------------------
+    // RESPOSTAS PARA O HTML
 
     private fun showModelResponse(answer: String) {
         runOnUiThread {
@@ -901,9 +759,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // ---------------------------------------------------------
     // ENCERRAMENTO
-    // ---------------------------------------------------------
 
     override fun onDestroy() {
         recognizer?.cancel()
@@ -915,12 +771,10 @@ class MainActivity : Activity() {
             tts.shutdown()
         }
 
-        // Coloca o encerramento na fila antes de desligá-la.
         try {
             aiExecutor.execute {
                 closeCurrentModel()
             }
-
             aiExecutor.shutdown()
         } catch (e: Exception) {
             Log.w(
@@ -928,7 +782,6 @@ class MainActivity : Activity() {
                 "Não foi possível fechar o modelo normalmente.",
                 e
             )
-
             aiExecutor.shutdownNow()
         }
 

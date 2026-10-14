@@ -52,6 +52,9 @@ class MainActivity : Activity() {
     companion object {
         private const val MIC_PERMISSION = 101
         private const val MODEL_PICKER = 102
+
+        // Será preenchido com o identificador real após a deteção.
+        private const val PREFERRED_VOICE_ID = ""
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,6 +79,7 @@ class MainActivity : Activity() {
         }
 
         webView.webChromeClient = WebChromeClient()
+
         webView.addJavascriptInterface(
             AndroidBridge(),
             "AndroidVoice"
@@ -85,7 +89,7 @@ class MainActivity : Activity() {
         webView.loadUrl("file:///android_asset/index.html")
     }
 
-    // Configura a voz do JARVIS em português brasileiro.
+    // Configura a voz sem tentar adivinhar pelo nome.
     private fun configureJarvisVoice(status: Int) {
         if (status != TextToSpeech.SUCCESS) {
             ttsReady = false
@@ -116,35 +120,25 @@ class MainActivity : Activity() {
                 }
                 .orEmpty()
 
-            // Regista as vozes para podermos identificar a masculina.
             availableVoices.forEach { voice ->
                 android.util.Log.d(
                     "JARVIS_VOICES",
-                    "Nome=${voice.name}, " +
+                    "ID=${voice.name}, " +
                     "Idioma=${voice.locale}, " +
                     "Rede=${voice.isNetworkConnectionRequired}, " +
-                    "Qualidade=${voice.quality}"
+                    "Qualidade=${voice.quality}, " +
+                    "Latência=${voice.latency}"
                 )
             }
 
-            // Dá preferência a identificadores que indiquem voz masculina.
-            val selectedVoice = availableVoices
-                .filter { !it.isNetworkConnectionRequired }
-                .maxByOrNull { voice ->
-                    val name = voice.name.lowercase(Locale.ROOT)
-
-                    when {
-                        "male" in name ||
-                        "mascul" in name ||
-                        "man" in name -> 3
-
-                        "female" in name ||
-                        "fem" in name ||
-                        "woman" in name -> 0
-
-                        else -> 1
-                    }
+            // Só seleciona quando existir correspondência exata.
+            val selectedVoice = if (PREFERRED_VOICE_ID.isNotBlank()) {
+                availableVoices.firstOrNull {
+                    it.name == PREFERRED_VOICE_ID
                 }
+            } else {
+                null
+            }
 
             if (selectedVoice != null) {
                 tts.voice = selectedVoice
@@ -165,7 +159,9 @@ class MainActivity : Activity() {
             android.util.Log.d(
                 "JARVIS_VOICES",
                 "Vozes pt-BR: " +
-                    availableVoices.joinToString(", ") { it.name }
+                    availableVoices.joinToString(", ") {
+                        it.name
+                    }
             )
 
         } catch (e: Exception) {
@@ -180,70 +176,85 @@ class MainActivity : Activity() {
     }
 
     inner class AndroidBridge {
-        
-    @JavascriptInterface
-     fun listVoices() {
-       runOnUiThread {
-        try {
-            val voices = tts.voices
-                ?.filter {
-                    it.locale.language == "pt"
+
+        @JavascriptInterface
+        fun listVoices() {
+            runOnUiThread {
+                try {
+                    val voices = tts.voices
+                        ?.filter {
+                            it.locale.language == "pt"
+                        }
+                        .orEmpty()
+
+                    if (voices.isEmpty()) {
+                        showStatus(
+                            "Nenhuma voz portuguesa encontrada."
+                        )
+                        return@runOnUiThread
+                    }
+
+                    val json = org.json.JSONArray()
+
+                    voices.forEach { voice ->
+                        val item = JSONObject().apply {
+                            put("name", voice.name)
+                            put("id", voice.name)
+                            put("locale", voice.locale.toString())
+                            put("quality", voice.quality)
+                            put("latency", voice.latency)
+                            put(
+                                "network",
+                                voice.isNetworkConnectionRequired
+                            )
+                            put(
+                                "features",
+                                org.json.JSONArray(
+                                    voice.features ?: emptySet<String>()
+                                )
+                            )
+                        }
+
+                        json.put(item)
+                    }
+
+                    val report = voices.joinToString("\n") {
+                        "ID=${it.name} | " +
+                        "Idioma=${it.locale} | " +
+                        "Qualidade=${it.quality} | " +
+                        "Latência=${it.latency} | " +
+                        "Rede=${it.isNetworkConnectionRequired}"
+                    }
+
+                    android.util.Log.d(
+                        "JARVIS_VOICES",
+                        "LISTA COMPLETA:\n$report"
+                    )
+
+                    webView.evaluateJavascript(
+                        "if (typeof onNativeVoicesListed === 'function') " +
+                        "onNativeVoicesListed(" +
+                        "${JSONObject.quote(json.toString())});",
+                        null
+                    )
+
+                    showStatus(
+                        "${voices.size} vozes portuguesas encontradas."
+                    )
+
+                } catch (e: Exception) {
+                    showStatus(
+                        "Erro ao consultar as vozes disponíveis."
+                    )
+
+                    android.util.Log.e(
+                        "JARVIS_VOICES",
+                        "Erro ao listar vozes",
+                        e
+                    )
                 }
-                .orEmpty()
-
-            if (voices.isEmpty()) {
-                showStatus(
-                    "Nenhuma voz portuguesa encontrada."
-                )
-                return@runOnUiThread
             }
-
-            val report = voices.joinToString("\n") {
-                "${it.name} | ${it.locale} | " +
-                    "Rede: ${it.isNetworkConnectionRequired}"
-            }
-
-            android.util.Log.d(
-                "JARVIS_VOICES",
-                "LISTA COMPLETA:\n$report"
-            )
-
-            val json = org.json.JSONArray()
-
-            voices.forEach { voice ->
-                val item = org.json.JSONObject()
-                item.put("name", voice.name)
-                item.put("locale", voice.locale.toString())
-                item.put(
-                    "network",
-                    voice.isNetworkConnectionRequired
-                )
-                json.put(item)
-            }
-
-            webView.evaluateJavascript(
-                "if (typeof onNativeVoicesListed === 'function') " +
-                    "onNativeVoicesListed(${org.json.JSONObject.quote(json.toString())});",
-                null
-            )
-
-            showStatus(
-                "${voices.size} vozes encontradas."
-            )
-        } catch (e: Exception) {
-            showStatus(
-                "Erro ao consultar as vozes disponíveis."
-            )
-
-            android.util.Log.e(
-                "JARVIS_VOICES",
-                "Erro ao listar vozes",
-                e
-            )
         }
-    }
-}
-
 
         @JavascriptInterface
         fun speak(text: String) {
@@ -287,7 +298,9 @@ class MainActivity : Activity() {
                         showStatus("Comando não reconhecido.")
                     }
                 } catch (e: Exception) {
-                    showStatus("Não consegui abrir essa aplicação.")
+                    showStatus(
+                        "Não consegui abrir essa aplicação."
+                    )
                 }
             }
         }
@@ -643,5 +656,6 @@ class MainActivity : Activity() {
         super.onDestroy()
     }
 }
+
 
 

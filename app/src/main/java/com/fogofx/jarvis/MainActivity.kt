@@ -397,16 +397,19 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun showStatus(message: String) {
-        runOnUiThread {
-            if (!isFinishing && ::webView.isInitialized) {
-                webView.evaluateJavascript(
-                    "onNativeSpeechError(${JSONObject.quote(message)})",
-                    null
-                )
-            }
+    
+private fun showStatus(message: String) {
+    runOnUiThread {
+        if (!isFinishing && ::webView.isInitialized) {
+            webView.evaluateJavascript(
+                "if (typeof onNativeStatus === 'function') " +
+                    "onNativeStatus(${JSONObject.quote(message)});",
+                null
+            )
         }
     }
+}
+
 
     private fun beginRecognition() {
         try {

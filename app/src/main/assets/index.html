@@ -176,7 +176,10 @@ h1 {
   left: 38%;
   border-radius: 50%;
   background: radial-gradient(circle, #fff 0%, #39e6ff 18%, #008cff 48%, #03406a 72%);
-  box-shadow: 0 0 15px #00d9ff, 0 0 38px #008cff, 0 0 60px #00d9ff55;
+  box-shadow:
+    0 0 15px #00d9ff,
+    0 0 38px #008cff,
+    0 0 60px #00d9ff55;
   animation: pulse 2s ease-in-out infinite;
 }
 
@@ -268,122 +271,123 @@ body.speaking .wave span {
 body.busy .ring { animation-duration: 1.2s; }
 body.listening .radar { box-shadow: 0 0 35px #00d9ff55; }
 body.speaking .core { animation-duration: .45s; }
-
+</style>
+</head>
+ 
+<style>
 #chat {
-  height: 31vh;
-  min-height: 190px;
-  max-height: 360px;
+  width: 100%;
+  max-width: 700px;
+  min-height: 100px;
+  max-height: 260px;
   overflow-y: auto;
-  border: 1px solid #16465a;
-  border-radius: 14px;
-  padding: 12px;
-  background: #04111de8;
-  box-shadow: inset 0 0 20px #008cff0c;
-  scroll-behavior: smooth;
+  padding: 14px;
+  margin: 16px auto;
+  border: 1px solid #00d9ff55;
+  border-radius: 12px;
+  background: #00101acc;
+  box-sizing: border-box;
 }
-
 .msg {
-  padding: 11px;
+  padding: 10px 12px;
   margin: 8px 0;
-  border-radius: 10px;
+  border-radius: 9px;
   overflow-wrap: anywhere;
-  white-space: pre-wrap;
-  line-height: 1.45;
-  font-size: 14px;
+  line-height: 1.5;
 }
-
 .jarvis {
-  background: #103345;
-  border-left: 2px solid var(--cyan);
+  color: #9beeff;
+  background: #00d9ff12;
+  border-left: 3px solid #00d9ff;
 }
-
 .user {
-  background: #174a56;
-  border-right: 2px solid #008cff;
-  text-align: right;
+  color: #fff;
+  background: #ffffff10;
+  border-left: 3px solid #888;
 }
-
-.controls {
+.controls, .actions {
   display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-input {
-  flex: 1;
-  min-width: 0;
-  background: #0c2030;
-  color: white;
-  border: 1px solid #23657b;
-  border-radius: 10px;
-  padding: 13px;
-  outline: none;
-}
-
-input:focus {
-  border-color: var(--cyan);
-  box-shadow: 0 0 10px #00cfff22;
-}
-
-button {
-  background: var(--cyan);
-  color: #00131c;
-  border: 0;
-  border-radius: 10px;
-  padding: 12px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-button:active { transform: scale(.97); }
-
-button:disabled {
-  opacity: .5;
-  cursor: wait;
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
-  margin-top: 10px;
+  gap: 9px;
+  width: 100%;
+  max-width: 700px;
+  margin: 12px auto;
 }
-
-.actions button {
-  flex: 1 1 92px;
-  background: #143747;
-  color: var(--text);
-  border: 1px solid #23657b;
-  min-height: 42px;
+input {
+  flex: 1 1 180px;
+  min-width: 0;
+  padding: 13px;
+  color: #eafaff;
+  background: #061522;
+  border: 1px solid #00d9ff88;
+  border-radius: 9px;
+  outline: none;
 }
-
+input:focus {
+  border-color: #00eaff;
+  box-shadow: 0 0 10px #00d9ff44;
+}
+button {
+  padding: 12px 15px;
+  color: #eafaff;
+  background: #062334;
+  border: 1px solid #00d9ff99;
+  border-radius: 9px;
+  cursor: pointer;
+}
+button:active {
+  transform: scale(.97);
+}
+button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
 .actions .ai-button {
-  background: #00cde8;
-  color: #00131c;
-  border-color: var(--cyan);
-  box-shadow: 0 0 10px #00cde855;
+  background: #064052;
 }
-
+#detectVoicesBtn {
+  display: block;
+  margin: 12px auto;
+}
+#voiceResults {
+  width: 100%;
+  max-width: 700px;
+  margin: 12px auto;
+  color: #bcefff;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+#voiceResults h3 {
+  color: #00d9ff;
+}
+.voice-item {
+  padding: 10px;
+  margin: 7px 0;
+  border: 1px solid #00d9ff44;
+  border-radius: 8px;
+  background: #001522;
+}
+.voice-item strong {
+  color: #fff;
+}
+.voice-id {
+  color: #8daebc;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
 @keyframes rotate {
   to { transform: rotate(360deg); }
 }
-
 @keyframes pulse {
-  0%, 100% { transform: scale(.92); opacity: .85; }
-  50% { transform: scale(1.08); opacity: 1; }
+  50% { opacity: .55; }
 }
-
 @keyframes blink {
-  0%, 100% { opacity: .25; }
-  50% { opacity: 1; }
+  50% { opacity: .25; }
 }
-
 @keyframes wave {
-  from { height: 4px; }
-  to { height: 29px; }
+  50% { transform: scaleY(1.8); }
 }
-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: .01ms !important;
@@ -392,431 +396,577 @@ button:disabled {
   }
 }
 </style>
-</head>
 
 <body>
-
 <header>
-  <h1>J.A.R.V.I.S</h1>
+  <div class="brand">STARK TECHNOLOGY</div>
+  <h1>J.A.R.V.I.S.</h1>
   <div class="subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
-  <div id="status">SISTEMA ONLINE • GEMMA LOCAL</div>
 </header>
 
 <section class="visual">
-  <div class="radar" aria-label="Radar holográfico animado">
-    <div class="radar-grid"></div>
+  <div class="radar" id="radar">
+    <div class="ring ring1"></div>
+    <div class="ring ring2"></div>
+    <div class="ring ring3"></div>
     <div class="sweep"></div>
-    <div class="ring"></div>
-    <div class="ring r2"></div>
-    <div class="ring r3"></div>
-    <div class="ring r4"></div>
     <div class="core"></div>
-    <div class="dot d1"></div>
-    <div class="dot d2"></div>
-    <div class="dot d3"></div>
-    <div class="dot d4"></div>
+    <div class="dot dot1"></div>
+    <div class="dot dot2"></div>
+    <div class="dot dot3"></div>
   </div>
-
-  <div class="orbit-label" id="visualState">SISTEMA EM ESPERA</div>
-
   <div class="state-row">
-    <span class="state" id="listenState">◉ OUVINDO</span>
-    <span class="state" id="thinkState">◎ PENSANDO</span>
-    <span class="state" id="speakState">◖ FALANDO</span>
+    <span class="dot-status" id="dot"></span>
+    <span id="status" role="status">SISTEMA PRONTO</span>
   </div>
 </section>
 
-<div class="wave" id="wave" aria-hidden="true"></div>
+<div class="wave" id="wave" aria-hidden="true">
+  <span></span><span></span><span></span><span></span><span></span>
+  <span></span><span></span><span></span><span></span><span></span>
+  <span></span>
+</div>
 
 <div id="chat" aria-live="polite">
   <div class="msg jarvis">
-    Olá! Sou o JARVIS. Estou pronto para ajudar. Escreve uma mensagem ou utiliza o microfone.
+    J.A.R.V.I.S.: Sistema iniciado. Como posso ajudar?
   </div>
 </div>
 
 <div class="controls">
-  <input id="msg" placeholder="Fala comigo..." autocomplete="off">
-  <button id="sendBtn" onclick="send()">Enviar</button>
+  <input id="userInput" type="text"
+    placeholder="Escreva um comando..."
+    aria-label="Escreva uma mensagem">
+  <button id="sendBtn" onclick="sendMessage()">Enviar</button>
 </div>
 
 <div class="actions">
-  <button onclick="startMic()">🎙️ Falar</button>
-  <button onclick="toggleVoice()" id="voiceBtn">🔊 Voz ligada</button>
-  <button onclick="sendCommand('ajuda')">❔ Ajuda</button>
-  <button onclick="clearChat()">🧹 Limpar</button>
-  <button class="ai-button" onclick="chooseJarvisModel()">🧠 Carregar IA</button>
-  </div>
-  <button onclick="AndroidVoice.listVoices()">
-  DETETAR VOZES
+  <button id="micBtn" onclick="toggleVoice()">🎙️ Falar</button>
+  <button id="stopBtn" onclick="stopSpeaking()">🔇 Parar voz</button>
+  <button id="clearBtn" onclick="clearChat()">🗑️ Limpar chat</button>
+</div>
+
+<button id="detectVoicesBtn" onclick="detectJarvisVoices()">
+  🔎 Detetar vozes disponíveis
 </button>
 
-<div id="voiceResults"></div>
+<div id="voiceResults" aria-live="polite"></div>
 
 <script>
-function onNativeVoicesListed(jsonText) {
-    const results = document.getElementById("voiceResults");
+function detectJarvisVoices() {
+  const output = document.getElementById("voiceResults");
 
-    try {
-        const voices = JSON.parse(jsonText);
+  if (!("speechSynthesis" in window)) {
+    output.textContent =
+      "Este navegador não disponibiliza síntese de voz.";
+    return;
+  }
 
-        results.innerHTML = "<h3>Vozes disponíveis</h3>";
+  output.textContent = "A procurar vozes disponíveis...";
 
-        voices.forEach(voice => {
-            const item = document.createElement("p");
-            item.textContent =
-                voice.name + " | " +
-                voice.locale + " | " +
-                (voice.network
-                    ? "Requer internet"
-                    : "Disponível offline");
+  function showVoices() {
+    const voices = window.speechSynthesis.getVoices();
 
-            results.appendChild(item);
-        });
-    } catch (error) {
-        results.textContent =
-            "Não foi possível apresentar a lista de vozes.";
+    if (!voices.length) {
+      output.textContent =
+        "Nenhuma voz encontrada ainda. Tenta novamente em alguns segundos.";
+      return;
     }
+
+    output.innerHTML = "<h3>Vozes disponíveis: " +
+      voices.length + "</h3>";
+
+    voices.forEach(function(voice, index) {
+      const item = document.createElement("div");
+      item.className = "voice-item";
+
+      const name = document.createElement("strong");
+      name.textContent = (index + 1) + ". " + voice.name;
+
+      const details = document.createElement("div");
+      details.textContent =
+        "Idioma: " + (voice.lang || "Não indicado") +
+        " | Padrão: " + (voice.default ? "Sim" : "Não");
+
+      const id = document.createElement("div");
+      id.className = "voice-id";
+      id.textContent = "Identificador: " + voice.voiceURI;
+
+      item.appendChild(name);
+      item.appendChild(details);
+      item.appendChild(id);
+      output.appendChild(item);
+    });
+  }
+
+  window.speechSynthesis.onvoiceschanged = showVoices;
+  showVoices();
+}
+
+function onNativeVoicesListed(jsonText) {
+  const output = document.getElementById("voiceResults");
+
+  try {
+    const voices = JSON.parse(jsonText);
+    output.innerHTML = "<h3>Vozes Android disponíveis: " +
+      voices.length + "</h3>";
+
+    voices.forEach(function(voice, index) {
+      const item = document.createElement("div");
+      item.className = "voice-item";
+
+      const name = document.createElement("strong");
+      name.textContent = (index + 1) + ". " +
+        (voice.name || "Voz sem nome");
+
+      const details = document.createElement("div");
+      details.textContent =
+        "Idioma: " + (voice.locale || "Não indicado");
+
+      item.appendChild(name);
+      item.appendChild(details);
+      output.appendChild(item);
+    });
+  } catch (error) {
+    output.textContent =
+      "Não foi possível interpretar a lista de vozes do Android.";
+  }
 }
 </script>
   
 <script>
+"use strict";
+
 let voiceOn = true;
+let listening = false;
+let recognition = null;
 let waitingForModel = false;
-let speakingTimer = null;
 
-function setStatus(text) {
-  document.getElementById("status").textContent = text;
-}
+const input = document.getElementById("userInput");
+const chat = document.getElementById("chat");
+const statusText = document.getElementById("status");
+const statusDot = document.getElementById("dot");
+const micBtn = document.getElementById("micBtn");
 
-function setVisualState(state) {
+function setStatus(message, state) {
+  statusText.textContent = message;
   document.body.classList.remove(
     "busy", "listening", "speaking"
   );
 
-  document.querySelectorAll(".state").forEach(el => {
-    el.classList.remove("active");
-  });
+  if (state) {
+    document.body.classList.add(state);
+  }
 
-  const label = document.getElementById("visualState");
-
-  if (state === "listening") {
-    document.body.classList.add("listening");
-    document.getElementById("listenState").classList.add("active");
-    label.textContent = "A OUVIR COMANDO...";
-  } else if (state === "busy") {
-    document.body.classList.add("busy");
-    document.getElementById("thinkState").classList.add("active");
-    label.textContent = "A PROCESSAR DADOS...";
-  } else if (state === "speaking") {
-    document.body.classList.add("speaking");
-    document.getElementById("speakState").classList.add("active");
-    label.textContent = "A TRANSMITIR RESPOSTA...";
-  } else {
-    label.textContent = "SISTEMA EM ESPERA";
+  if (statusDot) {
+    statusDot.style.background =
+      state === "listening" ? "#00ff99" :
+      state === "busy" ? "#ffcc00" :
+      state === "speaking" ? "#00d9ff" : "#7b8794";
   }
 }
 
-function createWave() {
-  const wave = document.getElementById("wave");
+function addMessage(message, sender) {
+  const item = document.createElement("div");
+  item.className = "msg " +
+    (sender === "user" ? "user" : "jarvis");
 
-  for (let i = 0; i < 49; i++) {
-    const bar = document.createElement("span");
-    bar.style.animationDelay = (-Math.random()).toFixed(2) + "s";
-    wave.appendChild(bar);
-  }
-}
+  item.textContent =
+    (sender === "user" ? "TU: " : "J.A.R.V.I.S.: ") +
+    message;
 
-createWave();
-
-function chooseJarvisModel() {
-  if (window.AndroidVoice &&
-      typeof window.AndroidVoice.chooseModel === "function") {
-    setStatus("Seleciona o ficheiro .litertlm.");
-    window.AndroidVoice.chooseModel();
-  } else {
-    setStatus("Esta função requer a aplicação Android.");
-  }
-}
-
-function addMessage(text, who) {
-  const el = document.createElement("div");
-  el.className = "msg " + who;
-  el.textContent = String(text);
-
-  const chat = document.getElementById("chat");
-  chat.appendChild(el);
+  chat.appendChild(item);
   chat.scrollTop = chat.scrollHeight;
 }
 
-function speak(text) {
-  if (!voiceOn) return;
+function speak(message) {
+  if (!voiceOn || !message) return;
 
-  if (window.AndroidVoice &&
-      typeof window.AndroidVoice.speak === "function") {
-    setVisualState("speaking");
-    window.AndroidVoice.speak(String(text));
+  try {
+    if (window.AndroidVoice &&
+        typeof AndroidVoice.speak === "function") {
+      AndroidVoice.speak(String(message));
+      setStatus("A FALAR", "speaking");
+      return;
+    }
 
-    clearTimeout(speakingTimer);
-    speakingTimer = setTimeout(() => {
-      if (!waitingForModel) setVisualState("idle");
-    }, Math.max(1800, String(text).length * 65));
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
 
-    return;
-  }
+      const utterance = new SpeechSynthesisUtterance(
+        String(message)
+      );
 
-  if ("speechSynthesis" in window) {
-    window.speechSynthesis.cancel();
+      utterance.lang = "pt-BR";
+      utterance.rate = 1;
+      utterance.pitch = 1;
 
-    const utterance = new SpeechSynthesisUtterance(String(text));
-    utterance.lang = "pt-BR";
-    utterance.rate = 1;
+      utterance.onstart = function() {
+        setStatus("A FALAR", "speaking");
+      };
 
-    utterance.onstart = () => setVisualState("speaking");
-    utterance.onend = () => setVisualState("idle");
-    utterance.onerror = () => setVisualState("idle");
+      utterance.onend = function() {
+        setStatus("SISTEMA PRONTO", "");
+      };
 
-    window.speechSynthesis.speak(utterance);
+      utterance.onerror = function() {
+        setStatus("SISTEMA PRONTO", "");
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+  } catch (error) {
+    setStatus("VOZ INDISPONÍVEL", "");
   }
 }
 
-function reply(text) {
-  addMessage(text, "jarvis");
-  speak(text);
+function stopSpeaking() {
+  try {
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    if (window.AndroidVoice &&
+        typeof AndroidVoice.stopSpeaking === "function") {
+      AndroidVoice.stopSpeaking();
+    }
+  } catch (error) {
+    // Mantém o sistema disponível mesmo se a voz falhar.
+  }
+
+  setStatus("SISTEMA PRONTO", "");
 }
 
-function answer(raw) {
-  const msg = raw.toLowerCase().trim();
+function clearChat() {
+  chat.replaceChildren();
 
-  if (!msg) return "Escreve alguma coisa para começarmos.";
+  addMessage(
+    "Histórico limpo. Estou pronto para receber comandos.",
+    "jarvis"
+  );
+}
 
-  if (msg.includes("bom dia") ||
-      msg.includes("boa noite") ||
-      msg.includes("boa tarde") ||
-      msg === "oi" || msg.startsWith("oi ") ||
-      msg.includes("olá") || msg.includes("ola")) {
-    return "Olá! Estou pronto para ajudar. Qual é o teu comando?";
+function reply(message) {
+  addMessage(message, "jarvis");
+  speak(message);
+}
+
+function openWebsite(url) {
+  try {
+    window.open(url, "_blank");
+  } catch (error) {
+    window.location.href = url;
+  }
+}
+
+function answer(rawText) {
+  const text = rawText.toLowerCase().trim();
+
+  if (
+    text.includes("que horas") ||
+    text.includes("hora atual")
+  ) {
+    return "A hora indicada pelo dispositivo é " +
+      new Date().toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit"
+      }) + ".";
   }
 
-  if (msg.includes("teu nome") || msg.includes("quem és")) {
-    return "Sou o JARVIS, o teu assistente pessoal com Gemma local.";
+  if (
+    text.includes("que dia") ||
+    text.includes("data de hoje") ||
+    text.includes("data atual")
+  ) {
+    return "Hoje é " +
+      new Date().toLocaleDateString("pt-BR") + ".";
   }
 
-  if (msg.includes("horas") || msg.includes("hora agora")) {
-    return "São " + new Date().toLocaleTimeString("pt-BR", {
-      hour: "2-digit", minute: "2-digit"
-    }) + ".";
+  if (
+    text.includes("quem és") ||
+    text.includes("quem e voce") ||
+    text.includes("quem é você") ||
+    text.includes("quem es tu")
+  ) {
+    return "Sou o J.A.R.V.I.S., o teu assistente digital.";
   }
 
-  if (msg.includes("data") || msg.includes("dia de hoje")) {
-    return "Hoje é " + new Date().toLocaleDateString("pt-BR") + ".";
+  if (
+    text.includes("olá") ||
+    text.includes("ola") ||
+    text.includes("bom dia") ||
+    text.includes("boa tarde") ||
+    text.includes("boa noite")
+  ) {
+    return "Olá! Sistema operacional. Em que posso ajudar?";
   }
 
-  if (msg.includes("piada")) {
-    return "Porque o computador foi ao médico? Porque tinha um vírus!";
+  if (
+    text.includes("youtube") &&
+    (
+      text.includes("abrir") ||
+      text.includes("ir para") ||
+      text.includes("acessar")
+    )
+  ) {
+    openWebsite("https://www.youtube.com/");
+    return "A abrir o YouTube.";
   }
 
-  if (msg.includes("motivação") || msg.includes("motivacional")) {
-    return "Continua a trabalhar no teu objetivo. Cada passo conta!";
+  if (
+    text.includes("google") &&
+    (
+      text.includes("abrir") ||
+      text.includes("pesquisar") ||
+      text.includes("ir para")
+    )
+  ) {
+    openWebsite("https://www.google.com/");
+    return "A abrir o Google.";
   }
 
-  if (msg.includes("ajuda") || msg.includes("comandos")) {
-    return "Posso conversar através do Gemma local, dizer a hora e a data, contar uma piada, dar motivação e abrir o Google, YouTube ou definições do Android.";
+  if (
+    text.includes("pesquisa") ||
+    text.includes("pesquisar") ||
+    text.includes("procura na internet")
+  ) {
+    openWebsite(
+      "https://www.google.com/search?q=" +
+      encodeURIComponent(rawText)
+    );
+    return "A preparar a pesquisa na internet.";
+  }
+
+  if (
+    text.includes("obrigado") ||
+    text.includes("obrigada")
+  ) {
+    return "Sempre às ordens. Como posso ajudar a seguir?";
+  }
+
+  if (
+    text.includes("desligar voz") ||
+    text.includes("silenciar")
+  ) {
+    voiceOn = false;
+    return "Voz desativada. Continuarei a responder por texto.";
+  }
+
+  if (
+    text.includes("ativar voz") ||
+    text.includes("ligar voz")
+  ) {
+    voiceOn = true;
+    return "Voz ativada.";
   }
 
   return null;
 }
 
-function send() {
-  if (waitingForModel) {
-    setStatus("Aguarda a resposta anterior.");
-    return;
-  }
+function sendMessage() {
+  if (waitingForModel) return;
 
-  const input = document.getElementById("msg");
-  const text = input.value.trim();
+  const message = input.value.trim();
+  if (!message) return;
 
-  if (!text) {
-    setStatus("Escreve uma mensagem primeiro.");
-    return;
-  }
-
-  addMessage(text, "user");
   input.value = "";
+  addMessage(message, "user");
 
-  const msg = text.toLowerCase();
+  const localAnswer = answer(message);
 
-  if (msg.includes("youtube") || msg.includes("you tube")) {
-    reply("A abrir o YouTube.");
-    if (window.AndroidVoice) {
-      window.AndroidVoice.openApp("youtube");
-    } else {
-      window.location.href = "https://m.youtube.com/";
-    }
+  if (localAnswer !== null) {
+    reply(localAnswer);
     return;
   }
 
-  if (msg.includes("google")) {
-    reply("A abrir o Google.");
-    if (window.AndroidVoice) {
-      window.AndroidVoice.openApp("google");
-    } else {
-      window.location.href = "https://www.google.com/";
-    }
-    return;
-  }
+  askModel(message);
+}
 
-  if (msg.includes("definições") ||
-      msg.includes("configurações") ||
-      msg.includes("configuracoes")) {
-    reply("A abrir as definições do Android.");
-    if (window.AndroidVoice) {
-      window.AndroidVoice.openApp("settings");
-    } else {
-      setStatus("Abre as definições no teu dispositivo.");
-    }
-    return;
-  }
+function askModel(message) {
+  setStatus("A PROCESSAR", "busy");
 
-  const local = answer(text);
-
-  if (local !== null) {
-    setVisualState("idle");
-    setStatus("Comando local executado.");
-    reply(local);
-    return;
-  }
-
-  if (window.AndroidVoice &&
-      typeof window.AndroidVoice.askModel === "function") {
+  if (
+    window.AndroidVoice &&
+    typeof AndroidVoice.askModel === "function"
+  ) {
     waitingForModel = true;
-    document.getElementById("sendBtn").disabled = true;
-
-    setVisualState("busy");
-    setStatus("Gemma local a processar...");
 
     try {
-      window.AndroidVoice.askModel(text);
+      AndroidVoice.askModel(message);
     } catch (error) {
-      finishModelResponse(
-        "Não consegui enviar a mensagem ao modelo local."
+      waitingForModel = false;
+      reply(
+        "Não consegui comunicar com o modelo Android. " +
+        "Verifica a integração na MainActivity.kt."
       );
+      setStatus("SISTEMA PRONTO", "");
     }
+
     return;
   }
 
-  setStatus("A ponte Android não está disponível.");
-  reply("A IA local requer a aplicação Android com o modelo integrado.");
-}
-
-function finishModelResponse(text) {
   waitingForModel = false;
-  document.getElementById("sendBtn").disabled = false;
 
-  const response = String(text || "").trim();
+  reply(
+    "Ainda não tenho um modelo de inteligência artificial " +
+    "ligado neste ambiente. Os comandos locais continuam " +
+    "disponíveis. Para responder a outras perguntas, " +
+    "preciso de um modelo ou serviço de IA integrado."
+  );
 
-  if (!response) {
-    setVisualState("idle");
-    setStatus("O Gemma não devolveu uma resposta.");
-    reply("Não recebi uma resposta. Tenta novamente.");
-    return;
+  setStatus("SISTEMA PRONTO", "");
+}
+
+function onNativeModelResponse(response) {
+  waitingForModel = false;
+
+  let message = String(response || "").trim();
+
+  if (!message) {
+    message = "Não recebi uma resposta do modelo.";
   }
 
-  setStatus("GEMMA LOCAL • RESPOSTA RECEBIDA");
-  setVisualState("idle");
-  reply(response);
+  reply(message);
+  setStatus("SISTEMA PRONTO", "");
 }
 
-function onNativeModelResponse(text) {
-  finishModelResponse(text);
-}
+function onNativeSpeechResult(result) {
+  const transcript = String(result || "").trim();
 
-function onNativeSpeechResult(text) {
-  setVisualState("idle");
-  setStatus("Comando de voz reconhecido.");
-  document.getElementById("msg").value = text;
-  send();
-}
+  listening = false;
 
-function onNativeSpeechError(message) {
-  setVisualState("idle");
-  setStatus(message);
-}
-
-function sendCommand(command) {
-  document.getElementById("msg").value = command;
-  send();
-}
-
-function toggleVoice() {
-  voiceOn = !voiceOn;
-
-  document.getElementById("voiceBtn").textContent =
-    voiceOn ? "🔊 Voz ligada" : "🔇 Voz desligada";
-
-  if (!voiceOn && "speechSynthesis" in window) {
-    window.speechSynthesis.cancel();
+  if (micBtn) {
+    micBtn.textContent = "🎙️ Falar";
   }
 
-  if (voiceOn) {
-    reply("Voz ativada.");
+  if (transcript) {
+    input.value = transcript;
+    sendMessage();
   } else {
-    setVisualState("idle");
-    addMessage("Voz desativada.", "jarvis");
+    setStatus("NÃO OUVI NADA", "");
   }
 }
 
-function clearChat() {
-  document.getElementById("chat").innerHTML = "";
-  addMessage("Conversa limpa. Estou pronto!", "jarvis");
-  setStatus("SISTEMA ONLINE");
-  setVisualState("idle");
+function onNativeSpeechError(error) {
+  listening = false;
+
+  if (micBtn) {
+    micBtn.textContent = "🎙️ Falar";
+  }
+
+  setStatus(
+    "ERRO NO MICROFONE: " + String(error || "desconhecido"),
+    ""
+  );
 }
 
 function startMic() {
-  setVisualState("listening");
-  setStatus("A tentar ativar o microfone...");
+  if (
+    window.AndroidVoice &&
+    typeof AndroidVoice.startListening === "function"
+  ) {
+    try {
+      listening = true;
+      micBtn.textContent = "⏹️ A ouvir...";
+      setStatus("A OUVIR", "listening");
+      AndroidVoice.startListening();
+    } catch (error) {
+      listening = false;
+      setStatus("FALHA NO MICROFONE", "");
+    }
 
-  if (window.AndroidVoice &&
-      typeof window.AndroidVoice.startListening === "function") {
-    window.AndroidVoice.startListening();
-  } else if ("webkitSpeechRecognition" in window ||
-             "SpeechRecognition" in window) {
-    const SpeechRecognition =
-      window.SpeechRecognition || window.webkitSpeechRecognition;
+    return;
+  }
 
-    const recognition = new SpeechRecognition();
+  const SpeechRecognition =
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    reply(
+      "O reconhecimento de voz não está disponível neste " +
+      "navegador. Experimenta utilizar o microfone do Android."
+    );
+    setStatus("SISTEMA PRONTO", "");
+    return;
+  }
+
+  if (!recognition) {
+    recognition = new SpeechRecognition();
     recognition.lang = "pt-BR";
+    recognition.continuous = false;
+    recognition.interimResults = false;
 
     recognition.onresult = function(event) {
-      document.getElementById("msg").value =
+      const transcript =
         event.results[0][0].transcript;
-      setVisualState("idle");
-      send();
+
+      onNativeSpeechResult(transcript);
     };
 
-    recognition.onerror = function() {
-      setVisualState("idle");
-      setStatus("Não foi possível reconhecer a voz.");
+    recognition.onerror = function(event) {
+      onNativeSpeechError(event.error);
     };
 
     recognition.onend = function() {
-      if (!waitingForModel) setVisualState("idle");
+      listening = false;
+      micBtn.textContent = "🎙️ Falar";
+      if (!waitingForModel) {
+        setStatus("SISTEMA PRONTO", "");
+      }
     };
+  }
 
+  try {
+    listening = true;
+    micBtn.textContent = "⏹️ A ouvir...";
+    setStatus("A OUVIR", "listening");
     recognition.start();
-  } else {
-    setVisualState("idle");
-    setStatus("Reconhecimento de voz indisponível.");
+  } catch (error) {
+    listening = false;
+    micBtn.textContent = "🎙️ Falar";
+    setStatus("NÃO FOI POSSÍVEL INICIAR O MICROFONE", "");
   }
 }
 
-document.getElementById("msg").addEventListener("keydown", function(event) {
-  if (event.key === "Enter") send();
-});
-</script>
+function toggleVoice() {
+  if (listening) {
+    try {
+      if (recognition) {
+        recognition.stop();
+      }
 
+      if (
+        window.AndroidVoice &&
+        typeof AndroidVoice.stopListening === "function"
+      ) {
+        AndroidVoice.stopListening();
+      }
+    } catch (error) {
+      // O reconhecimento pode já ter terminado.
+    }
+
+    listening = false;
+    micBtn.textContent = "🎙️ Falar";
+    setStatus("SISTEMA PRONTO", "");
+    return;
+  }
+
+  startMic();
+}
+
+input.addEventListener("keydown", function(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    sendMessage();
+  }
+});
+
+setStatus("SISTEMA PRONTO", "");
+</script>
 </body>
-  </html>
+</html>
+
   
 
 

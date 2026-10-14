@@ -445,8 +445,40 @@ button:disabled {
   <button onclick="sendCommand('ajuda')">❔ Ajuda</button>
   <button onclick="clearChat()">🧹 Limpar</button>
   <button class="ai-button" onclick="chooseJarvisModel()">🧠 Carregar IA</button>
-</div>
+  </div>
+  <button onclick="AndroidVoice.listVoices()">
+  DETETAR VOZES
+</button>
 
+<div id="voiceResults"></div>
+
+<script>
+function onNativeVoicesListed(jsonText) {
+    const results = document.getElementById("voiceResults");
+
+    try {
+        const voices = JSON.parse(jsonText);
+
+        results.innerHTML = "<h3>Vozes disponíveis</h3>";
+
+        voices.forEach(voice => {
+            const item = document.createElement("p");
+            item.textContent =
+                voice.name + " | " +
+                voice.locale + " | " +
+                (voice.network
+                    ? "Requer internet"
+                    : "Disponível offline");
+
+            results.appendChild(item);
+        });
+    } catch (error) {
+        results.textContent =
+            "Não foi possível apresentar a lista de vozes.";
+    }
+}
+</script>
+  
 <script>
 let voiceOn = true;
 let waitingForModel = false;

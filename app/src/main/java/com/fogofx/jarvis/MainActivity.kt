@@ -554,58 +554,73 @@ class MainActivity : Activity() {
             }
         }
     }
+ 
+ @Suppress("DEPRECATION")
+  override fun onActivityResult(
+    requestCode: Int,
+    resultCode: Int,
+    data: Intent?
+) {
+    super.onActivityResult(requestCode, resultCode, data)
 
-    @Suppress("DEPRECATION")
-    override fun onActivityResult(
-        requestCode: Int,
-        resultCode: Int,
-        data: Intent?
+    if (requestCode != MODEL_PICKER ||
+        resultCode != RESULT_OK
     ) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (
-            requestCode == MODEL_PICKER &&
-            resultCode == RESULT_OK
-        ) {
-            val uri = data?.data ?: return
-            modelUri = uri
-
-            showStatus("A copiar o modelo para o JARVIS…")
-
-            Thread {
-                try {
-                    val destination = File(
-                        filesDir,
-                        "model.litertlm"
-                    )
-
-                    contentResolver.openInputStream(uri).use { input ->
-                        requireNotNull(input) {
-                            "Não foi possível abrir o ficheiro."
-                        }
-
-                        FileOutputStream(destination).use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-
-                    modelFile = destination
-
-                    showStatus(
-                        "Modelo copiado! A iniciar o Gemma..."
-                    )
-
-                    initializeGemma()
-
-                } catch (e: Exception) {
-                    showStatus(
-                        "Erro ao copiar o modelo. " +
-                        "Verifica o ficheiro e o espaço disponível."
-                    )
-                }
-            }.start()
-        }
+        return
     }
+
+    val uri = data?.data ?: return
+    modelUri = uri
+
+    showStatus("A copiar o modelo para o JARVIS...")
+
+    Thread {
+        try {
+            val destination = File(
+                filesDir,
+                "model.litertlm"
+            )
+
+            val input = contentResolver.openInputStream(uri)
+                ?: throw java.io.IOException(
+                    "Não foi possível abrir o ficheiro selecionado."
+                )
+
+            input.use { source ->
+                FileOutputStream(destination).use { output ->
+                    source.copyTo(output)
+                }
+            }
+
+            if (!destination.exists() || destination.length() == 0L) {
+                throw java.io.IOException(
+                    "O ficheiro copiado está vazio."
+                )
+            }
+
+            modelFile = destination
+
+            runOnUiThread {
+                showStatus(
+                    "Modelo copiado! A iniciar o Gemma..."
+                )
+                initializeGemma()
+            }
+
+        } catch (e: Exception) {
+            android.util.Log.e(
+                "JARVIS_MODEL",
+                "Erro ao copiar model.litertlm",
+                e
+            )
+
+            showStatus(
+                "Erro ao copiar: " +
+                (e.message ?: e.javaClass.simpleName)
+            )
+        }
+    }.start()
+}
 
     override fun onRequestPermissionsResult(
         requestCode: Int,

@@ -503,25 +503,40 @@ footer {
 
 
   <button
-    id="aiToggleBtn"
-    type="button"
-    onclick="toggleAI()">
-    🧠 Ligar IA
+  id="loadAIFileBtn"
+  type="button"
+  onclick="chooseAIFile()">
+  📂 Carregar arquivo de IA
   </button>
 
-  <button
-    id="detectVoicesBtn"
-    type="button"
-    onclick="detectJarvisVoices()">
-    🔊 Testar e escolher vozes
-  </button>
-
-  <div id="voiceResults" aria-live="polite"></div>
-</main>
-
-<footer>STARK TECHNOLOGY · J.A.R.V.I.S. SYSTEM</footer>
+ <div id="aiFileStatus" role="status" aria-live="polite">
+  Seleciona o ficheiro do modelo para iniciar a IA.
+</div>
 
 <script>
+function chooseAIFile() {
+  const status = document.getElementById("aiFileStatus");
+
+  if (
+    window.AndroidVoice &&
+    typeof window.AndroidVoice.chooseModel === "function"
+  ) {
+    status.textContent = "A abrir os ficheiros do Android...";
+    window.AndroidVoice.chooseModel();
+  } else {
+    status.textContent =
+      "Seletor Android indisponível. Abre o JARVIS na aplicação Android.";
+  }
+}
+
+function onNativeStatus(message) {
+  const status = document.getElementById("aiFileStatus");
+  if (status) {
+    status.textContent = String(message || "");
+  }
+}
+</script>
+  
 "use strict";
 
 let voiceOn = true;

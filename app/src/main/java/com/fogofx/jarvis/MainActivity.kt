@@ -560,73 +560,107 @@ class MainActivity : Activity() {
 
     // Inicializa o modelo guardado no armazenamento privado da aplicação.
     private fun initializeGemma() {
-        val file = File(filesDir, "model.litertlm")
+    val file = File(filesDir, "model.litertlm")
 
-        if (!file.exists() || file.length() == 0L) {
-            showStatus(
-                "Seleciona o ficheiro do modelo .litertlm."
-            )
-            return
-        }
-
-        if (modelReady || modelLoading) return
-
-        modelLoading = true
-        showStatus("A iniciar o Gemma...")
-
-        try {
-            aiExecutor.execute {
-                var newEngine: Engine? = null
-
-                try {
-                    val config = EngineConfig(
-                        modelPath = file.absolutePath,
-                        backend = Backend.CPU()
-                    )
-
-                    newEngine = Engine(config)
-                    newEngine.initialize()
-
-                    val conversation = newEngine.createConversation()
-
-                    modelEngine = newEngine
-                    modelConversation = conversation
-                    modelFile = file
-                    modelReady = true
-
-                    showStatus("Gemma iniciado com sucesso!")
-
-                } catch (e: Exception) {
-                    try {
-                        newEngine?.close()
-                    } catch (_: Exception) {
-                    }
-
-                    modelEngine = null
-                    modelConversation = null
-                    modelReady = false
-
-                    android.util.Log.e(
-                        "JARVIS_MODEL",
-                        "Erro ao iniciar o Gemma",
-                        e
-                    )
-
-                    showStatus(
-                        "Erro ao iniciar o Gemma: " +
-                        (e.message ?: "erro desconhecido")
-                    )
-
-                } finally {
-                    modelLoading = false
-                }
-            }
-        } catch (e: Exception) {
-            modelLoading = false
-            showStatus("Não foi possível iniciar a tarefa de IA.")
-        }
+    if (!file.exists() || file.length() == 0L) {
+        showStatus("Modelo não encontrado ou ficheiro vazio. Seleciona o ficheiro .litertlm.")
+        return
     }
 
+    if (modelReady || modelLoading) {
+        showStatus(
+            if (modelReady) "O modelo de IA já está iniciado."
+            else "O modelo de IA está a carregar..."
+        )
+        return
+    }
+
+    modelLoading = true
+    showStatus("A iniciar o Gemma...")
+
+    try {
+        aiExecutor.execute {
+            var newEngine: Engine? = null
+
+            try {
+                android.util.Log.i(
+                    "JARVIS_MODEL",
+                    "Ficheiro: ${file.absolutePath}, tamanho: ${file.length()} bytes"
+                )
+
+                val config = EngineConfig(
+                    modelPath = file.absolutePath,
+                    backend = Backend.CPU()
+                )
+
+                val engine = Engine(config)
+                newEngine = engine
+
+                showStatus("A carregar o motor de IA...")
+                engine.initialize()
+
+                showStatus("A preparar a conversa...")
+                val conversation = engine.createConversation()
+
+                modelEngine = engine
+                modelConversation = conversation
+                modelFile = file
+                modelReady = true
+
+                android.util.Log.i(
+                    "JARVIS_MODEL",
+                    "Modelo iniciado com sucesso."
+                )
+
+                showStatus("Gemma iniciado com sucesso! Já podes conversar com a IA.")
+
+            } catch (e: Exception) {
+                android.util.Log.e(
+                    "JARVIS_MODEL",
+                    "Falha ao inicializar o modelo",
+                    e
+                )
+
+                try {
+                    newEngine?.close()
+                } catch (closeError: Exception) {
+                    android.util.Log.e(
+                        "JARVIS_MODEL",
+                        "Falha ao fechar o motor",
+                        closeError
+                    )
+                }
+
+                modelEngine = null
+                modelConversation = null
+                modelReady = false
+
+                val errorDetails =
+                    "${e.javaClass.simpleName}: " +
+                    (e.message ?: "Sem detalhes disponíveis")
+
+                showStatus("Erro ao iniciar o Gemma: $errorDetails")
+
+            } finally {
+                modelLoading = false
+            }
+        }
+    } catch (e: Exception) {
+        modelLoading = false
+
+        android.util.Log.e(
+            "JARVIS_MODEL",
+            "Não foi possível iniciar a tarefa de IA",
+            e
+        )
+
+        showStatus(
+            "Erro ao iniciar a tarefa de IA: " +
+            "${e.javaClass.simpleName}: " +
+            (e.message ?: "Sem detalhes disponíveis")
+        )
+    }
+    }
     @Suppress("DEPRECATION")
     override fun onActivityResult(
         requestCode: Int,

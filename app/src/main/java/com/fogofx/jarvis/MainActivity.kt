@@ -1,4 +1,3 @@
-
 package com.fogofx.jarvis
 
 import android.Manifest
@@ -49,6 +48,9 @@ class MainActivity : Activity() {
 
     @Volatile
     private var ttsReady = false
+
+    // Preferir reconhecimento local quando disponível.
+    private val preferOfflineSpeech = true
 
     private var modelUri: Uri? = null
     private var modelFile: File? = null
@@ -548,7 +550,7 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // RECONHECIMENTO DE VOZ
+    // RECONHECIMENTO DE VOZ OFFLINE
     // =========================================================
 
     private fun checkMicrophonePermission() {
@@ -578,9 +580,29 @@ class MainActivity : Activity() {
         }
 
         try {
+            recognizer?.cancel()
             recognizer?.destroy()
+            recognizer = null
 
-            recognizer = SpeechRecognizer.createSpeechRecognizer(this)
+            val localAvailable =
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                SpeechRecognizer.isOnDeviceRecognitionAvailable(this)
+
+            recognizer = if (
+                preferOfflineSpeech && localAvailable
+            ) {
+                showStatus(
+                    "A preparar reconhecimento de voz local..."
+                )
+
+                SpeechRecognizer.createOnDeviceSpeechRecognizer(this)
+            } else {
+                showStatus(
+                    "Reconhecimento local indisponível; a usar o serviço normal."
+                )
+
+                SpeechRecognizer.createSpeechRecognizer(this)
+            }
 
             recognizer?.setRecognitionListener(
                 object : RecognitionListener {
@@ -643,18 +665,64 @@ class MainActivity : Activity() {
 
                         val spokenText = matches?.firstOrNull().orEmpty()
 
-                        if (spokenText.isNotBlank()) {
-                            runOnUiThread {
-                                webView.evaluateJavascript(
-                                    "if (window.onNativeSpeechResult) " +
-                                        "window.onNativeSpeechResult(" +
-                                        "${JSONObject.quote(spokenText)});",
-                                    null
-                                )
-                            }
-                        } else {
+                        if (spokenText.isBlank()) {
                             notifySpeechError(
                                 "Não consegui reconhecer a frase."
+                            )
+                            return
+                        }
+
+                        val normalized = spokenText
+                            .lowercase(Locale.ROOT)
+                            .replace(
+                                Regex("[^\\p{L}\\p{N}\\s]"),
+                                " "
+                            )
+                            .trim()
+                            .replace(Regex("\\s+"), " ")
+
+                        // A palavra de ativação é verificada
+                        // apenas depois de o reconhecimento terminar.
+                        if (
+                            normalized == "jarvis" ||
+                            normalized == "jarvis por favor"
+                        ) {
+                            speak("Sim, estou aqui.")
+                            showStatus(
+                                "Palavra JARVIS reconhecida."
+                            )
+                            return
+                        }
+
+                        // Também aceita comandos precedidos por JARVIS.
+                        val commandText = if (
+                            normalized.startsWith("jarvis ")
+                        ) {
+                            spokenText.replace(
+                                Regex(
+                                    "^\\s*jarvis\\b\\s*[,.:;!?-]*\\s*",
+                                    RegexOption.IGNORE_CASE
+                                ),
+                                ""
+                            ).trim()
+                        } else {
+                            spokenText
+                        }
+
+                        if (commandText.isBlank()) {
+                            speak("Sim, estou aqui.")
+                            showStatus(
+                                "Palavra JARVIS reconhecida."
+                            )
+                            return
+                        }
+
+                        runOnUiThread {
+                            webView.evaluateJavascript(
+                                "if (window.onNativeSpeechResult) " +
+                                    "window.onNativeSpeechResult(" +
+                                    "${JSONObject.quote(commandText)});",
+                                null
                             )
                         }
                     }
@@ -679,18 +747,27 @@ class MainActivity : Activity() {
                     RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                     RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
                 )
+
                 putExtra(
                     RecognizerIntent.EXTRA_LANGUAGE,
                     "pt-BR"
                 )
+
                 putExtra(
                     RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
                     "pt-BR"
                 )
+
+                putExtra(
+                    RecognizerIntent.EXTRA_PREFER_OFFLINE,
+                    true
+                )
+
                 putExtra(
                     RecognizerIntent.EXTRA_PARTIAL_RESULTS,
                     true
                 )
+
                 putExtra(
                     RecognizerIntent.EXTRA_MAX_RESULTS,
                     3

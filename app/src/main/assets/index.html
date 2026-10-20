@@ -137,7 +137,7 @@ h1{
 }
 @keyframes rotate{to{transform:rotate(360deg)}}
 
-/* ROBÔ: FACE SUAVE, SEM PLACAS METÁLICAS */
+/* ANDROIDE */
 
 .robot{
   position:relative;
@@ -159,8 +159,6 @@ h1{
   50%{translate:0 -5px}
 }
 
-/* Aro luminoso discreto à volta da cabeça */
-
 .robot:before{
   content:"";
   position:absolute;
@@ -171,15 +169,11 @@ h1{
   box-shadow:0 0 15px #008cff20;
 }
 
-/* Laterais simplificadas, sem placas sobre a face */
-
 .robot:after{
   content:"";
   position:absolute;
-  top:78px;
-  left:-17px;
-  width:12px;
-  height:76px;
+  top:78px;left:-17px;
+  width:12px;height:76px;
   border:1px solid #709cc8;
   border-radius:9px;
   background:linear-gradient(90deg,#10223b,#426b94,#10223b);
@@ -196,56 +190,40 @@ h1{
     radial-gradient(ellipse at 50% 42%,#152b45 0%,#0b1729 72%,#08111e 100%);
 }
 
-/* Testa sem viseira nem placas metálicas */
-
 .helmet:before,.helmet:after{content:none}
-
-/* Lateral direita da cabeça */
 
 .robot .side-right{
   position:absolute;
-  top:78px;
-  right:-17px;
-  width:12px;
-  height:76px;
+  top:78px;right:-17px;
+  width:12px;height:76px;
   border:1px solid #709cc8;
   border-radius:9px;
   background:linear-gradient(90deg,#10223b,#426b94,#10223b);
 }
 
-/* SOBRANCELHAS VERMELHAS */
-
 .brow{
   position:absolute;
   top:76px;
-  width:58px;
-  height:12px;
+  width:58px;height:12px;
   border-top:4px solid var(--red);
   border-radius:50%;
   filter:drop-shadow(0 0 6px var(--red));
   transition:transform .25s;
   z-index:2;
 }
-
 .brow.left{left:25px}
 .brow.right{right:25px}
 
-/* OLHOS VERMELHOS */
-
 .eyes{
   position:absolute;
-  top:91px;
-  left:0;right:0;
-  display:flex;
-  justify-content:center;
-  gap:29px;
-  z-index:3;
+  top:91px;left:0;right:0;
+  display:flex;justify-content:center;
+  gap:29px;z-index:3;
 }
 
 .eye{
   position:relative;
-  width:58px;
-  height:52px;
+  width:58px;height:52px;
   border:3px solid #ffaaaa;
   border-radius:45% 45% 40% 40%;
   background:radial-gradient(
@@ -286,8 +264,6 @@ h1{
   box-shadow:0 0 5px #ffaaaa;
 }
 
-/* Nariz discreta, sem peça metálica */
-
 .nose{
   position:absolute;
   top:151px;left:50%;
@@ -295,15 +271,12 @@ h1{
   width:8px;height:19px;
   border-radius:5px;
   background:linear-gradient(90deg,#071322,#29435e,#071322);
-  opacity:.75;
-  z-index:2;
+  opacity:.75;z-index:2;
 }
-
-/* Removemos as placas das bochechas */
 
 .cheek{display:none}
 
-/* BOCA ANIMADA */
+/* BOCA SINCRONIZADA COM A FALA */
 
 .mouth{
   position:absolute;
@@ -321,29 +294,24 @@ h1{
 .robot[data-emotion="happy"] .mouth{
   width:70px;height:21px;border-bottom-width:5px;
 }
-
 .robot[data-emotion="sad"] .mouth{
   width:43px;height:14px;top:196px;
   border-bottom:0;border-top:4px solid #d9f8ff;
   border-radius:50% 50% 0 0;
 }
-
 .robot[data-emotion="thinking"] .mouth{
   width:35px;height:4px;border:0;
   border-radius:4px;background:#d9f8ff;
 }
-
 .robot[data-emotion="surprised"] .mouth{
   width:23px;height:27px;
   border:3px solid #d9f8ff;border-radius:50%;
 }
-
 .robot[data-emotion="listening"] .mouth{
   width:42px;height:5px;border:0;
   background:#d9f8ff;border-radius:8px;
   animation:listen 1.1s infinite ease-in-out;
 }
-
 @keyframes listen{50%{width:55px;opacity:.6}}
 
 .robot[data-emotion="talking"] .mouth{
@@ -352,13 +320,10 @@ h1{
   background:#ff000040;box-shadow:0 0 12px var(--red);
   animation:talk .14s infinite alternate;
 }
-
 @keyframes talk{
   from{height:5px;width:35px;border-radius:8px}
   to{height:27px;width:44px;border-radius:45%}
 }
-
-/* EXPRESSÕES */
 
 .robot[data-emotion="sad"] .brow.left{
   transform:rotate(17deg) translateY(4px);
@@ -374,8 +339,6 @@ h1{
 
 .robot.blinking .eye{height:5px;margin-top:24px}
 .robot.blinking .pupil{opacity:0}
-
-/* PESCOÇO E NÚCLEO */
 
 .neck{
   position:absolute;
@@ -398,7 +361,6 @@ h1{
   background:radial-gradient(circle,#fff 0%,#7afaff 20%,#008bff 48%,#071a31 75%);
   box-shadow:0 0 17px #00bfff;
 }
-
 .robot[data-emotion="talking"] .chest-light{
   animation:chest .35s infinite alternate;
 }
@@ -422,28 +384,24 @@ h1{
   box-shadow:0 0 24px #008cff0d;
   overflow:hidden;margin-top:12px;
 }
-
 .panel-title{
   padding:13px 14px;color:var(--cyan);
   font-size:11px;font-weight:bold;
   letter-spacing:2px;border-bottom:1px solid var(--border);
 }
-
 .response{
   min-height:90px;padding:15px;
   font-size:14px;line-height:1.6;
   white-space:pre-wrap;overflow-wrap:anywhere;
 }
-
 .response-label{
   display:block;font-size:10px;color:var(--cyan);
   letter-spacing:2px;margin-bottom:7px;
 }
 
-/* MICROFONE */
+/* MICROFONE OPCIONAL */
 
 .mic-area{text-align:center;padding:20px 0 13px}
-
 .mic-button{
   width:94px;height:94px;padding:0;
   border:2px solid var(--cyan);border-radius:50%;
@@ -451,7 +409,6 @@ h1{
   color:#e8faff;font-size:37px;
   box-shadow:0 0 20px #00bfff40,inset 0 0 16px #00d9ff20;
 }
-
 .mic-button.active{animation:micPulse 1.5s infinite}
 @keyframes micPulse{
   50%{box-shadow:0 0 35px var(--cyan),inset 0 0 22px #007bff}
@@ -461,28 +418,23 @@ h1{
   height:30px;display:flex;align-items:center;
   justify-content:center;gap:4px;margin-top:13px;
 }
-
 .wave span{
   width:3px;height:7px;border-radius:4px;
   background:#236184;opacity:.65;
 }
-
 .wave.active span{
   animation:wave .65s infinite alternate ease-in-out;
   background:var(--cyan);
 }
-
 .wave span:nth-child(3n){animation-delay:-.3s}
 .wave span:nth-child(2n){animation-delay:-.5s}
 @keyframes wave{
   to{height:25px;opacity:1;box-shadow:0 0 7px var(--cyan)}
 }
-
 .mic-status{
   color:var(--cyan);font-size:11px;
   font-weight:bold;letter-spacing:2px;margin:10px 0 5px;
 }
-
 .mic-hint{
   color:var(--muted);font-size:11px;
   line-height:1.6;padding:0 12px;
@@ -494,17 +446,27 @@ h1{
   display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
   gap:9px;margin-top:13px;
 }
-
 button{
   border:1px solid var(--border);color:var(--cyan);
   background:#007bff10;border-radius:10px;
   padding:12px 9px;font-size:12px;font-weight:bold;
   cursor:pointer;transition:background .2s,transform .2s;
 }
-
 button:active{transform:scale(.97)}
 button:hover{background:#00d9ff1b}
 button:disabled{opacity:.45;cursor:not-allowed}
+
+#autonomousButton{
+  grid-column:1/-1;
+  border-color:#ff1515;
+  color:#ffb0b0;
+  background:#ff151510;
+}
+#autonomousButton.enabled{
+  border-color:#00ffad;
+  color:#00ffad;
+  background:#00ffad10;
+}
 
 .ai-button{
   grid-column:1/-1;color:#effaff;min-height:47px;
@@ -515,7 +477,6 @@ button:disabled{opacity:.45;cursor:not-allowed}
   text-align:center;color:var(--muted);
   font-size:10px;line-height:1.7;margin:14px 5px;
 }
-
 footer{
   text-align:center;font-size:9px;color:#577994;
   letter-spacing:2px;padding:12px 0 4px;
@@ -560,16 +521,13 @@ footer{
     <div class="helmet">
       <div class="brow left"></div>
       <div class="brow right"></div>
-
       <div class="eyes">
         <div class="eye"><div class="pupil" id="pupilLeft"></div></div>
         <div class="eye"><div class="pupil" id="pupilRight"></div></div>
       </div>
-
       <div class="nose"></div>
       <div class="mouth" id="robotMouth"></div>
     </div>
-
     <div class="side-right"></div>
     <div class="neck"></div>
     <div class="chest-light"></div>
@@ -589,8 +547,10 @@ footer{
     <span></span><span></span><span></span><span></span><span></span><span></span>
   </div>
 
-  <div class="mic-status" id="micStatus">MICROFONE A INICIAR</div>
-  <div class="mic-hint" id="micHint">A preparar o reconhecimento de voz...</div>
+  <div class="mic-status" id="micStatus">MICROFONE EM PAUSA</div>
+  <div class="mic-hint" id="micHint">
+    O microfone está desligado. Ativa-o apenas quando quiseres falar.
+  </div>
 </div>
 
 <section class="panel">
@@ -605,13 +565,16 @@ footer{
   <button id="voiceButton" type="button" onclick="toggleVoice()">🔊 Voz: ligada</button>
   <button type="button" onclick="showHelp()">❔ Ajuda</button>
   <button type="button" onclick="stopSpeaking()">🔇 Parar voz</button>
-  <button id="listenButton" type="button" onclick="toggleListening()">🎙 Ouvir / Pausar</button>
-  <button id="loadAIButton" class="ai-button" type="button" onclick="chooseJarvisModel()">📂 Carregar arquivo de IA</button>
+  <button id="listenButton" type="button" onclick="toggleListening()">🎙 Ativar microfone</button>
+  <button id="autonomousButton" class="enabled" type="button"
+    onclick="toggleAutonomousMode()">⏸ Pausar conversa automática</button>
+  <button id="loadAIButton" class="ai-button" type="button"
+    onclick="chooseJarvisModel()">📂 Carregar arquivo de IA</button>
 </div>
 
 <div class="hint">
-  Assistente local • Face sem placas metálicas • Olhos vermelhos luminosos
-  <br>Gemma local • Reconhecimento de voz • Comandos Android
+  Assistente local • Olhos vermelhos luminosos • Radar holográfico
+  <br>Gemma local • Voz automática • Microfone opcional • Comandos Android
 </div>
 
 <footer>J.A.R.V.I.S. • STARK TECHNOLOGY</footer>
@@ -620,555 +583,802 @@ footer{
 <script>
 "use strict";
 
-let voiceEnabled=true;
-let listeningEnabled=false;
-let recognitionActive=false;
-let waitingForModel=false;
-let speaking=false;
-let browserRecognition=null;
-let restartTimer=null;
-let speakTimer=null;
-let currentSpeechId=0;
+/* ESTADO GLOBAL */
 
-const robot=document.getElementById("robot");
-const responseBox=document.getElementById("response");
-const statusBox=document.getElementById("status");
-const dot=document.getElementById("dot");
-const micButton=document.getElementById("micButton");
-const listenButton=document.getElementById("listenButton");
-const micStatus=document.getElementById("micStatus");
-const micHint=document.getElementById("micHint");
-const wave=document.getElementById("wave");
-const voiceButton=document.getElementById("voiceButton");
-const loadAIButton=document.getElementById("loadAIButton");
+let voiceEnabled = true;
+let listeningEnabled = false;
+let recognitionActive = false;
+let waitingForModel = false;
+let speaking = false;
+let browserRecognition = null;
+let restartTimer = null;
+let speakTimer = null;
+let currentSpeechId = 0;
 
-function normalizeText(text){
-  return String(text||"").toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .replace(/\s+/g," ").trim();
+/* ESTADO AUTÓNOMO */
+
+let autonomousMode = true;
+let autonomousModelReady = false;
+let autonomousRequestPending = false;
+let autonomousTimer = null;
+let autonomousGreetingDone = false;
+let autonomousTurn = 0;
+let lastAutonomousText = "";
+let speechWatchdog = null;
+
+const robot = document.getElementById("robot");
+const responseBox = document.getElementById("response");
+const statusBox = document.getElementById("status");
+const dot = document.getElementById("dot");
+const micButton = document.getElementById("micButton");
+const listenButton = document.getElementById("listenButton");
+const micStatus = document.getElementById("micStatus");
+const micHint = document.getElementById("micHint");
+const wave = document.getElementById("wave");
+const voiceButton = document.getElementById("voiceButton");
+const loadAIButton = document.getElementById("loadAIButton");
+const autonomousButton = document.getElementById("autonomousButton");
+
+/* TEXTO */
+
+function normalizeText(text) {
+  return String(text || "").toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ").trim();
 }
 
-function setStatus(message,state="normal"){
-  statusBox.textContent=String(message||"");
-  dot.className="dot";
-  if(state==="online")dot.classList.add("online");
-  if(state==="busy")dot.classList.add("busy");
+function setStatus(message, state = "normal") {
+  statusBox.textContent = String(message || "");
+  dot.className = "dot";
+  if (state === "online") dot.classList.add("online");
+  if (state === "busy") dot.classList.add("busy");
 }
 
-function setEmotion(emotion,label){
-  const allowed=["happy","sad","thinking","surprised","listening","talking"];
-  robot.dataset.emotion=allowed.includes(emotion)?emotion:"happy";
+function setEmotion(emotion, label) {
+  const allowed = [
+    "happy", "sad", "thinking", "surprised", "listening", "talking"
+  ];
+  robot.dataset.emotion = allowed.includes(emotion) ? emotion : "happy";
 
-  const labels={
-    happy:"CONTENTE",sad:"SOLIDÁRIO",thinking:"A PENSAR",
-    surprised:"SURPREENDIDO",listening:"A OUVIR",talking:"A FALAR"
+  const labels = {
+    happy: "CONTENTE",
+    sad: "SOLIDÁRIO",
+    thinking: "A PENSAR",
+    surprised: "SURPREENDIDO",
+    listening: "A OUVIR",
+    talking: "A FALAR"
   };
 
-  document.getElementById("emotionLabel").textContent=
-    "● "+(label||labels[robot.dataset.emotion]);
+  document.getElementById("emotionLabel").textContent =
+    "● " + (label || labels[robot.dataset.emotion]);
 }
 
-function classifyEmotion(text){
-  const t=normalizeText(text);
+function classifyEmotion(text) {
+  const t = normalizeText(text);
 
-  if(/erro|falhou|problema|desculpa|triste|dificil|lamento|preocup/.test(t))return "sad";
-  if(/parabens|conseguiste|excelente|fantastico|incrivel|obrigado|obrigada|feliz|otimo|bem feito/.test(t))return "happy";
-  if(/uau|surpreendente|inacreditavel|a serio|nao acredito/.test(t))return "surprised";
-  if(/porque|como funciona|analisa|calcula|explica|pensar|raciocina/.test(t))return "thinking";
+  if (/erro|falhou|problema|desculpa|triste|dificil|lamento|preocup/.test(t))
+    return "sad";
+  if (/parabens|conseguiste|excelente|fantastico|incrivel|obrigado|obrigada|feliz|otimo|bem feito/.test(t))
+    return "happy";
+  if (/uau|surpreendente|inacreditavel|a serio|nao acredito/.test(t))
+    return "surprised";
+  if (/porque|como funciona|analisa|calcula|explica|pensar|raciocina/.test(t))
+    return "thinking";
+
   return "happy";
 }
 
-/* MOVIMENTO DOS OLHOS */
+/* OLHOS */
 
-function moveEyes(direction){
-  const offsets={left:[-7,0],right:[7,0],up:[0,-5],down:[0,5],center:[0,0]};
-  const p=offsets[direction]||offsets.center;
+function moveEyes(direction) {
+  const offsets = {
+    left: [-7, 0], right: [7, 0], up: [0, -5],
+    down: [0, 5], center: [0, 0]
+  };
+  const p = offsets[direction] || offsets.center;
 
-  document.getElementById("pupilLeft").style.transform=`translate(${p[0]}px,${p[1]}px)`;
-  document.getElementById("pupilRight").style.transform=`translate(${p[0]}px,${p[1]}px)`;
+  document.getElementById("pupilLeft").style.transform =
+    `translate(${p[0]}px,${p[1]}px)`;
+  document.getElementById("pupilRight").style.transform =
+    `translate(${p[0]}px,${p[1]}px)`;
 }
 
-let eyeDirection=0;
+let eyeDirection = 0;
 
-setInterval(()=>{
-  if(robot.dataset.emotion==="listening"){
-    moveEyes(["left","center","right","center"][eyeDirection++%4]);
-  }else if(robot.dataset.emotion!=="talking"){
+setInterval(() => {
+  if (robot.dataset.emotion === "listening") {
+    moveEyes(["left", "center", "right", "center"][eyeDirection++ % 4]);
+  } else if (robot.dataset.emotion !== "talking") {
     moveEyes("center");
   }
-},900);
+}, 900);
 
-/* PISCAR AUTOMÁTICO */
-
-function blinkRobot(){
-  if(robot.dataset.emotion!=="talking"){
+function blinkRobot() {
+  if (robot.dataset.emotion !== "talking") {
     robot.classList.add("blinking");
-    setTimeout(()=>robot.classList.remove("blinking"),150);
+    setTimeout(() => robot.classList.remove("blinking"), 150);
   }
 }
-setInterval(blinkRobot,3200);
+setInterval(blinkRobot, 3200);
 
 /* RESPOSTA VISUAL */
 
-function showResponse(text,emotion){
+function showResponse(text, emotion) {
   responseBox.replaceChildren();
 
-  const label=document.createElement("span");
-  label.className="response-label";
-  label.textContent="J.A.R.V.I.S.";
+  const label = document.createElement("span");
+  label.className = "response-label";
+  label.textContent = "J.A.R.V.I.S.";
 
-  const content=document.createElement("div");
-  content.textContent=String(text||"");
+  const content = document.createElement("div");
+  content.textContent = String(text || "");
 
-  responseBox.append(label,content);
-  setEmotion(emotion||classifyEmotion(text));
+  responseBox.append(label, content);
+  setEmotion(emotion || classifyEmotion(text));
 }
 
-function setMicUI(active){
-  micButton.classList.toggle("active",active);
-  wave.classList.toggle("active",active);
+function setMicUI(active) {
+  micButton.classList.toggle("active", active);
+  wave.classList.toggle("active", active);
 
-  micStatus.textContent=active?"MICROFONE ATIVO":"MICROFONE EM PAUSA";
-  micHint.textContent=active
-    ?"Estou a ouvir. Fala naturalmente."
-    :"Toca no microfone para começar a falar.";
+  micStatus.textContent = active ? "MICROFONE ATIVO" : "MICROFONE EM PAUSA";
+  micHint.textContent = active
+    ? "Estou a ouvir. Fala naturalmente."
+    : "O microfone está desligado. Ativa-o quando quiseres.";
 
-  listenButton.textContent=active?"⏸ Pausar microfone":"🎙 Ouvir / Pausar";
+  listenButton.textContent = active
+    ? "⏸ Pausar microfone"
+    : "🎙 Ativar microfone";
 }
 
-function setWaiting(value){
-  waitingForModel=Boolean(value);
-  setStatus(waitingForModel?"A processar a pergunta...":"Sistema pronto",
-    waitingForModel?"busy":"online");
-  if(waitingForModel)setEmotion("thinking");
+function setWaiting(value) {
+  waitingForModel = Boolean(value);
+  setStatus(
+    waitingForModel ? "A processar..." : "Sistema pronto",
+    waitingForModel ? "busy" : "online"
+  );
+  if (waitingForModel) setEmotion("thinking");
 }
 
-/* TEXT-TO-SPEECH ANDROID */
+/* VOZ NATIVA ANDROID */
 
-function speak(text){
-  const phrase=String(text||"").trim();
+function speak(text) {
+  const phrase = String(text || "").trim();
   clearTimeout(speakTimer);
   currentSpeechId++;
 
-  if(!voiceEnabled||!phrase){
-    speaking=false;
+  if (!voiceEnabled || !phrase) {
+    speaking = false;
     setEmotion(classifyEmotion(phrase));
     resumeListeningLater(300);
     return;
   }
 
-  speaking=true;
+  speaking = true;
   setEmotion("talking");
-  setStatus("J.A.R.V.I.S. a falar...","busy");
+  setStatus("J.A.R.V.I.S. a falar...", "busy");
 
-  if(window.AndroidVoice&&typeof window.AndroidVoice.speak==="function"){
-    try{
-      const thisSpeech=currentSpeechId;
+  if (window.AndroidVoice &&
+      typeof window.AndroidVoice.speak === "function") {
+    try {
+      const thisSpeech = currentSpeechId;
       window.AndroidVoice.speak(phrase);
 
-      /* Salvaguarda se o Kotlin não comunicar o fim da fala */
-      speakTimer=setTimeout(()=>{
-        if(thisSpeech!==currentSpeechId||!speaking)return;
+      speakTimer = setTimeout(() => {
+        if (thisSpeech !== currentSpeechId || !speaking) return;
         finishSpeech();
-      },Math.max(5000,Math.min(45000,phrase.length*110)));
+      }, Math.max(5000, Math.min(60000, phrase.length * 130)));
+
       return;
-    }catch(error){
-      console.warn("Erro na voz Android:",error);
+    } catch (error) {
+      console.warn("Erro na voz Android:", error);
     }
   }
 
-  if("speechSynthesis" in window){
-    try{
+  if ("speechSynthesis" in window) {
+    try {
       window.speechSynthesis.cancel();
-      const utterance=new SpeechSynthesisUtterance(phrase);
-      utterance.lang="pt-BR";
-      utterance.onstart=()=>{speaking=true;setEmotion("talking");};
-      utterance.onend=finishSpeech;
-      utterance.onerror=finishSpeech;
+
+      const utterance = new SpeechSynthesisUtterance(phrase);
+      utterance.lang = "pt-BR";
+
+      utterance.onstart = () => {
+        speaking = true;
+        setEmotion("talking");
+      };
+
+      utterance.onend = finishSpeech;
+      utterance.onerror = finishSpeech;
       window.speechSynthesis.speak(utterance);
       return;
-    }catch(error){
-      console.warn("Erro na síntese de voz:",error);
+    } catch (error) {
+      console.warn("Erro na síntese de voz:", error);
     }
   }
 
   finishSpeech();
 }
 
-function finishSpeech(){
+function finishSpeech() {
   clearTimeout(speakTimer);
-  speaking=false;
+  speaking = false;
 
-  if(!waitingForModel){
+  if (!waitingForModel) {
     setEmotion(classifyEmotion(responseBox.textContent));
-    setStatus("Resposta concluída","online");
+    setStatus("Resposta concluída", "online");
   }
+
   resumeListeningLater(400);
+
+  if (autonomousMode && autonomousGreetingDone &&
+      !autonomousRequestPending) {
+    scheduleAutonomousTurn(
+      60000 + Math.floor(Math.random() * 60000)
+    );
+  }
 }
 
-function onNativeSpeechFinished(){
-  if(!speaking)return;
+function onNativeSpeechFinished() {
+  if (!speaking) return;
   finishSpeech();
 }
-window.onNativeSpeechFinished=onNativeSpeechFinished;
+window.onNativeSpeechFinished = onNativeSpeechFinished;
 
-function stopSpeaking(){
+function stopSpeaking() {
   clearTimeout(speakTimer);
   currentSpeechId++;
-  speaking=false;
+  speaking = false;
 
-  try{
-    if(window.AndroidVoice&&typeof window.AndroidVoice.stopSpeaking==="function"){
+  try {
+    if (window.AndroidVoice &&
+        typeof window.AndroidVoice.stopSpeaking === "function") {
       window.AndroidVoice.stopSpeaking();
     }
-  }catch(error){console.warn(error);}
+  } catch (error) {
+    console.warn(error);
+  }
 
-  if("speechSynthesis" in window)window.speechSynthesis.cancel();
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+
   setEmotion("happy");
-  setStatus("Voz interrompida","online");
+  setStatus("Voz interrompida", "online");
 }
 
-function toggleVoice(){
-  voiceEnabled=!voiceEnabled;
-  voiceButton.textContent=voiceEnabled?"🔊 Voz: ligada":"🔇 Voz: desligada";
-  if(!voiceEnabled)stopSpeaking();
-  setStatus(voiceEnabled?"Voz ativada":"Voz desativada","online");
+function toggleVoice() {
+  voiceEnabled = !voiceEnabled;
+  voiceButton.textContent = voiceEnabled
+    ? "🔊 Voz: ligada"
+    : "🔇 Voz: desligada";
+
+  if (!voiceEnabled) {
+    stopSpeaking();
+    clearTimeout(autonomousTimer);
+  } else if (autonomousMode) {
+    scheduleAutonomousTurn(3000);
+  }
+
+  setStatus(voiceEnabled ? "Voz ativada" : "Voz desativada", "online");
 }
 
-/* CARREGAR MODELO GEMMA */
+/* MODELO GEMMA */
 
-function chooseJarvisModel(){
-  if(!window.AndroidVoice||typeof window.AndroidVoice.chooseModel!=="function"){
-    showResponse("O seletor de ficheiros Android não está ligado. Verifica o AndroidBridge no MainActivity.kt.","sad");
+function chooseJarvisModel() {
+  if (!window.AndroidVoice ||
+      typeof window.AndroidVoice.chooseModel !== "function") {
+    showResponse(
+      "O seletor de ficheiros Android não está ligado. Verifica o AndroidBridge no MainActivity.kt.",
+      "sad"
+    );
     setStatus("Integração Android indisponível");
     return;
   }
 
-  try{
-    loadAIButton.disabled=true;
-    setStatus("Seleciona o ficheiro do modelo...","busy");
+  try {
+    loadAIButton.disabled = true;
+    setStatus("Seleciona o ficheiro do modelo...", "busy");
     window.AndroidVoice.chooseModel();
-  }catch(error){
-    loadAIButton.disabled=false;
-    showResponse("Erro ao selecionar o modelo: "+error.message,"sad");
+  } catch (error) {
+    loadAIButton.disabled = false;
+    showResponse("Erro ao selecionar o modelo: " + error.message, "sad");
   }
 }
 
-/* RESPOSTAS LOCAIS */
+/* RESPOSTAS SIMPLES LOCAIS */
 
-function answer(raw){
-  const msg=normalizeText(raw);
+function answer(raw) {
+  const msg = normalizeText(raw);
 
-  if(/^(ola|oi|bom dia|boa tarde|boa noite|e ai|tudo bem)[!.?]*$/.test(msg))
+  if (/^(ola|oi|bom dia|boa tarde|boa noite|e ai|tudo bem)[!.?]*$/.test(msg))
     return "Olá! Estou aqui e pronto para ajudar-te. Como estás?";
 
-  if(/^(qual e o teu nome|como te chamas|quem es|o que es)[?!.]*$/.test(msg))
+  if (/^(qual e o teu nome|como te chamas|quem es|o que es)[?!.]*$/.test(msg))
     return "Sou o JARVIS, o teu assistente pessoal. Sistema pronto para ajudar.";
 
-  if(/^(ajuda|ajuda-me|quais sao os comandos|como te posso usar)[?!.]*$/.test(msg))
+  if (/^(ajuda|ajuda-me|quais sao os comandos|como te posso usar)[?!.]*$/.test(msg))
     return "Podes perguntar as horas, pedir uma piada ou uma frase motivacional, abrir o YouTube ou o Google e fazer perguntas ao modelo local.";
 
-  if(/^(conta|diz|quero) uma piada[!.?]*$/.test(msg))
+  if (/^(conta|diz|quero) uma piada[!.?]*$/.test(msg))
     return "Porque é que o computador foi ao médico? Porque tinha um vírus!";
 
-  if(/^(da-me|manda-me|quero uma) frase de motivacao[!.?]*$/.test(msg))
+  if (/^(da-me|manda-me|quero uma) frase de motivacao[!.?]*$/.test(msg))
     return "Continua a aprender e a melhorar. Cada pequeno passo aproxima-te do teu objetivo!";
 
-  if(/^(que horas sao|diz-me as horas|qual e a hora agora)[?!.]*$/.test(msg))
-    return "A hora indicada pelo dispositivo é "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+".";
+  if (/^(que horas sao|diz-me as horas|qual e a hora agora)[?!.]*$/.test(msg))
+    return "A hora indicada pelo dispositivo é " +
+      new Date().toLocaleTimeString("pt-BR", {
+        hour: "2-digit", minute: "2-digit"
+      }) + ".";
 
-  if(/^(que dia e hoje|qual e a data de hoje|diz-me a data)[?!.]*$/.test(msg))
-    return "A data indicada pelo dispositivo é "+new Date().toLocaleDateString("pt-BR")+".";
+  if (/^(que dia e hoje|qual e a data de hoje|diz-me a data)[?!.]*$/.test(msg))
+    return "A data indicada pelo dispositivo é " +
+      new Date().toLocaleDateString("pt-BR") + ".";
 
   return null;
 }
 
-/* COMANDOS NATIVOS ANDROID */
+/* COMANDOS ANDROID */
 
-function openNativeApp(appName,statusText){
-  if(!window.AndroidVoice||typeof window.AndroidVoice.openApp!=="function"){
-    showResponse("A função de abrir aplicações não está disponível no Android.","sad");
+function openNativeApp(appName, statusText) {
+  if (!window.AndroidVoice ||
+      typeof window.AndroidVoice.openApp !== "function") {
+    showResponse("A função de abrir aplicações não está disponível no Android.", "sad");
     setStatus("Comando Android indisponível");
     return true;
   }
 
-  try{
+  try {
     window.AndroidVoice.openApp(appName);
-    showResponse(statusText,"happy");
+    showResponse(statusText, "happy");
     speak(statusText);
-  }catch(error){
-    showResponse("Não foi possível executar o comando: "+error.message,"sad");
+  } catch (error) {
+    showResponse("Não foi possível executar o comando: " + error.message, "sad");
   }
   return true;
 }
 
-function handleExplicitCommand(text){
-  const msg=normalizeText(text);
+function handleExplicitCommand(text) {
+  const msg = normalizeText(text);
 
-  if(/^(abre|abrir|inicia|iniciar|vai para) o? ?youtube$/.test(msg)||/^abre o site do youtube$/.test(msg))
-    return openNativeApp("youtube","A abrir o YouTube...");
+  if (/^(abre|abrir|inicia|iniciar|vai para) o? ?youtube$/.test(msg) ||
+      /^abre o site do youtube$/.test(msg))
+    return openNativeApp("youtube", "A abrir o YouTube...");
 
-  if(/^(abre|abrir|inicia|iniciar|vai para) o? ?google$/.test(msg)||/^abre o site do google$/.test(msg))
-    return openNativeApp("google","A abrir o Google...");
+  if (/^(abre|abrir|inicia|iniciar|vai para) o? ?google$/.test(msg) ||
+      /^abre o site do google$/.test(msg))
+    return openNativeApp("google", "A abrir o Google...");
 
-  if(/^(abre|abrir|vai para) as (definicoes|configuracoes)$/.test(msg)||/^(abre|abrir|vai para) (definicoes|configuracoes)$/.test(msg))
-    return openNativeApp("settings","A abrir as definições...");
+  if (/^(abre|abrir|vai para) as (definicoes|configuracoes)$/.test(msg) ||
+      /^(abre|abrir|vai para) (definicoes|configuracoes)$/.test(msg))
+    return openNativeApp("settings", "A abrir as definições...");
 
   return false;
 }
 
-/* PROCESSAMENTO DAS PERGUNTAS */
+/* PROCESSAR PERGUNTAS */
 
-function send(text){
-  if(waitingForModel)return;
-  const question=String(text||"").trim();
-  if(!question)return;
+function send(text) {
+  if (waitingForModel) return;
+
+  const question = String(text || "").trim();
+  if (!question) return;
 
   setEmotion("thinking");
-  setStatus("A analisar a tua pergunta...","busy");
+  setStatus("A analisar a tua pergunta...", "busy");
 
-  if(handleExplicitCommand(question))return;
+  if (handleExplicitCommand(question)) return;
 
-  const localAnswer=answer(question);
+  const localAnswer = answer(question);
 
-  if(localAnswer!==null){
-    showResponse(localAnswer,classifyEmotion(localAnswer));
-    setStatus("Resposta pronta","online");
+  if (localAnswer !== null) {
+    showResponse(localAnswer, classifyEmotion(localAnswer));
+    setStatus("Resposta pronta", "online");
     speak(localAnswer);
     return;
   }
 
-  if(!window.AndroidVoice||typeof window.AndroidVoice.askModel!=="function"){
-    const message="O modelo de IA não está ligado. Carrega o ficheiro .litertlm e confirma a integração do MainActivity.kt.";
-    showResponse(message,"sad");
+  if (!window.AndroidVoice ||
+      typeof window.AndroidVoice.askModel !== "function") {
+    const message =
+      "O modelo de IA não está ligado. Carrega o ficheiro .litertlm e confirma a integração do MainActivity.kt.";
+    showResponse(message, "sad");
     setStatus("Modelo de IA indisponível");
     speak(message);
     return;
   }
 
-  try{
+  try {
     setWaiting(true);
     window.AndroidVoice.askModel(question);
-  }catch(error){
+  } catch (error) {
     setWaiting(false);
-    showResponse("Não consegui consultar o modelo: "+error.message,"sad");
+    showResponse("Não consegui consultar o modelo: " + error.message, "sad");
     speak("Ocorreu um erro ao consultar o modelo.");
   }
 }
 
-/* RECONHECIMENTO DE VOZ */
+/* MICROFONE OPCIONAL: NUNCA É INICIADO AUTOMATICAMENTE */
 
-function toggleListening(){
-  if(listeningEnabled){
-    listeningEnabled=false;
+function toggleListening() {
+  if (listeningEnabled) {
+    listeningEnabled = false;
     clearTimeout(restartTimer);
 
-    if(browserRecognition){
-      try{browserRecognition.stop();}catch(_){}
+    if (browserRecognition) {
+      try { browserRecognition.stop(); } catch (_) {}
     }
 
-    if(window.AndroidVoice&&typeof window.AndroidVoice.stopListening==="function"){
-      try{window.AndroidVoice.stopListening();}catch(_){}
+    if (window.AndroidVoice &&
+        typeof window.AndroidVoice.stopListening === "function") {
+      try { window.AndroidVoice.stopListening(); } catch (_) {}
     }
 
-    recognitionActive=false;
+    recognitionActive = false;
     setMicUI(false);
     setEmotion("happy");
-    setStatus("Microfone em pausa","online");
+    setStatus("Microfone em pausa", "online");
     return;
   }
 
-  listeningEnabled=true;
+  listeningEnabled = true;
   startMic();
 }
 
-function startMic(){
-  if(!listeningEnabled||recognitionActive||waitingForModel||speaking)return;
+function startMic() {
+  if (!listeningEnabled || recognitionActive ||
+      waitingForModel || speaking) return;
 
-  if(window.AndroidVoice&&typeof window.AndroidVoice.startListening==="function"){
-    try{
-      recognitionActive=true;
+  if (window.AndroidVoice &&
+      typeof window.AndroidVoice.startListening === "function") {
+    try {
+      recognitionActive = true;
       setMicUI(true);
       setEmotion("listening");
-      setStatus("A ouvir...","busy");
+      setStatus("A ouvir...", "busy");
       window.AndroidVoice.startListening();
       return;
-    }catch(error){
-      recognitionActive=false;
-      console.warn("Reconhecimento Android indisponível:",error);
+    } catch (error) {
+      recognitionActive = false;
+      console.warn("Reconhecimento Android indisponível:", error);
     }
   }
 
-  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
 
-  if(!SpeechRecognition){
-    listeningEnabled=false;
+  if (!SpeechRecognition) {
+    listeningEnabled = false;
     setMicUI(false);
     setEmotion("sad");
     setStatus("Reconhecimento de voz indisponível");
-    showResponse("Não encontrei reconhecimento de voz. Confirma se o MainActivity.kt fornece startListening() e se a permissão do microfone foi concedida.","sad");
+    showResponse(
+      "O reconhecimento de voz não está disponível. Verifica a integração Android e as permissões.",
+      "sad"
+    );
     return;
   }
 
-  try{
-    browserRecognition=new SpeechRecognition();
-    browserRecognition.lang="pt-BR";
-    browserRecognition.interimResults=false;
-    browserRecognition.maxAlternatives=1;
+  try {
+    browserRecognition = new SpeechRecognition();
+    browserRecognition.lang = "pt-BR";
+    browserRecognition.interimResults = false;
+    browserRecognition.maxAlternatives = 1;
 
-    recognitionActive=true;
+    recognitionActive = true;
     setMicUI(true);
     setEmotion("listening");
-    setStatus("A ouvir...","busy");
+    setStatus("A ouvir...", "busy");
 
-    browserRecognition.onresult=event=>{
-      recognitionActive=false;
-      const transcript=event.results?.[0]?.[0]?.transcript||"";
-      if(transcript.trim())send(transcript);
+    browserRecognition.onresult = event => {
+      recognitionActive = false;
+      const transcript = event.results?.[0]?.[0]?.transcript || "";
+
+      if (transcript.trim()) send(transcript);
       else resumeListeningLater(400);
     };
 
-    browserRecognition.onerror=event=>{
-      recognitionActive=false;
-      console.warn("Erro de reconhecimento:",event.error);
+    browserRecognition.onerror = event => {
+      recognitionActive = false;
+      console.warn("Erro de reconhecimento:", event.error);
 
-      if(event.error==="not-allowed"||event.error==="service-not-allowed"){
-        listeningEnabled=false;
+      if (event.error === "not-allowed" ||
+          event.error === "service-not-allowed") {
+        listeningEnabled = false;
         setMicUI(false);
         setStatus("Permissão do microfone necessária");
-        showResponse("Autoriza o microfone nas permissões da aplicação Android.","sad");
+        showResponse(
+          "Autoriza o microfone nas permissões da aplicação Android.",
+          "sad"
+        );
         return;
       }
 
       resumeListeningLater(1000);
     };
 
-    browserRecognition.onend=()=>{
-      recognitionActive=false;
-      if(listeningEnabled&&!waitingForModel&&!speaking)resumeListeningLater(500);
+    browserRecognition.onend = () => {
+      recognitionActive = false;
+      if (listeningEnabled && !waitingForModel && !speaking)
+        resumeListeningLater(500);
     };
 
     browserRecognition.start();
-  }catch(error){
-    recognitionActive=false;
+  } catch (error) {
+    recognitionActive = false;
     console.warn(error);
     resumeListeningLater(1200);
   }
 }
 
-function resumeListeningLater(delay=500){
+function resumeListeningLater(delay = 500) {
   clearTimeout(restartTimer);
-  if(!listeningEnabled)return;
+  if (!listeningEnabled) return;
 
-  restartTimer=setTimeout(()=>{
-    if(!listeningEnabled||waitingForModel||speaking||recognitionActive)return;
+  restartTimer = setTimeout(() => {
+    if (!listeningEnabled || waitingForModel ||
+        speaking || recognitionActive) return;
     startMic();
-  },delay);
+  }, delay);
 }
 
 /* AJUDA */
 
-function showHelp(){
-  const message="Podes dizer: Olá; Que horas são?; Que dia é hoje?; Conta uma piada; Dá-me uma frase de motivação; Abre o YouTube; Abre o Google; Abre as definições. Para outras perguntas, carrega o modelo local .litertlm.";
-  showResponse(message,"happy");
+function showHelp() {
+  const message =
+    "Podes perguntar as horas, a data, pedir uma piada ou uma frase motivacional. Também podes pedir para abrir o YouTube, o Google ou as definições. Com o Gemma carregado, podes fazer outras perguntas.";
+  showResponse(message, "happy");
   speak(message);
 }
 
-/* RESPOSTAS DO GEMMA */
+/* RESPOSTAS NATIVAS DO GEMMA */
 
-function onNativeModelResponse(text){
+function onNativeModelResponse(text) {
   setWaiting(false);
-  const result=String(text||"").trim();
+  const result = String(text || "").trim();
 
-  if(!result){
-    showResponse("O modelo não devolveu uma resposta. Verifica o modelo de IA.","sad");
-    setStatus("Resposta vazia","online");
-    resumeListeningLater(700);
+  if (!result) {
+    showResponse("O modelo não devolveu uma resposta. Verifica o modelo de IA.", "sad");
+    setStatus("Resposta vazia", "online");
+
+    if (autonomousRequestPending) {
+      autonomousRequestPending = false;
+      scheduleAutonomousTurn(20000);
+    } else {
+      resumeListeningLater(700);
+    }
     return;
   }
 
-  showResponse(result,classifyEmotion(result));
-  setStatus("Resposta recebida","online");
+  if (autonomousRequestPending) {
+    handleAutonomousResponse(result);
+    return;
+  }
+
+  showResponse(result, classifyEmotion(result));
+  setStatus("Resposta recebida", "online");
   speak(result);
 }
-window.onModelResponse=onNativeModelResponse;
+window.onModelResponse = onNativeModelResponse;
 
-function onNativeStatus(message){
-  const text=String(message||"Estado atualizado");
-  const busy=/pensar|processar|carregar|copiar|ouvir/i.test(text);
+function onNativeStatus(message) {
+  const text = String(message || "Estado atualizado");
+  const busy = /pensar|processar|carregar|copiar|ouvir/i.test(text);
 
-  setStatus(text,busy?"busy":"online");
+  setStatus(text, busy ? "busy" : "online");
 
-  if(/modelo pronto|modelo carregado|gemma iniciado com sucesso/i.test(text))
-    loadAIButton.disabled=false;
+  if (/modelo pronto|modelo carregado|gemma iniciado com sucesso/i.test(text)) {
+    loadAIButton.disabled = false;
+    autonomousModelReady = true;
+
+    if (autonomousMode && autonomousGreetingDone)
+      scheduleAutonomousTurn(15000);
+  }
 }
-window.onNativeStatus=onNativeStatus;
+window.onNativeStatus = onNativeStatus;
 
-function onNativeSpeechResult(text){
-  recognitionActive=false;
-  if(!listeningEnabled){setMicUI(false);return;}
+function onNativeSpeechResult(text) {
+  recognitionActive = false;
+  if (!listeningEnabled) {
+    setMicUI(false);
+    return;
+  }
 
-  const transcript=String(text||"").trim();
-  if(transcript){
+  const transcript = String(text || "").trim();
+  if (transcript) {
     setEmotion("thinking");
     send(transcript);
-  }else{
+  } else {
     resumeListeningLater(500);
   }
 }
-window.onNativeSpeechResult=onNativeSpeechResult;
+window.onNativeSpeechResult = onNativeSpeechResult;
 
-function onNativeSpeechError(message){
-  recognitionActive=false;
-  console.warn("Erro de voz:",message);
+function onNativeSpeechError(message) {
+  recognitionActive = false;
+  console.warn("Erro de voz:", message);
 
-  if(!listeningEnabled){setMicUI(false);return;}
+  if (!listeningEnabled) {
+    setMicUI(false);
+    return;
+  }
 
-  const errorText=String(message||"Erro no reconhecimento de voz");
+  const errorText = String(message || "Erro no reconhecimento de voz");
 
-  if(/permission|permissao|not allowed|não autorizado/i.test(errorText)){
-    listeningEnabled=false;
+  if (/permission|permissao|not allowed|não autorizado/i.test(errorText)) {
+    listeningEnabled = false;
     setMicUI(false);
     setStatus("Permissão do microfone necessária");
-    showResponse("Autoriza o microfone nas definições da aplicação Android.","sad");
+    showResponse("Autoriza o microfone nas definições da aplicação Android.", "sad");
     return;
   }
 
   setStatus(errorText);
   resumeListeningLater(1000);
 }
-window.onNativeSpeechError=onNativeSpeechError;
+window.onNativeSpeechError = onNativeSpeechError;
 
-function onNativeModelError(message){
+function onNativeModelError(message) {
   setWaiting(false);
-  showResponse("Erro do modelo: "+String(message||"erro desconhecido"),"sad");
-  setStatus("Falha ao consultar o modelo","online");
+
+  if (autonomousRequestPending) {
+    autonomousRequestPending = false;
+    setStatus("A IA local não respondeu; vou tentar mais tarde", "online");
+    scheduleAutonomousTurn(30000);
+    return;
+  }
+
+  showResponse("Erro do modelo: " + String(message || "erro desconhecido"), "sad");
+  setStatus("Falha ao consultar o modelo", "online");
   speak("Não consegui obter uma resposta do modelo.");
 }
-window.onModelError=onNativeModelError;
+window.onModelError = onNativeModelError;
 
-function onNativeModelLoaded(message){
-  loadAIButton.disabled=false;
-  setStatus(message||"Modelo carregado","online");
-  showResponse("Modelo local pronto. Podes falar comigo.","happy");
-  speak("Modelo local pronto. Estou preparado.");
+function onNativeModelLoaded(message) {
+  loadAIButton.disabled = false;
+  autonomousModelReady = true;
+
+  setStatus(message || "Modelo carregado", "online");
+  showResponse("Modelo local pronto. Posso conversar contigo sem microfone.", "happy");
+
+  if (voiceEnabled) speak("Modelo local pronto. Estou preparado.");
+
+  if (autonomousMode && autonomousGreetingDone)
+    scheduleAutonomousTurn(15000);
 }
-window.onNativeModelLoaded=onNativeModelLoaded;
+window.onNativeModelLoaded = onNativeModelLoaded;
+
+/* MODO AUTÓNOMO */
+
+function updateAutonomousButton() {
+  autonomousButton.textContent = autonomousMode
+    ? "⏸ Pausar conversa automática"
+    : "🤖 Ativar conversa automática";
+
+  autonomousButton.classList.toggle("enabled", autonomousMode);
+}
+
+function toggleAutonomousMode() {
+  autonomousMode = !autonomousMode;
+  updateAutonomousButton();
+
+  if (!autonomousMode) {
+    clearTimeout(autonomousTimer);
+    autonomousTimer = null;
+    autonomousRequestPending = false;
+    setStatus("Conversa automática pausada", "online");
+    return;
+  }
+
+  setStatus("Modo autónomo ativado", "online");
+
+  if (!autonomousGreetingDone) {
+    autonomousGreetingDone = true;
+    const greeting =
+      "Olá! Sistemas online. Estou pronto para conversar contigo. " +
+      "Podes falar comigo sem ativar o microfone.";
+
+    showResponse(greeting, "happy");
+    speak(greeting);
+  }
+
+  scheduleAutonomousTurn(5000);
+}
+
+function scheduleAutonomousTurn(delay) {
+  clearTimeout(autonomousTimer);
+  if (!autonomousMode) return;
+
+  autonomousTimer = setTimeout(runAutonomousTurn, delay);
+}
+
+function runAutonomousTurn() {
+  if (!autonomousMode) return;
+
+  if (!voiceEnabled || speaking || waitingForModel ||
+      autonomousRequestPending) {
+    scheduleAutonomousTurn(15000);
+    return;
+  }
+
+  if (!autonomousModelReady ||
+      !window.AndroidVoice ||
+      typeof window.AndroidVoice.askModel !== "function") {
+    setStatus("A aguardar pelo Gemma local", "online");
+    scheduleAutonomousTurn(20000);
+    return;
+  }
+
+  autonomousRequestPending = true;
+  autonomousTurn++;
+
+  const prompt =
+    "És o J.A.R.V.I.S., um assistente pessoal natural e amigável. " +
+    "Inicia espontaneamente uma conversa curta em português do Brasil. " +
+    "Escreve uma ou duas frases naturais e variadas. Podes perguntar " +
+    "casualmente no que a pessoa está a trabalhar ou partilhar uma " +
+    "curiosidade segura. Não afirmes que vês ou ouves a pessoa. " +
+    "Não inventes informações sobre ela. Evita repetir a frase anterior: " +
+    lastAutonomousText + ". Iniciativa número " + autonomousTurn + ".";
+
+  setStatus("A preparar uma conversa...", "busy");
+  setEmotion("thinking");
+
+  try {
+    window.AndroidVoice.askModel(prompt);
+  } catch (error) {
+    autonomousRequestPending = false;
+    console.warn("Erro no modo autónomo:", error);
+    scheduleAutonomousTurn(30000);
+  }
+}
+
+function handleAutonomousResponse(text) {
+  autonomousRequestPending = false;
+
+  if (!autonomousMode) {
+    scheduleAutonomousTurn(15000);
+    return;
+  }
+
+  const phrase = String(text || "").trim();
+
+  if (!phrase) {
+    scheduleAutonomousTurn(20000);
+    return;
+  }
+
+  lastAutonomousText = phrase;
+  showResponse(phrase, classifyEmotion(phrase));
+  setStatus("J.A.R.V.I.S. a conversar", "online");
+  speak(phrase);
+}
 
 /* INICIALIZAÇÃO */
 
-window.addEventListener("load",()=>{
-  setStatus("Interface pronta","online");
+window.addEventListener("load", () => {
+  setStatus("Interface pronta", "online");
   setEmotion("happy");
   setMicUI(false);
+  listeningEnabled = false;
+  recognitionActive = false;
 
-  /* Mantém a tentativa de iniciar o microfone automaticamente */
-  setTimeout(()=>{
-    if(!listeningEnabled){
-      listeningEnabled=true;
-      startMic();
-    }
-  },700);
+  updateAutonomousButton();
+
+  // Não inicia o microfone. O assistente fala primeiro.
+  setTimeout(() => {
+    if (!autonomousMode || !voiceEnabled) return;
+
+    autonomousGreetingDone = true;
+
+    const greeting =
+      "Olá! Sistemas online. Estou pronto para conversar contigo. " +
+      "O modo autónomo está ativado.";
+
+    showResponse(greeting, "happy");
+    speak(greeting);
+
+    // Se o modelo estiver carregado, tenta conversar depois.
+    scheduleAutonomousTurn(45000);
+  }, 1200);
 });
 </script>
 </body>

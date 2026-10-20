@@ -1,3 +1,4 @@
+
 package com.fogofx.jarvis
 
 import android.Manifest
@@ -18,6 +19,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
 import android.util.Log
 import android.webkit.JavascriptInterface
@@ -38,6 +40,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MainActivity : Activity() {
 
@@ -49,7 +52,6 @@ class MainActivity : Activity() {
     @Volatile
     private var ttsReady = false
 
-    // Preferir reconhecimento local quando disponível.
     private val preferOfflineSpeech = true
 
     private var modelUri: Uri? = null
@@ -67,9 +69,13 @@ class MainActivity : Activity() {
     @Volatile
     private var modelLoading = false
 
+    @Volatile
+    private var pageReady = false
+
     private var pendingFlashlightState: Boolean? = null
 
     private val aiExecutor = Executors.newSingleThreadExecutor()
+    private val modelRequestRunning = AtomicBoolean(false)
 
     companion object {
         private const val TAG = "JARVIS"
@@ -89,6 +95,7 @@ class MainActivity : Activity() {
             Seja objetivo, mas explique os passos quando necessário.
             Não afirme que executou ações que não executou.
             Quando não souber uma resposta, seja transparente.
+            Em conversas espontâneas, use frases naturais e breves.
         """
     }
 
@@ -112,6 +119,17 @@ class MainActivity : Activity() {
                 url: String?
             ) {
                 super.onPageFinished(view, url)
+
+                pageReady = true
+
+                showStatus(
+                    if (modelReady) {
+                        "JARVIS pronto. Modelo local carregado."
+                    } else {
+                        "Interface pronta. A verificar o modelo local..."
+                    }
+                )
+
                 initializeGemma()
             }
         }
@@ -131,13 +149,80 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // VOZ DO JARVIS
+    // COMUNICAÇÃO SEGURA COM O HTML
+    // =========================================================
+
+    private fun callJavascript(script: String) {
+        if (!::webView.isInitialized || isFinishing) return
+
+        runOnUiThread {
+            if (!isFinishing) {
+                webView.evaluateJavascript(script, null)
+            }
+        }
+    }
+
+    private fun notifyJavascript(functionName: String, value: String) {
+        val safeValue = JSONObject.quote(value)
+
+        callJavascript(
+            "if (typeof window.$functionName === 'function') " +
+                "window.$functionName($safeValue);"
+        )
+    }
+
+    private fun notifyJavascriptEvent(functionName: String) {
+        callJavascript(
+            "if (typeof window.$functionName === 'function') " +
+                "window.$functionName();"
+        )
+    }
+
+    // =========================================================
+    // VOZ DO JARVIS / TEXT TO SPEECH
     // =========================================================
 
     private fun initializeTts() {
         tts = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 configureJarvisVoice()
+
+                tts.setOnUtteranceProgressListener(
+                    object : UtteranceProgressListener() {
+
+                        override fun onStart(utteranceId: String?) {
+                            notifyJavascriptEvent(
+                                "onNativeSpeechStarted"
+                            )
+                        }
+
+                        override fun onDone(utteranceId: String?) {
+                            notifyJavascriptEvent(
+                                "onNativeSpeechFinished"
+                            )
+                        }
+
+                        override fun onError(utteranceId: String?) {
+                            notifyJavascriptEvent(
+                                "onNativeSpeechFinished"
+                            )
+                        }
+
+                        override fun onError(
+                            utteranceId: String?,
+                            errorCode: Int
+                        ) {
+                            Log.w(
+                                TAG,
+                                "Erro TTS: $errorCode"
+                            )
+
+                            notifyJavascriptEvent(
+                                "onNativeSpeechFinished"
+                            )
+                        }
+                    }
+                )
             } else {
                 ttsReady = false
                 showStatus("Não foi possível iniciar a voz.")
@@ -209,21 +294,33 @@ class MainActivity : Activity() {
     }
 
     private fun speak(text: String) {
+        val cleanText = text.trim()
+
+        if (cleanText.isBlank()) return
+
         if (!ttsReady) {
             showStatus("A voz ainda não está pronta.")
             return
         }
 
-        val cleanText = text.trim()
-        if (cleanText.isBlank()) return
-
         runOnUiThread {
-            tts.speak(
-                cleanText,
-                TextToSpeech.QUEUE_FLUSH,
-                null,
-                "JARVIS_UTTERANCE"
-            )
+            if (ttsReady) {
+                val result = tts.speak(
+                    cleanText,
+                    TextToSpeech.QUEUE_FLUSH,
+                    null,
+                    "JARVIS_UTTERANCE"
+                )
+
+                if (result == TextToSpeech.ERROR) {
+                    showStatus(
+                        "Não foi possível reproduzir a fala."
+                    )
+                    notifyJavascriptEvent(
+                        "onNativeSpeechFinished"
+                    )
+                }
+            }
         }
     }
 
@@ -231,6 +328,10 @@ class MainActivity : Activity() {
         if (::tts.isInitialized) {
             runOnUiThread {
                 tts.stop()
+
+                notifyJavascriptEvent(
+                    "onNativeSpeechFinished"
+                )
             }
         }
     }
@@ -243,13 +344,18 @@ class MainActivity : Activity() {
 
         for (voice in voices) {
             val item = JSONObject()
+
             item.put("name", voice.name)
-            item.put(
-                "language",
-                voice.locale.toLanguageTag()
-            )
+            item.put("locale", voice.locale.toLanguageTag())
+            item.put("language", voice.locale.toLanguageTag())
             item.put("quality", voice.quality)
             item.put("latency", voice.latency)
+            item.put("network", if (voice.isNetworkConnectionRequired) {
+                "Requer internet"
+            } else {
+                "Disponível offline"
+            })
+
             result.put(item)
         }
 
@@ -420,14 +526,10 @@ class MainActivity : Activity() {
         fun listVoices() {
             val voicesJson = this@MainActivity.listVoices()
 
-            runOnUiThread {
-                webView.evaluateJavascript(
-                    "if (window.onNativeVoicesListed) " +
-                        "window.onNativeVoicesListed(" +
-                        "${JSONObject.quote(voicesJson)});",
-                    null
-                )
-            }
+            notifyJavascript(
+                "onNativeVoicesListed",
+                voicesJson
+            )
         }
 
         @JavascriptInterface
@@ -550,7 +652,7 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // RECONHECIMENTO DE VOZ OFFLINE
+    // RECONHECIMENTO DE VOZ OPCIONAL
     // =========================================================
 
     private fun checkMicrophonePermission() {
@@ -586,7 +688,7 @@ class MainActivity : Activity() {
 
             val localAvailable =
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                SpeechRecognizer.isOnDeviceRecognitionAvailable(this)
+                    SpeechRecognizer.isOnDeviceRecognitionAvailable(this)
 
             recognizer = if (
                 preferOfflineSpeech && localAvailable
@@ -594,13 +696,11 @@ class MainActivity : Activity() {
                 showStatus(
                     "A preparar reconhecimento de voz local..."
                 )
-
                 SpeechRecognizer.createOnDeviceSpeechRecognizer(this)
             } else {
                 showStatus(
                     "Reconhecimento local indisponível; a usar o serviço normal."
                 )
-
                 SpeechRecognizer.createSpeechRecognizer(this)
             }
 
@@ -615,11 +715,8 @@ class MainActivity : Activity() {
                         showStatus("A reconhecer a tua voz...")
                     }
 
-                    override fun onRmsChanged(rmsdB: Float) {
-                    }
-
-                    override fun onBufferReceived(buffer: ByteArray?) {
-                    }
+                    override fun onRmsChanged(rmsdB: Float) {}
+                    override fun onBufferReceived(buffer: ByteArray?) {}
 
                     override fun onEndOfSpeech() {
                         showStatus("A processar o áudio...")
@@ -681,8 +778,6 @@ class MainActivity : Activity() {
                             .trim()
                             .replace(Regex("\\s+"), " ")
 
-                        // A palavra de ativação é verificada
-                        // apenas depois de o reconhecimento terminar.
                         if (
                             normalized == "jarvis" ||
                             normalized == "jarvis por favor"
@@ -694,7 +789,6 @@ class MainActivity : Activity() {
                             return
                         }
 
-                        // Também aceita comandos precedidos por JARVIS.
                         val commandText = if (
                             normalized.startsWith("jarvis ")
                         ) {
@@ -717,26 +811,20 @@ class MainActivity : Activity() {
                             return
                         }
 
-                        runOnUiThread {
-                            webView.evaluateJavascript(
-                                "if (window.onNativeSpeechResult) " +
-                                    "window.onNativeSpeechResult(" +
-                                    "${JSONObject.quote(commandText)});",
-                                null
-                            )
-                        }
+                        notifyJavascript(
+                            "onNativeSpeechResult",
+                            commandText
+                        )
                     }
 
                     override fun onPartialResults(
                         partialResults: Bundle?
-                    ) {
-                    }
+                    ) {}
 
                     override fun onEvent(
                         eventType: Int,
                         params: Bundle?
-                    ) {
-                    }
+                    ) {}
                 }
             )
 
@@ -747,27 +835,22 @@ class MainActivity : Activity() {
                     RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                     RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
                 )
-
                 putExtra(
                     RecognizerIntent.EXTRA_LANGUAGE,
                     "pt-BR"
                 )
-
                 putExtra(
                     RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
                     "pt-BR"
                 )
-
                 putExtra(
                     RecognizerIntent.EXTRA_PREFER_OFFLINE,
                     true
                 )
-
                 putExtra(
                     RecognizerIntent.EXTRA_PARTIAL_RESULTS,
                     true
                 )
-
                 putExtra(
                     RecognizerIntent.EXTRA_MAX_RESULTS,
                     3
@@ -813,7 +896,7 @@ class MainActivity : Activity() {
             FLASH_PERMISSION -> {
                 val granted =
                     grantResults.isNotEmpty() &&
-                    grantResults[0] == PackageManager.PERMISSION_GRANTED
+                        grantResults[0] == PackageManager.PERMISSION_GRANTED
 
                 val requestedState = pendingFlashlightState
                 pendingFlashlightState = null
@@ -827,6 +910,13 @@ class MainActivity : Activity() {
                 }
             }
         }
+    }
+
+    private fun notifySpeechError(message: String) {
+        notifyJavascript(
+            "onNativeSpeechError",
+            message
+        )
     }
 
     // =========================================================
@@ -921,7 +1011,6 @@ class MainActivity : Activity() {
                         }
 
                         modelFile = destination
-
                         initializeGemmaOnExecutor(destination)
 
                     } catch (e: Exception) {
@@ -1034,16 +1123,18 @@ class MainActivity : Activity() {
                 "JARVIS pronto. Modelo local carregado."
             )
 
+            notifyJavascriptEvent(
+                "onNativeModelLoaded"
+            )
+
         } catch (e: Exception) {
             try {
                 newConversation?.close()
-            } catch (_: Exception) {
-            }
+            } catch (_: Exception) {}
 
             try {
                 newEngine?.close()
-            } catch (_: Exception) {
-            }
+            } catch (_: Exception) {}
 
             modelReady = false
             modelLoading = false
@@ -1067,6 +1158,14 @@ class MainActivity : Activity() {
                 } else {
                     "Seleciona primeiro um modelo .litertlm."
                 }
+            )
+            return
+        }
+
+        // Impede pedidos concorrentes à mesma conversa Gemma.
+        if (!modelRequestRunning.compareAndSet(false, true)) {
+            showModelError(
+                "O JARVIS ainda está a processar a mensagem anterior."
             )
             return
         }
@@ -1104,6 +1203,8 @@ class MainActivity : Activity() {
                     "Erro ao consultar a IA: " +
                         (e.message ?: "erro desconhecido")
                 )
+            } finally {
+                modelRequestRunning.set(false)
             }
         }
     }
@@ -1141,47 +1242,35 @@ class MainActivity : Activity() {
     // =========================================================
 
     private fun showModelResponse(answer: String) {
-        runOnUiThread {
-            webView.evaluateJavascript(
-                "if (window.onModelResponse) " +
-                    "window.onModelResponse(" +
-                    "${JSONObject.quote(answer)});",
-                null
-            )
-        }
+        notifyJavascript(
+            "onModelResponse",
+            answer
+        )
+
+        // Compatibilidade com HTMLs que usam o nome alternativo.
+        notifyJavascript(
+            "onNativeModelResponse",
+            answer
+        )
     }
 
     private fun showModelError(message: String) {
-        runOnUiThread {
-            webView.evaluateJavascript(
-                "if (window.onModelError) " +
-                    "window.onModelError(" +
-                    "${JSONObject.quote(message)});",
-                null
-            )
-        }
+        notifyJavascript(
+            "onModelError",
+            message
+        )
+
+        notifyJavascript(
+            "onNativeModelError",
+            message
+        )
     }
 
     private fun showStatus(message: String) {
-        runOnUiThread {
-            webView.evaluateJavascript(
-                "if (window.onNativeStatus) " +
-                    "window.onNativeStatus(" +
-                    "${JSONObject.quote(message)});",
-                null
-            )
-        }
-    }
-
-    private fun notifySpeechError(message: String) {
-        runOnUiThread {
-            webView.evaluateJavascript(
-                "if (window.onNativeSpeechError) " +
-                    "window.onNativeSpeechError(" +
-                    "${JSONObject.quote(message)});",
-                null
-            )
-        }
+        notifyJavascript(
+            "onNativeStatus",
+            message
+        )
     }
 
     // =========================================================
@@ -1189,6 +1278,8 @@ class MainActivity : Activity() {
     // =========================================================
 
     override fun onDestroy() {
+        pageReady = false
+
         recognizer?.cancel()
         recognizer?.destroy()
         recognizer = null
@@ -1213,6 +1304,11 @@ class MainActivity : Activity() {
             )
 
             aiExecutor.shutdownNow()
+        }
+
+        if (::webView.isInitialized) {
+            webView.stopLoading()
+            webView.destroy()
         }
 
         super.onDestroy()

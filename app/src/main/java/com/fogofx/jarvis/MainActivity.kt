@@ -66,13 +66,17 @@ class MainActivity : Activity() {
     @Volatile
     private var pageReady = false
 
-    // NOVO: impede a escuta durante o processamento do Gemma.
     @Volatile
     private var waitingForModel = false
 
-    private val preferOfflineSpeech = true
+    // false: usa o serviço de reconhecimento padrão do Android.
+    // O serviço pode precisar de internet.
+    private val preferOfflineSpeech = false
 
     private val listeningHandler = Handler(Looper.getMainLooper())
+
+    private val aiExecutor = Executors.newSingleThreadExecutor()
+    private val modelRequestRunning = AtomicBoolean(false)
 
     private val restartListeningRunnable = Runnable {
         if (
@@ -104,9 +108,6 @@ class MainActivity : Activity() {
     private var modelLoading = false
 
     private var pendingFlashlightState: Boolean? = null
-
-    private val aiExecutor = Executors.newSingleThreadExecutor()
-    private val modelRequestRunning = AtomicBoolean(false)
 
     companion object {
         private const val TAG = "JARVIS"
@@ -174,7 +175,6 @@ class MainActivity : Activity() {
         )
 
         setContentView(webView)
-
         webView.loadUrl("file:///android_asset/index.html")
     }
 
@@ -183,7 +183,9 @@ class MainActivity : Activity() {
     // =========================================================
 
     private fun callJavascript(script: String) {
-        if (!::webView.isInitialized || isFinishing || isDestroyed) return
+        if (!::webView.isInitialized || isFinishing || isDestroyed) {
+            return
+        }
 
         runOnUiThread {
             if (!isFinishing && !isDestroyed) {
@@ -192,12 +194,39 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun notifyJavascript(functionName: String, value: String) {
+    private fun notifyJavascript(
+        functionName: String,
+        value: String
+    ) {
         val safeValue = JSONObject.quote(value)
 
         callJavascript(
             "if (typeof window.$functionName === 'function') " +
                 "window.$functionName($safeValue);"
+        )
+    }
+
+    /*
+     * Chama apenas o primeiro evento existente no HTML.
+     * Evita falar duas vezes quando o HTML contém os nomes
+     * antigos e novos para o mesmo evento.
+     */
+    private fun notifyFirstAvailable(
+        value: String,
+        vararg functionNames: String
+    ) {
+        val safeValue = JSONObject.quote(value)
+
+        val checks = functionNames.mapIndexed { index, name ->
+            val prefix = if (index == 0) "if" else "else if"
+
+            "$prefix (typeof window.$name === 'function') {" +
+                "window.$name($safeValue); return;" +
+                "}"
+        }.joinToString(" ")
+
+        callJavascript(
+            "(function() { $checks })();"
         )
     }
 
@@ -222,22 +251,36 @@ class MainActivity : Activity() {
 
                         override fun onStart(utteranceId: String?) {
                             jarvisSpeaking = true
+
                             listeningHandler.removeCallbacks(
                                 restartListeningRunnable
                             )
+
                             notifyJavascriptEvent("onNativeSpeechStarted")
                         }
 
                         override fun onDone(utteranceId: String?) {
-                            jarvisSpeaking = false
-                            notifyJavascriptEvent("onNativeSpeechFinished")
-                            scheduleListeningRestart(800)
+                            runOnUiThread {
+                                jarvisSpeaking = false
+
+                                notifyJavascriptEvent(
+                                    "onNativeSpeechFinished"
+                                )
+
+                                scheduleListeningRestart(1000)
+                            }
                         }
 
                         override fun onError(utteranceId: String?) {
-                            jarvisSpeaking = false
-                            notifyJavascriptEvent("onNativeSpeechFinished")
-                            scheduleListeningRestart(1200)
+                            runOnUiThread {
+                                jarvisSpeaking = false
+
+                                notifyJavascriptEvent(
+                                    "onNativeSpeechFinished"
+                                )
+
+                                scheduleListeningRestart(1200)
+                            }
                         }
 
                         override fun onError(
@@ -245,15 +288,23 @@ class MainActivity : Activity() {
                             errorCode: Int
                         ) {
                             Log.w(TAG, "Erro TTS: $errorCode")
-                            jarvisSpeaking = false
-                            notifyJavascriptEvent("onNativeSpeechFinished")
-                            scheduleListeningRestart(1200)
+
+                            runOnUiThread {
+                                jarvisSpeaking = false
+
+                                notifyJavascriptEvent(
+                                    "onNativeSpeechFinished"
+                                )
+
+                                scheduleListeningRestart(1200)
+                            }
                         }
                     }
                 )
             } else {
                 ttsReady = false
                 showStatus("Não foi possível iniciar a voz.")
+                Log.e(TAG, "Falha ao inicializar TextToSpeech: $status")
             }
         }
     }
@@ -266,7 +317,9 @@ class MainActivity : Activity() {
             result == TextToSpeech.LANG_NOT_SUPPORTED
         ) {
             ttsReady = false
-            showStatus("A voz em português do Brasil não está disponível.")
+            showStatus(
+                "A voz em português do Brasil não está disponível."
+            )
             return
         }
 
@@ -277,23 +330,37 @@ class MainActivity : Activity() {
                 voice.locale.country.equals("BR", ignoreCase = true)
         }
 
-        Log.d(TAG, "Vozes pt-BR encontradas: ${brazilianVoices.size}")
+        Log.d(
+            TAG,
+            "Vozes pt-BR encontradas: ${brazilianVoices.size}"
+        )
 
         brazilianVoices.forEach { voice ->
             Log.d(
                 TAG,
-                "Voz: ${voice.name}, qualidade=${voice.quality}"
+                "Voz: ${voice.name}, " +
+                    "qualidade=${voice.quality}, " +
+                    "rede=${voice.isNetworkConnectionRequired}"
             )
         }
 
-        if (PREFERRED_VOICE_ID.isNotBlank()) {
-            voices.find { it.name == PREFERRED_VOICE_ID }?.let {
-                tts.voice = it
-            }
+        val preferredVoice = if (PREFERRED_VOICE_ID.isNotBlank()) {
+            voices.find { it.name == PREFERRED_VOICE_ID }
         } else {
-            brazilianVoices.maxByOrNull { it.quality }?.let {
-                tts.voice = it
-            }
+            null
+        }
+
+        val selectedVoice = preferredVoice
+            ?: brazilianVoices
+                .filter { !it.isNetworkConnectionRequired }
+                .maxByOrNull { it.quality }
+            ?: brazilianVoices.maxByOrNull { it.quality }
+
+        if (selectedVoice != null) {
+            tts.voice = selectedVoice
+            Log.d(TAG, "Voz selecionada: ${selectedVoice.name}")
+        } else {
+            Log.w(TAG, "Não foi encontrada uma voz específica pt-BR.")
         }
 
         tts.setSpeechRate(0.94f)
@@ -316,11 +383,14 @@ class MainActivity : Activity() {
             jarvisSpeaking = true
             waitingForModel = false
 
-            listeningHandler.removeCallbacks(restartListeningRunnable)
+            listeningHandler.removeCallbacks(
+                restartListeningRunnable
+            )
 
             try {
                 recognizer?.cancel()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                Log.w(TAG, "Não foi possível cancelar a escuta.", e)
             }
 
             recognitionStarting = false
@@ -334,6 +404,7 @@ class MainActivity : Activity() {
 
             if (result == TextToSpeech.ERROR) {
                 jarvisSpeaking = false
+
                 showStatus("Não foi possível reproduzir a fala.")
                 notifyJavascriptEvent("onNativeSpeechFinished")
                 scheduleListeningRestart(1000)
@@ -347,6 +418,7 @@ class MainActivity : Activity() {
         runOnUiThread {
             tts.stop()
             jarvisSpeaking = false
+
             notifyJavascriptEvent("onNativeSpeechFinished")
             scheduleListeningRestart(800)
         }
@@ -360,11 +432,13 @@ class MainActivity : Activity() {
 
         for (voice in voices) {
             val item = JSONObject()
+
             item.put("name", voice.name)
             item.put("locale", voice.locale.toLanguageTag())
             item.put("language", voice.locale.toLanguageTag())
             item.put("quality", voice.quality)
             item.put("latency", voice.latency)
+
             item.put(
                 "network",
                 if (voice.isNetworkConnectionRequired) {
@@ -373,6 +447,7 @@ class MainActivity : Activity() {
                     "Disponível offline"
                 }
             )
+
             result.put(item)
         }
 
@@ -400,25 +475,32 @@ class MainActivity : Activity() {
             return
         }
 
-        scheduleListeningRestart(500)
+        scheduleListeningRestart(700)
     }
 
     private fun stopAutomaticListening() {
         automaticListeningEnabled = false
         waitingForModel = false
 
-        listeningHandler.removeCallbacks(restartListeningRunnable)
+        listeningHandler.removeCallbacks(
+            restartListeningRunnable
+        )
 
         try {
             recognizer?.cancel()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "Erro ao cancelar o reconhecimento.", e)
         }
 
         recognitionStarting = false
     }
 
-    private fun scheduleListeningRestart(delayMillis: Long = 800) {
-        listeningHandler.removeCallbacks(restartListeningRunnable)
+    private fun scheduleListeningRestart(
+        delayMillis: Long = 1000
+    ) {
+        listeningHandler.removeCallbacks(
+            restartListeningRunnable
+        )
 
         if (
             automaticListeningEnabled &&
@@ -459,7 +541,10 @@ class MainActivity : Activity() {
         }
 
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-            showStatus("O reconhecimento de voz não está disponível.")
+            showStatus(
+                "Reconhecimento indisponível. Verifica os serviços de voz."
+            )
+
             scheduleListeningRestart(5000)
             return
         }
@@ -503,9 +588,14 @@ class MainActivity : Activity() {
                     override fun onError(error: Int) {
                         recognitionStarting = false
 
-                        // Se o Gemma já estiver a processar, não reinicia
-                        // o reconhecimento nem interrompe a resposta.
-                        if (waitingForModel || jarvisSpeaking) return
+                        Log.e(
+                            TAG,
+                            "Erro de reconhecimento: código=$error"
+                        )
+
+                        if (waitingForModel || jarvisSpeaking) {
+                            return
+                        }
 
                         val message = when (error) {
                             SpeechRecognizer.ERROR_AUDIO ->
@@ -532,20 +622,28 @@ class MainActivity : Activity() {
                             SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
                                 "Não detetei fala."
 
+                            SpeechRecognizer.ERROR_SERVER ->
+                                "O serviço de reconhecimento falhou."
+
+                            SpeechRecognizer.ERROR_TOO_MANY_REQUESTS ->
+                                "Demasiadas tentativas. Vou aguardar."
+
                             else ->
-                                "Ocorreu um erro no reconhecimento."
+                                "Erro de reconhecimento (código $error)."
                         }
 
                         showStatus(message)
 
                         if (automaticListeningEnabled) {
-                            scheduleListeningRestart(
-                                if (error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY) {
-                                    2500
-                                } else {
-                                    1200
-                                }
-                            )
+                            val delay = when (error) {
+                                SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> 3000L
+                                SpeechRecognizer.ERROR_TOO_MANY_REQUESTS -> 5000L
+                                SpeechRecognizer.ERROR_NETWORK,
+                                SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> 3000L
+                                else -> 1500L
+                            }
+
+                            scheduleListeningRestart(delay)
                         }
                     }
 
@@ -559,9 +657,11 @@ class MainActivity : Activity() {
                         val spokenText = matches?.firstOrNull().orEmpty()
 
                         if (spokenText.isBlank()) {
-                            scheduleListeningRestart(500)
+                            scheduleListeningRestart(700)
                             return
                         }
+
+                        Log.d(TAG, "Texto reconhecido: $spokenText")
 
                         val normalized = spokenText
                             .lowercase(Locale.ROOT)
@@ -599,9 +699,9 @@ class MainActivity : Activity() {
                             return
                         }
 
-                        // IMPORTANTE: bloquear a escuta antes de chamar
-                        // o HTML para impedir o reinício prematuro.
+                        // Bloquear a escuta antes de enviar o texto ao HTML.
                         waitingForModel = true
+
                         listeningHandler.removeCallbacks(
                             restartListeningRunnable
                         )
@@ -613,11 +713,23 @@ class MainActivity : Activity() {
                             commandText
                         )
 
-                        // Não reiniciar aqui. O Gemma deve responder primeiro.
+                        /*
+                         * O HTML deve chamar AndroidVoice.askModel(text)
+                         * dentro de onNativeSpeechResult.
+                         * Não reiniciamos a escuta aqui.
+                         */
                     }
 
-                    override fun onPartialResults(partialResults: Bundle?) {}
-                    override fun onEvent(eventType: Int, params: Bundle?) {}
+                    override fun onPartialResults(
+                        partialResults: Bundle?
+                    ) {
+                    }
+
+                    override fun onEvent(
+                        eventType: Int,
+                        params: Bundle?
+                    ) {
+                    }
                 }
             )
 
@@ -628,21 +740,49 @@ class MainActivity : Activity() {
                     RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                     RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
                 )
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
-                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE,
+                    "pt-BR"
+                )
+
+                putExtra(
+                    RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
+                    "pt-BR"
+                )
+
+                putExtra(
+                    RecognizerIntent.EXTRA_PREFER_OFFLINE,
+                    false
+                )
+
+                putExtra(
+                    RecognizerIntent.EXTRA_PARTIAL_RESULTS,
+                    false
+                )
+
+                putExtra(
+                    RecognizerIntent.EXTRA_MAX_RESULTS,
+                    3
+                )
             }
 
             recognizer?.startListening(intent)
 
         } catch (e: Exception) {
             recognitionStarting = false
-            Log.e(TAG, "Erro ao iniciar reconhecimento.", e)
 
-            showStatus("Não foi possível iniciar o reconhecimento de voz.")
-            scheduleListeningRestart(2000)
+            Log.e(
+                TAG,
+                "Erro ao iniciar reconhecimento.",
+                e
+            )
+
+            showStatus(
+                "Não foi possível iniciar o reconhecimento de voz."
+            )
+
+            scheduleListeningRestart(2500)
         }
     }
 
@@ -690,7 +830,8 @@ class MainActivity : Activity() {
                     requestFlashlight(requestedState)
                 } else {
                     showStatus(
-                        "Permissão da câmara recusada. A lanterna não foi alterada."
+                        "Permissão da câmara recusada. " +
+                            "A lanterna não foi alterada."
                     )
                 }
             }
@@ -722,7 +863,9 @@ class MainActivity : Activity() {
             Context.AUDIO_SERVICE
         ) as AudioManager
 
-        val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+        val max = audio.getStreamMaxVolume(
+            AudioManager.STREAM_MUSIC
+        )
 
         when (action.lowercase(Locale.ROOT)) {
             "up" -> audio.adjustStreamVolume(
@@ -752,7 +895,10 @@ class MainActivity : Activity() {
             else -> return "Comando de volume desconhecido."
         }
 
-        val updated = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
+        val updated = audio.getStreamVolume(
+            AudioManager.STREAM_MUSIC
+        )
+
         return "Volume multimédia: $updated de $max."
     }
 
@@ -762,14 +908,20 @@ class MainActivity : Activity() {
 
     private fun openWifiSettings() {
         try {
-            startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
+            startActivity(
+                Intent(Settings.ACTION_WIFI_SETTINGS)
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Erro ao abrir definições de Wi-Fi.", e)
 
             try {
-                startActivity(Intent(Settings.ACTION_SETTINGS))
+                startActivity(
+                    Intent(Settings.ACTION_SETTINGS)
+                )
             } catch (_: Exception) {
-                showStatus("Não foi possível abrir as definições.")
+                showStatus(
+                    "Não foi possível abrir as definições."
+                )
             }
         }
     }
@@ -780,7 +932,9 @@ class MainActivity : Activity() {
 
     private fun requestFlashlight(enabled: Boolean) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            showStatus("A lanterna requer Android 6.0 ou superior.")
+            showStatus(
+                "A lanterna requer Android 6.0 ou superior."
+            )
             return
         }
 
@@ -798,7 +952,9 @@ class MainActivity : Activity() {
                 FLASH_PERMISSION
             )
 
-            showStatus("Autoriza a câmara para controlar a lanterna.")
+            showStatus(
+                "Autoriza a câmara para controlar a lanterna."
+            )
             return
         }
 
@@ -826,7 +982,11 @@ class MainActivity : Activity() {
 
         cameraManager.setTorchMode(cameraId, enable)
 
-        return if (enable) "Lanterna ligada." else "Lanterna desligada."
+        return if (enable) {
+            "Lanterna ligada."
+        } else {
+            "Lanterna desligada."
+        }
     }
 
     // =========================================================
@@ -855,22 +1015,30 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun openApp(app: String) {
-            runOnUiThread { openApplication(app) }
+            runOnUiThread {
+                openApplication(app)
+            }
         }
 
         @JavascriptInterface
         fun startListening() {
-            runOnUiThread { startAutomaticListening() }
+            runOnUiThread {
+                startAutomaticListening()
+            }
         }
 
         @JavascriptInterface
         fun stopListening() {
-            runOnUiThread { stopAutomaticListening() }
+            runOnUiThread {
+                stopAutomaticListening()
+            }
         }
 
         @JavascriptInterface
         fun chooseModel() {
-            runOnUiThread { openModelPicker() }
+            runOnUiThread {
+                openModelPicker()
+            }
         }
 
         @JavascriptInterface
@@ -901,12 +1069,16 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun setFlashlight(enabled: Boolean) {
-            runOnUiThread { requestFlashlight(enabled) }
+            runOnUiThread {
+                requestFlashlight(enabled)
+            }
         }
 
         @JavascriptInterface
         fun openWifiSettings() {
-            runOnUiThread { this@MainActivity.openWifiSettings() }
+            runOnUiThread {
+                this@MainActivity.openWifiSettings()
+            }
         }
     }
 
@@ -929,7 +1101,9 @@ class MainActivity : Activity() {
 
                 "settings",
                 "configurações",
-                "configuracoes" -> Intent(Settings.ACTION_SETTINGS)
+                "configuracoes" -> Intent(
+                    Settings.ACTION_SETTINGS
+                )
 
                 "camera",
                 "camara",
@@ -938,13 +1112,16 @@ class MainActivity : Activity() {
                 )
 
                 else -> {
-                    showStatus("Não reconheço essa aplicação: $app")
+                    showStatus(
+                        "Não reconheço essa aplicação: $app"
+                    )
                     return
                 }
             }
 
             startActivity(intent)
             showStatus("A abrir $app.")
+
         } catch (e: Exception) {
             Log.e(TAG, "Erro ao abrir aplicação.", e)
             showStatus("Não consegui abrir $app.")
@@ -957,15 +1134,24 @@ class MainActivity : Activity() {
 
     private fun openModelPicker() {
         try {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            val intent = Intent(
+                Intent.ACTION_OPEN_DOCUMENT
+            ).apply {
                 addCategory(Intent.CATEGORY_OPENABLE)
                 type = "*/*"
             }
 
-            startActivityForResult(intent, MODEL_PICKER)
+            startActivityForResult(
+                intent,
+                MODEL_PICKER
+            )
+
         } catch (e: Exception) {
             Log.e(MODEL_TAG, "Erro ao abrir seletor.", e)
-            showModelError("Não consegui abrir o seletor de ficheiros.")
+
+            showModelError(
+                "Não consegui abrir o seletor de ficheiros."
+            )
         }
     }
 
@@ -975,9 +1161,18 @@ class MainActivity : Activity() {
         resultCode: Int,
         data: Intent?
     ) {
-        super.onActivityResult(requestCode, resultCode, data)
+        super.onActivityResult(
+            requestCode,
+            resultCode,
+            data
+        )
 
-        if (requestCode != MODEL_PICKER || resultCode != RESULT_OK) return
+        if (
+            requestCode != MODEL_PICKER ||
+            resultCode != RESULT_OK
+        ) {
+            return
+        }
 
         val uri = data?.data ?: return
         modelUri = uri
@@ -988,7 +1183,10 @@ class MainActivity : Activity() {
             var temporaryFile: File? = null
 
             try {
-                temporaryFile = File(filesDir, "$MODEL_FILENAME.tmp")
+                temporaryFile = File(
+                    filesDir,
+                    "$MODEL_FILENAME.tmp"
+                )
 
                 contentResolver.openInputStream(uri).use { input ->
                     if (input == null) {
@@ -1011,19 +1209,32 @@ class MainActivity : Activity() {
                     try {
                         closeCurrentModel()
 
-                        val destination = File(filesDir, MODEL_FILENAME)
+                        val destination = File(
+                            filesDir,
+                            MODEL_FILENAME
+                        )
 
-                        if (destination.exists()) destination.delete()
+                        if (destination.exists()) {
+                            destination.delete()
+                        }
 
                         if (!copiedFile.renameTo(destination)) {
-                            copiedFile.copyTo(destination, overwrite = true)
+                            copiedFile.copyTo(
+                                destination,
+                                overwrite = true
+                            )
                             copiedFile.delete()
                         }
 
                         modelFile = destination
                         initializeGemmaOnExecutor(destination)
+
                     } catch (e: Exception) {
-                        Log.e(MODEL_TAG, "Erro ao instalar o modelo.", e)
+                        Log.e(
+                            MODEL_TAG,
+                            "Erro ao instalar o modelo.",
+                            e
+                        )
 
                         modelLoading = false
                         modelReady = false
@@ -1034,8 +1245,14 @@ class MainActivity : Activity() {
                         )
                     }
                 }
+
             } catch (e: Exception) {
-                Log.e(MODEL_TAG, "Erro ao copiar o modelo.", e)
+                Log.e(
+                    MODEL_TAG,
+                    "Erro ao copiar o modelo.",
+                    e
+                )
+
                 temporaryFile?.delete()
 
                 showModelError(
@@ -1047,11 +1264,17 @@ class MainActivity : Activity() {
     }
 
     private fun initializeGemma() {
-        val file = File(filesDir, MODEL_FILENAME)
+        val file = File(
+            filesDir,
+            MODEL_FILENAME
+        )
+
         modelFile = file
 
         if (!file.exists()) {
-            showStatus("Seleciona um modelo .litertlm para ativar a IA local.")
+            showStatus(
+                "Seleciona um modelo .litertlm para ativar a IA local."
+            )
             return
         }
 
@@ -1063,8 +1286,13 @@ class MainActivity : Activity() {
         aiExecutor.execute {
             try {
                 initializeGemmaOnExecutor(file)
+
             } catch (e: Exception) {
-                Log.e(MODEL_TAG, "Erro ao iniciar o modelo local.", e)
+                Log.e(
+                    MODEL_TAG,
+                    "Erro ao iniciar o modelo local.",
+                    e
+                )
 
                 modelReady = false
                 modelLoading = false
@@ -1093,7 +1321,9 @@ class MainActivity : Activity() {
             newEngine.initialize()
 
             val conversationConfig = ConversationConfig(
-                systemInstruction = Contents.of(SYSTEM_INSTRUCTION)
+                systemInstruction = Contents.of(
+                    SYSTEM_INSTRUCTION
+                )
             )
 
             newConversation = newEngine.createConversation(
@@ -1106,8 +1336,12 @@ class MainActivity : Activity() {
             modelReady = true
             modelLoading = false
 
-            showStatus("JARVIS pronto. Modelo local carregado.")
+            showStatus(
+                "JARVIS pronto. Modelo local carregado."
+            )
+
             notifyJavascriptEvent("onNativeModelLoaded")
+
         } catch (e: Exception) {
             try {
                 newConversation?.close()
@@ -1130,13 +1364,17 @@ class MainActivity : Activity() {
         val question = prompt.trim()
 
         if (question.isBlank()) {
-            showModelError("Não recebi uma pergunta válida.")
+            showModelError(
+                "Não recebi uma pergunta válida."
+            )
             return
         }
 
-        // A escuta fica bloqueada durante a resposta do modelo.
         waitingForModel = true
-        listeningHandler.removeCallbacks(restartListeningRunnable)
+
+        listeningHandler.removeCallbacks(
+            restartListeningRunnable
+        )
 
         if (!modelReady || modelConversation == null) {
             showModelError(
@@ -1177,13 +1415,19 @@ class MainActivity : Activity() {
                         "Não consegui gerar uma resposta. Tenta novamente."
                     }
                 )
+
             } catch (e: Exception) {
-                Log.e(MODEL_TAG, "Erro ao consultar o modelo.", e)
+                Log.e(
+                    MODEL_TAG,
+                    "Erro ao consultar o modelo.",
+                    e
+                )
 
                 showModelError(
                     "Erro ao consultar a IA: " +
                         (e.message ?: "erro desconhecido")
                 )
+
             } finally {
                 modelRequestRunning.set(false)
             }
@@ -1194,7 +1438,11 @@ class MainActivity : Activity() {
         try {
             modelConversation?.close()
         } catch (e: Exception) {
-            Log.w(MODEL_TAG, "Erro ao fechar a conversa.", e)
+            Log.w(
+                MODEL_TAG,
+                "Erro ao fechar a conversa.",
+                e
+            )
         } finally {
             modelConversation = null
         }
@@ -1202,7 +1450,11 @@ class MainActivity : Activity() {
         try {
             modelEngine?.close()
         } catch (e: Exception) {
-            Log.w(MODEL_TAG, "Erro ao fechar o motor do modelo.", e)
+            Log.w(
+                MODEL_TAG,
+                "Erro ao fechar o motor do modelo.",
+                e
+            )
         } finally {
             modelEngine = null
         }
@@ -1215,30 +1467,39 @@ class MainActivity : Activity() {
     // =========================================================
 
     private fun showModelResponse(answer: String) {
-        // A resposta chegou. O HTML pode chamar AndroidVoice.speak().
         waitingForModel = false
 
-        notifyJavascript("onModelResponse", answer)
-        notifyJavascript("onNativeModelResponse", answer)
+        // Usa um único evento: o nativo tem prioridade.
+        // Se não existir, usa o nome antigo como alternativa.
+        notifyFirstAvailable(
+            answer,
+            "onNativeModelResponse",
+            "onModelResponse"
+        )
 
         showStatus("Resposta do JARVIS pronta.")
 
-        // Se o HTML não iniciar a voz, a escuta volta a ser ativada.
         scheduleListeningRestart(1500)
     }
 
     private fun showModelError(message: String) {
         waitingForModel = false
 
-        notifyJavascript("onModelError", message)
-        notifyJavascript("onNativeModelError", message)
+        notifyFirstAvailable(
+            message,
+            "onNativeModelError",
+            "onModelError"
+        )
 
         showStatus(message)
         scheduleListeningRestart(1500)
     }
 
     private fun showStatus(message: String) {
-        notifyJavascript("onNativeStatus", message)
+        notifyJavascript(
+            "onNativeStatus",
+            message
+        )
     }
 
     // =========================================================
@@ -1253,6 +1514,7 @@ class MainActivity : Activity() {
             recognizer?.destroy()
         } catch (_: Exception) {
         }
+
         recognizer = null
 
         if (::tts.isInitialized) {
@@ -1264,13 +1526,16 @@ class MainActivity : Activity() {
             aiExecutor.execute {
                 closeCurrentModel()
             }
+
             aiExecutor.shutdown()
+
         } catch (e: Exception) {
             Log.w(
                 MODEL_TAG,
                 "Não foi possível fechar o modelo normalmente.",
                 e
             )
+
             aiExecutor.shutdownNow()
         }
 

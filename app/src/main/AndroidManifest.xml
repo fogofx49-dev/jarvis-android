@@ -4,9 +4,6 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:label="JARVIS"
@@ -24,12 +21,6 @@
             </intent-filter>
 
         </activity>
-
-        <!-- Serviço de ativação por voz -->
-        <service
-            android:name=".JarvisWakeWordService"
-            android:exported="false"
-            android:foregroundServiceType="microphone" />
 
     </application>
 

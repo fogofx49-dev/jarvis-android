@@ -66,6 +66,10 @@ class MainActivity : Activity() {
     @Volatile
     private var pageReady = false
 
+    // NOVO: impede a escuta durante o processamento do Gemma.
+    @Volatile
+    private var waitingForModel = false
+
     private val preferOfflineSpeech = true
 
     private val listeningHandler = Handler(Looper.getMainLooper())
@@ -74,6 +78,8 @@ class MainActivity : Activity() {
         if (
             automaticListeningEnabled &&
             !jarvisSpeaking &&
+            !waitingForModel &&
+            !recognitionStarting &&
             pageReady &&
             !isFinishing &&
             !isDestroyed
@@ -216,6 +222,9 @@ class MainActivity : Activity() {
 
                         override fun onStart(utteranceId: String?) {
                             jarvisSpeaking = true
+                            listeningHandler.removeCallbacks(
+                                restartListeningRunnable
+                            )
                             notifyJavascriptEvent("onNativeSpeechStarted")
                         }
 
@@ -305,6 +314,8 @@ class MainActivity : Activity() {
             }
 
             jarvisSpeaking = true
+            waitingForModel = false
+
             listeningHandler.removeCallbacks(restartListeningRunnable)
 
             try {
@@ -394,6 +405,8 @@ class MainActivity : Activity() {
 
     private fun stopAutomaticListening() {
         automaticListeningEnabled = false
+        waitingForModel = false
+
         listeningHandler.removeCallbacks(restartListeningRunnable)
 
         try {
@@ -410,6 +423,7 @@ class MainActivity : Activity() {
         if (
             automaticListeningEnabled &&
             !jarvisSpeaking &&
+            !waitingForModel &&
             pageReady &&
             !isFinishing &&
             !isDestroyed
@@ -421,14 +435,11 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun checkMicrophonePermission() {
-        startAutomaticListening()
-    }
-
     private fun beginRecognition() {
         if (
             !automaticListeningEnabled ||
             jarvisSpeaking ||
+            waitingForModel ||
             recognitionStarting ||
             !pageReady ||
             isFinishing ||
@@ -492,6 +503,10 @@ class MainActivity : Activity() {
                     override fun onError(error: Int) {
                         recognitionStarting = false
 
+                        // Se o Gemma já estiver a processar, não reinicia
+                        // o reconhecimento nem interrompe a resposta.
+                        if (waitingForModel || jarvisSpeaking) return
+
                         val message = when (error) {
                             SpeechRecognizer.ERROR_AUDIO ->
                                 "Erro ao capturar o áudio."
@@ -523,7 +538,7 @@ class MainActivity : Activity() {
 
                         showStatus(message)
 
-                        if (automaticListeningEnabled && !jarvisSpeaking) {
+                        if (automaticListeningEnabled) {
                             scheduleListeningRestart(
                                 if (error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY) {
                                     2500
@@ -584,15 +599,21 @@ class MainActivity : Activity() {
                             return
                         }
 
-                        // O HTML deve enviar este texto ao Gemma local.
+                        // IMPORTANTE: bloquear a escuta antes de chamar
+                        // o HTML para impedir o reinício prematuro.
+                        waitingForModel = true
+                        listeningHandler.removeCallbacks(
+                            restartListeningRunnable
+                        )
+
+                        showStatus("A enviar a pergunta ao Gemma local...")
+
                         notifyJavascript(
                             "onNativeSpeechResult",
                             commandText
                         )
 
-                        // O reconhecimento é retomado após o HTML
-                        // iniciar o processamento ou após um pequeno intervalo.
-                        scheduleListeningRestart(1200)
+                        // Não reiniciar aqui. O Gemma deve responder primeiro.
                     }
 
                     override fun onPartialResults(partialResults: Bundle?) {}
@@ -619,6 +640,7 @@ class MainActivity : Activity() {
         } catch (e: Exception) {
             recognitionStarting = false
             Log.e(TAG, "Erro ao iniciar reconhecimento.", e)
+
             showStatus("Não foi possível iniciar o reconhecimento de voz.")
             scheduleListeningRestart(2000)
         }
@@ -644,7 +666,11 @@ class MainActivity : Activity() {
                     startAutomaticListening()
                 } else {
                     automaticListeningEnabled = false
-                    showStatus("Permite o microfone para usar a escuta automática.")
+
+                    showStatus(
+                        "Permite o microfone para usar a escuta automática."
+                    )
+
                     notifyJavascript(
                         "onNativeSpeechError",
                         "A permissão do microfone foi recusada."
@@ -832,7 +858,6 @@ class MainActivity : Activity() {
             runOnUiThread { openApplication(app) }
         }
 
-        // Compatibilidade com HTMLs antigos.
         @JavascriptInterface
         fun startListening() {
             runOnUiThread { startAutomaticListening() }
@@ -1105,9 +1130,13 @@ class MainActivity : Activity() {
         val question = prompt.trim()
 
         if (question.isBlank()) {
-            showModelError("Escreve uma pergunta primeiro.")
+            showModelError("Não recebi uma pergunta válida.")
             return
         }
+
+        // A escuta fica bloqueada durante a resposta do modelo.
+        waitingForModel = true
+        listeningHandler.removeCallbacks(restartListeningRunnable)
 
         if (!modelReady || modelConversation == null) {
             showModelError(
@@ -1186,13 +1215,26 @@ class MainActivity : Activity() {
     // =========================================================
 
     private fun showModelResponse(answer: String) {
+        // A resposta chegou. O HTML pode chamar AndroidVoice.speak().
+        waitingForModel = false
+
         notifyJavascript("onModelResponse", answer)
         notifyJavascript("onNativeModelResponse", answer)
+
+        showStatus("Resposta do JARVIS pronta.")
+
+        // Se o HTML não iniciar a voz, a escuta volta a ser ativada.
+        scheduleListeningRestart(1500)
     }
 
     private fun showModelError(message: String) {
+        waitingForModel = false
+
         notifyJavascript("onModelError", message)
         notifyJavascript("onNativeModelError", message)
+
+        showStatus(message)
+        scheduleListeningRestart(1500)
     }
 
     private fun showStatus(message: String) {

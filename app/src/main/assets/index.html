@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -122,19 +121,12 @@ letter-spacing:2px;border-bottom:1px solid var(--border)}
 .response{min-height:90px;padding:15px;font-size:14px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
 .response-label{display:block;font-size:10px;color:var(--cyan);letter-spacing:2px;margin-bottom:7px}
 
-.mic-area{text-align:center;padding:20px 0 13px}
-.mic-button{width:94px;height:94px;padding:0;border:2px solid var(--cyan);border-radius:50%;
-background:radial-gradient(circle,#154d73,#071321 72%);color:#e8faff;font-size:37px;
-box-shadow:0 0 20px #00bfff40,inset 0 0 16px #00d9ff20}
-.mic-button.active{animation:micPulse 1.5s infinite}
-@keyframes micPulse{50%{box-shadow:0 0 35px var(--cyan),inset 0 0 22px #007bff}}
+.mic-area,#listenButton{display:none!important}
 .wave{height:30px;display:flex;align-items:center;justify-content:center;gap:4px;margin-top:13px}
 .wave span{width:3px;height:7px;border-radius:4px;background:#236184;opacity:.65}
 .wave.active span{animation:wave .65s infinite alternate ease-in-out;background:var(--cyan)}
 .wave span:nth-child(3n){animation-delay:-.3s}.wave span:nth-child(2n){animation-delay:-.5s}
 @keyframes wave{to{height:25px;opacity:1;box-shadow:0 0 7px var(--cyan)}}
-.mic-status{color:var(--cyan);font-size:11px;font-weight:bold;letter-spacing:2px;margin:10px 0 5px}
-.mic-hint{color:var(--muted);font-size:11px;line-height:1.6;padding:0 12px}
 
 .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:13px}
 button{border:1px solid var(--border);color:var(--cyan);background:#007bff10;border-radius:10px;
@@ -180,18 +172,6 @@ footer{text-align:center;font-size:9px;color:#577994;letter-spacing:2px;padding:
 
 <div class="robot-label" id="emotionLabel">● ATENTO</div>
 
-<div class="mic-area">
-  <button id="micButton" class="mic-button" type="button" onclick="toggleListening()" aria-label="Ativar ou pausar microfone">🎙</button>
-  <div class="wave" id="wave">
-    <span></span><span></span><span></span><span></span><span></span>
-    <span></span><span></span><span></span><span></span><span></span>
-    <span></span><span></span><span></span><span></span><span></span>
-    <span></span><span></span><span></span><span></span><span></span><span></span>
-  </div>
-  <div class="mic-status" id="micStatus">MICROFONE EM PAUSA</div>
-  <div class="mic-hint" id="micHint">O microfone está desligado. O J.A.R.V.I.S. pode conversar sem ele.</div>
-</div>
-
 <section class="panel">
   <div class="panel-title">▸ RESPOSTA DO SISTEMA</div>
   <div class="response" id="response" aria-live="polite">
@@ -204,14 +184,13 @@ footer{text-align:center;font-size:9px;color:#577994;letter-spacing:2px;padding:
   <button id="voiceButton" type="button" onclick="toggleVoice()">🔊 Voz: ligada</button>
   <button type="button" onclick="showHelp()">❔ Ajuda</button>
   <button type="button" onclick="stopSpeaking()">🔇 Parar voz</button>
-  <button id="listenButton" type="button" onclick="toggleListening()">🎙 Ativar microfone</button>
   <button id="autonomousButton" type="button" onclick="toggleAutonomousMode()">⏸ Pausar conversa automática</button>
   <button id="loadAIButton" class="ai-button" type="button" onclick="chooseJarvisModel()">📂 Carregar arquivo de IA</button>
 </div>
 
 <div class="hint">
   Assistente local • Androide com olhos vermelhos • Núcleo holográfico
-  <br>Gemma local • TextToSpeech • Microfone opcional • Comandos Android
+  <br>Gemma local • TextToSpeech • Escuta gerida pelo Android • Comandos Android
 </div>
 <footer>J.A.R.V.I.S. • STARK TECHNOLOGY</footer>
 </div>
@@ -221,17 +200,16 @@ footer{text-align:center;font-size:9px;color:#577994;letter-spacing:2px;padding:
 
 /* ESTADO */
 let voiceEnabled = true;
-let listeningEnabled = false;
+let listeningEnabled = true;
 let recognitionActive = false;
 let waitingForModel = false;
 let speaking = false;
-let browserRecognition = null;
 let restartTimer = null;
 let speakTimer = null;
 let autonomousTimer = null;
 let currentSpeechId = 0;
 
-let autonomousMode = true;
+let autonomousMode = false;
 let autonomousModelReady = false;
 let autonomousRequestPending = false;
 let currentRequestSource = "user";
@@ -239,17 +217,11 @@ let activeSpeechSource = "user";
 let autonomousTurn = 0;
 let lastAutonomousText = "";
 let firstGreetingDone = false;
-let modelLoadRequested = false;
 
 const robot = document.getElementById("robot");
 const responseBox = document.getElementById("response");
 const statusBox = document.getElementById("status");
 const dot = document.getElementById("dot");
-const micButton = document.getElementById("micButton");
-const listenButton = document.getElementById("listenButton");
-const micStatus = document.getElementById("micStatus");
-const micHint = document.getElementById("micHint");
-const wave = document.getElementById("wave");
 const voiceButton = document.getElementById("voiceButton");
 const loadAIButton = document.getElementById("loadAIButton");
 const autonomousButton = document.getElementById("autonomousButton");
@@ -287,7 +259,7 @@ function classifyEmotion(text) {
   return "happy";
 }
 
-/* MOVIMENTO DOS OLHOS */
+/* OLHOS E PISCAR */
 function moveEyes(direction) {
   const offsets = {left:[-7,0],right:[7,0],up:[0,-5],down:[0,5],center:[0,0]};
   const p = offsets[direction] || offsets.center;
@@ -311,7 +283,6 @@ function blinkRobot() {
 }
 setInterval(blinkRobot, 3200);
 
-/* MOSTRAR RESPOSTA */
 function showResponse(text, emotion) {
   responseBox.replaceChildren();
   const label = document.createElement("span");
@@ -323,24 +294,7 @@ function showResponse(text, emotion) {
   setEmotion(emotion || classifyEmotion(text));
 }
 
-function setMicUI(active) {
-  micButton.classList.toggle("active", active);
-  wave.classList.toggle("active", active);
-  micStatus.textContent = active ? "MICROFONE ATIVO" : "MICROFONE EM PAUSA";
-  micHint.textContent = active
-    ? "Estou a ouvir. Fala naturalmente."
-    : "O microfone está desligado. O J.A.R.V.I.S. pode conversar sem ele.";
-  listenButton.textContent = active ? "⏸ Pausar microfone" : "🎙 Ativar microfone";
-}
-
-function setWaiting(value) {
-  waitingForModel = Boolean(value);
-  setStatus(waitingForModel ? "A processar..." : "Sistema pronto",
-    waitingForModel ? "busy" : "online");
-  if (waitingForModel) setEmotion("thinking");
-}
-
-/* TEXT TO SPEECH */
+/* VOZ ANDROID */
 function speak(text, source = "user") {
   const phrase = String(text || "").trim();
   clearTimeout(speakTimer);
@@ -349,9 +303,7 @@ function speak(text, source = "user") {
 
   if (!voiceEnabled || !phrase) {
     speaking = false;
-    setEmotion(classifyEmotion(phrase));
     if (source === "autonomous" && autonomousMode) scheduleAutonomousTurn(60000);
-    resumeListeningLater(300);
     return;
   }
 
@@ -363,10 +315,11 @@ function speak(text, source = "user") {
     try {
       const thisSpeech = currentSpeechId;
       window.AndroidVoice.speak(phrase);
+      // Segurança caso o Kotlin não envie o evento de fim da fala.
       speakTimer = setTimeout(() => {
         if (thisSpeech !== currentSpeechId || !speaking) return;
         finishSpeech();
-      }, Math.max(6000, Math.min(60000, phrase.length * 180)));
+      }, Math.max(8000, Math.min(90000, phrase.length * 220)));
       return;
     } catch (error) {
       console.warn("Erro na voz Android:", error);
@@ -387,23 +340,25 @@ function speak(text, source = "user") {
       console.warn("Erro na síntese de voz:", error);
     }
   }
+
   finishSpeech();
 }
 
 function finishSpeech() {
   clearTimeout(speakTimer);
   speaking = false;
-  const finishedSource = activeSpeechSource;
+  setEmotion(classifyEmotion(responseBox.textContent));
+  if (!waitingForModel) setStatus("Resposta concluída", "online");
 
-  if (!waitingForModel) {
-    setEmotion(classifyEmotion(responseBox.textContent));
-    setStatus("Resposta concluída", "online");
+  if (activeSpeechSource === "autonomous" && autonomousMode) {
+    scheduleAutonomousTurn(60000);
   }
 
-  if (finishedSource === "autonomous" && autonomousMode) {
-    scheduleAutonomousTurn(60000 + Math.floor(Math.random() * 60000));
+  // O Android deve retomar o reconhecimento após terminar o TTS.
+  if (window.AndroidVoice &&
+      typeof window.AndroidVoice.resumeListening === "function") {
+    try { window.AndroidVoice.resumeListening(); } catch (error) { console.warn(error); }
   }
-  resumeListeningLater(400);
 }
 
 function onNativeSpeechFinished() {
@@ -415,6 +370,7 @@ function stopSpeaking() {
   clearTimeout(speakTimer);
   currentSpeechId++;
   speaking = false;
+
   try {
     if (window.AndroidVoice && typeof window.AndroidVoice.stopSpeaking === "function") {
       window.AndroidVoice.stopSpeaking();
@@ -438,7 +394,7 @@ function toggleVoice() {
   setStatus(voiceEnabled ? "Voz ativada" : "Voz desativada", "online");
 }
 
-/* CARREGAR GEMMA */
+/* CARREGAR MODELO */
 function chooseJarvisModel() {
   if (!window.AndroidVoice || typeof window.AndroidVoice.chooseModel !== "function") {
     showResponse("O seletor de ficheiros Android não está ligado. Verifica o AndroidBridge no MainActivity.kt.", "sad");
@@ -447,7 +403,6 @@ function chooseJarvisModel() {
   }
   try {
     loadAIButton.disabled = true;
-    modelLoadRequested = true;
     setStatus("Seleciona o ficheiro do modelo...", "busy");
     window.AndroidVoice.chooseModel();
   } catch (error) {
@@ -456,7 +411,7 @@ function chooseJarvisModel() {
   }
 }
 
-/* RESPOSTAS LOCAIS SIMPLES */
+/* RESPOSTAS LOCAIS */
 function answer(raw) {
   const msg = normalizeText(raw);
   if (/^(ola|oi|bom dia|boa tarde|boa noite|e ai|tudo bem)[!.?]*$/.test(msg))
@@ -486,7 +441,7 @@ function openNativeApp(appName, statusText) {
   try {
     window.AndroidVoice.openApp(appName);
     showResponse(statusText, "happy");
-    speak(statusText);
+    speak(statusText, "user");
   } catch (error) {
     showResponse("Não foi possível executar o comando: " + error.message, "sad");
   }
@@ -505,9 +460,9 @@ function handleExplicitCommand(text) {
   return false;
 }
 
-/* PERGUNTAS DO UTILIZADOR */
+/* ENVIAR PERGUNTA PARA O GEMMA */
 function send(text) {
-  if (waitingForModel) return;
+  if (waitingForModel || speaking) return;
   const question = String(text || "").trim();
   if (!question) return;
 
@@ -516,8 +471,8 @@ function send(text) {
   setStatus("A analisar a tua pergunta...", "busy");
 
   if (handleExplicitCommand(question)) return;
-  const localAnswer = answer(question);
 
+  const localAnswer = answer(question);
   if (localAnswer !== null) {
     showResponse(localAnswer, classifyEmotion(localAnswer));
     setStatus("Resposta pronta", "online");
@@ -536,6 +491,12 @@ function send(text) {
   try {
     currentRequestSource = "user";
     setWaiting(true);
+
+    // O Kotlin deve parar o reconhecimento antes de processar a pergunta.
+    if (typeof window.AndroidVoice.stopListening === "function") {
+      window.AndroidVoice.stopListening();
+    }
+
     window.AndroidVoice.askModel(question);
   } catch (error) {
     setWaiting(false);
@@ -544,110 +505,20 @@ function send(text) {
   }
 }
 
-/* MICROFONE OPCIONAL: NÃO É INICIADO NO ARRANQUE */
-function toggleListening() {
-  if (listeningEnabled) {
-    listeningEnabled = false;
-    clearTimeout(restartTimer);
-    if (browserRecognition) {
-      try { browserRecognition.stop(); } catch (_) {}
-    }
-    if (window.AndroidVoice && typeof window.AndroidVoice.stopListening === "function") {
-      try { window.AndroidVoice.stopListening(); } catch (_) {}
-    }
-    recognitionActive = false;
-    setMicUI(false);
-    setEmotion("happy");
-    setStatus("Microfone em pausa", "online");
-    return;
-  }
-  listeningEnabled = true;
-  startMic();
-}
-
-function startMic() {
-  if (!listeningEnabled || recognitionActive || waitingForModel || speaking) return;
-
-  if (window.AndroidVoice && typeof window.AndroidVoice.startListening === "function") {
-    try {
-      recognitionActive = true;
-      setMicUI(true);
-      setEmotion("listening");
-      setStatus("A ouvir...", "busy");
-      window.AndroidVoice.startListening();
-      return;
-    } catch (error) {
-      recognitionActive = false;
-      console.warn("Reconhecimento Android indisponível:", error);
-    }
-  }
-
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    listeningEnabled = false;
-    setMicUI(false);
-    setEmotion("sad");
-    setStatus("Reconhecimento de voz indisponível");
-    showResponse("O reconhecimento de voz não está disponível. Verifica a integração Android e as permissões.", "sad");
-    return;
-  }
-
-  try {
-    browserRecognition = new SpeechRecognition();
-    browserRecognition.lang = "pt-BR";
-    browserRecognition.interimResults = false;
-    browserRecognition.maxAlternatives = 1;
-    recognitionActive = true;
-    setMicUI(true);
-    setEmotion("listening");
-    setStatus("A ouvir...", "busy");
-
-    browserRecognition.onresult = event => {
-      recognitionActive = false;
-      const transcript = event.results?.[0]?.[0]?.transcript || "";
-      if (transcript.trim()) send(transcript);
-      else resumeListeningLater(400);
-    };
-    browserRecognition.onerror = event => {
-      recognitionActive = false;
-      console.warn("Erro de reconhecimento:", event.error);
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        listeningEnabled = false;
-        setMicUI(false);
-        setStatus("Permissão do microfone necessária");
-        showResponse("Autoriza o microfone nas permissões da aplicação Android.", "sad");
-        return;
-      }
-      resumeListeningLater(1000);
-    };
-    browserRecognition.onend = () => {
-      recognitionActive = false;
-      if (listeningEnabled && !waitingForModel && !speaking) resumeListeningLater(500);
-    };
-    browserRecognition.start();
-  } catch (error) {
-    recognitionActive = false;
-    console.warn(error);
-    resumeListeningLater(1200);
-  }
-}
-
-function resumeListeningLater(delay = 500) {
-  clearTimeout(restartTimer);
-  if (!listeningEnabled) return;
-  restartTimer = setTimeout(() => {
-    if (!listeningEnabled || waitingForModel || speaking || recognitionActive) return;
-    startMic();
-  }, delay);
+function setWaiting(value) {
+  waitingForModel = Boolean(value);
+  setStatus(waitingForModel ? "A processar com o Gemma local..." : "Sistema pronto",
+    waitingForModel ? "busy" : "online");
+  if (waitingForModel) setEmotion("thinking");
 }
 
 function showHelp() {
-  const message = "Podes perguntar as horas, a data, pedir uma piada ou uma frase motivacional. Também podes pedir para abrir o YouTube, o Google ou as definições. Com o Gemma carregado, podes fazer outras perguntas. A conversa automática funciona sem microfone.";
+  const message = "Podes perguntar as horas, a data, pedir uma piada ou uma frase motivacional. Também podes pedir para abrir o YouTube, o Google ou as definições. Com o Gemma carregado, podes fazer outras perguntas.";
   showResponse(message, "happy");
   speak(message, "user");
 }
 
-/* RESPOSTAS DO GEMMA */
+/* RESPOSTAS NATIVAS */
 function onNativeModelResponse(text) {
   const source = currentRequestSource;
   currentRequestSource = "user";
@@ -655,34 +526,14 @@ function onNativeModelResponse(text) {
 
   const result = String(text || "").trim();
   if (!result) {
-    if (source === "autonomous") {
-      autonomousRequestPending = false;
-      setStatus("A resposta automática veio vazia", "online");
-      scheduleAutonomousTurn(25000);
-    } else {
-      showResponse("O modelo não devolveu uma resposta. Verifica o modelo de IA.", "sad");
-      setStatus("Resposta vazia", "online");
-      resumeListeningLater(700);
-    }
-    return;
-  }
-
-  if (source === "autonomous") {
-    autonomousRequestPending = false;
-    if (!autonomousMode) {
-      setStatus("Conversa automática pausada", "online");
-      return;
-    }
-    lastAutonomousText = result;
-    showResponse(result, classifyEmotion(result));
-    setStatus("J.A.R.V.I.S. a conversar", "online");
-    speak(result, "autonomous");
+    showResponse("O modelo não devolveu uma resposta. Verifica o modelo de IA.", "sad");
+    setStatus("Resposta vazia", "online");
     return;
   }
 
   showResponse(result, classifyEmotion(result));
   setStatus("Resposta recebida", "online");
-  speak(result, "user");
+  speak(result, source);
 }
 window.onNativeModelResponse = onNativeModelResponse;
 window.onModelResponse = onNativeModelResponse;
@@ -695,58 +546,35 @@ function onNativeStatus(message) {
   if (/modelo pronto|modelo carregado|gemma iniciado com sucesso|gemma pronto/i.test(text)) {
     loadAIButton.disabled = false;
     autonomousModelReady = true;
-    if (autonomousMode) scheduleAutonomousTurn(12000);
   }
 }
 window.onNativeStatus = onNativeStatus;
 
 function onNativeSpeechResult(text) {
   recognitionActive = false;
-  if (!listeningEnabled) {
-    setMicUI(false);
-    return;
-  }
   const transcript = String(text || "").trim();
-  if (transcript) send(transcript);
-  else resumeListeningLater(500);
+
+  if (!transcript || waitingForModel || speaking) return;
+
+  listeningEnabled = true;
+  setEmotion("thinking");
+  send(transcript);
 }
 window.onNativeSpeechResult = onNativeSpeechResult;
 
 function onNativeSpeechError(message) {
   recognitionActive = false;
-  console.warn("Erro de voz:", message);
-  if (!listeningEnabled) {
-    setMicUI(false);
-    return;
-  }
   const errorText = String(message || "Erro no reconhecimento de voz");
-  if (/permission|permissao|not allowed|não autorizado/i.test(errorText)) {
-    listeningEnabled = false;
-    setMicUI(false);
-    setStatus("Permissão do microfone necessária");
-    showResponse("Autoriza o microfone nas definições da aplicação Android.", "sad");
-    return;
-  }
+  console.warn("Erro de voz:", errorText);
   setStatus(errorText);
-  resumeListeningLater(1000);
 }
 window.onNativeSpeechError = onNativeSpeechError;
 
 function onNativeModelError(message) {
-  const source = currentRequestSource;
   currentRequestSource = "user";
   setWaiting(false);
-
-  if (source === "autonomous") {
-    autonomousRequestPending = false;
-    setStatus("A IA local não respondeu; tentarei mais tarde", "online");
-    if (autonomousMode) scheduleAutonomousTurn(30000);
-    return;
-  }
-
   showResponse("Erro do modelo: " + String(message || "erro desconhecido"), "sad");
-  setStatus("Falha ao consultar o modelo", "online");
-  speak("Não consegui obter uma resposta do modelo.", "user");
+  setStatus("Falha ao consultar o Gemma", "online");
 }
 window.onNativeModelError = onNativeModelError;
 window.onModelError = onNativeModelError;
@@ -754,16 +582,13 @@ window.onModelError = onNativeModelError;
 function onNativeModelLoaded(message) {
   loadAIButton.disabled = false;
   autonomousModelReady = true;
-  modelLoadRequested = false;
   setStatus(message || "Modelo carregado", "online");
-  showResponse("Modelo local pronto. Posso conversar contigo sem microfone.", "happy");
-
+  showResponse("Modelo local pronto. Podes falar comigo.", "happy");
   if (voiceEnabled) speak("Modelo local pronto. Estou preparado.", "user");
-  if (autonomousMode) scheduleAutonomousTurn(15000);
 }
 window.onNativeModelLoaded = onNativeModelLoaded;
 
-/* CONVERSA AUTOMÁTICA */
+/* MODO DE CONVERSA AUTOMÁTICA OPCIONAL */
 function updateAutonomousButton() {
   autonomousButton.textContent = autonomousMode
     ? "⏸ Pausar conversa automática"
@@ -782,7 +607,7 @@ function toggleAutonomousMode() {
     return;
   }
 
-  setStatus("Modo autónomo ativado", "online");
+  setStatus("Conversa automática ativada", "online");
   if (!firstGreetingDone) startGreeting();
   else scheduleAutonomousTurn(3000);
 }
@@ -790,81 +615,59 @@ function toggleAutonomousMode() {
 function startGreeting() {
   if (firstGreetingDone || !autonomousMode) return;
   firstGreetingDone = true;
-  const greeting = "Olá! Sistemas online. Estou pronto para conversar contigo. Não precisas de ativar o microfone.";
+  const greeting = "Olá! Sistemas online. Estou pronto para conversar contigo.";
   showResponse(greeting, "happy");
   speak(greeting, "autonomous");
 }
 
 function scheduleAutonomousTurn(delay) {
   clearTimeout(autonomousTimer);
-  if (!autonomousMode) return;
-  autonomousTimer = setTimeout(runAutonomousTurn, delay);
+  if (autonomousMode) autonomousTimer = setTimeout(runAutonomousTurn, delay);
 }
 
 function runAutonomousTurn() {
-  if (!autonomousMode) return;
-
-  if (!voiceEnabled || speaking || waitingForModel || autonomousRequestPending) {
-    scheduleAutonomousTurn(15000);
-    return;
-  }
+  if (!autonomousMode || !voiceEnabled || speaking || waitingForModel) return;
 
   if (!autonomousModelReady ||
       !window.AndroidVoice ||
       typeof window.AndroidVoice.askModel !== "function") {
-    setStatus("A aguardar pelo Gemma local", "online");
     scheduleAutonomousTurn(20000);
     return;
   }
 
-  autonomousRequestPending = true;
   currentRequestSource = "autonomous";
-  autonomousTurn++;
+  const prompt = "És o JARVIS. Inicia uma conversa curta, amigável e apropriada em português do Brasil. Escreve uma ou duas frases. Não afirmes que vês ou ouves a pessoa.";
 
-  const topics = [
-    "Partilha uma curiosidade interessante e segura.",
-    "Inicia uma conversa amigável com uma pergunta curta.",
-    "Sugere uma atividade simples para aprender algo novo.",
-    "Conta um facto interessante sobre ciência ou tecnologia.",
-    "Faz uma observação útil e inicia uma conversa breve."
-  ];
-  const topic = topics[(autonomousTurn - 1) % topics.length];
-
-  const prompt =
-    "És o J.A.R.V.I.S., um assistente pessoal que fala português do Brasil. " +
-    "Inicia espontaneamente uma conversa curta. " + topic + " " +
-    "Escreve apenas uma ou duas frases naturais, apropriadas e variadas. " +
-    "Não afirmes que vês ou ouves a pessoa e não inventes informações sobre ela. " +
-    "Não repitas a frase anterior: " + lastAutonomousText + ". " +
-    "Esta é a interação número " + autonomousTurn + ".";
-
-  setStatus("A preparar uma conversa...", "busy");
-  setEmotion("thinking");
+  setWaiting(true);
 
   try {
+    if (typeof window.AndroidVoice.stopListening === "function") {
+      window.AndroidVoice.stopListening();
+    }
     window.AndroidVoice.askModel(prompt);
   } catch (error) {
-    autonomousRequestPending = false;
     currentRequestSource = "user";
-    console.warn("Erro no modo autónomo:", error);
-    setStatus("Não foi possível consultar o Gemma", "online");
+    setWaiting(false);
     scheduleAutonomousTurn(30000);
   }
 }
 
-/* ARRANQUE: SEM MICROFONE AUTOMÁTICO */
+/* ARRANQUE */
 window.addEventListener("load", () => {
-  setStatus("Interface pronta", "online");
+  setStatus("Interface pronta — a iniciar o sistema", "online");
   setEmotion("happy");
-  setMicUI(false);
-  listeningEnabled = false;
-  recognitionActive = false;
   updateAutonomousButton();
 
-  setTimeout(() => {
-    if (autonomousMode) startGreeting();
-    if (autonomousMode) scheduleAutonomousTurn(45000);
-  }, 1200);
+  // A escuta nativa deve ser iniciada pelo MainActivity.kt.
+  listeningEnabled = true;
+  recognitionActive = false;
+
+  if (window.AndroidVoice &&
+      typeof window.AndroidVoice.startListening === "function") {
+    setStatus("Sistema pronto para ouvir", "online");
+  } else {
+    setStatus("A aguardar integração Android", "normal");
+  }
 });
 </script>
 </body>

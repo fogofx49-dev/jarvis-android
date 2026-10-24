@@ -42,6 +42,7 @@ button{border:1px solid var(--border);color:var(--cyan);background:#007bff10;bor
 button:active{transform:scale(.97)}button:hover{background:#00d9ff1b}button:disabled{opacity:.45;cursor:not-allowed}
 #autonomousButton{grid-column:1/-1;border-color:#ff1515;color:#ffb0b0;background:#ff151510}
 #autonomousButton.enabled{border-color:#00ffad;color:#00ffad;background:#00ffad10}
+#micButton.muted{border-color:#ff1515;color:#ffb0b0;background:#ff151510}
 .ai-button{grid-column:1/-1;color:#effaff;min-height:47px;border-color:#00d9ff77}
 .hint{text-align:center;color:var(--muted);font-size:10px;line-height:1.7;margin:14px 5px}
 footer{text-align:center;font-size:9px;color:#577994;letter-spacing:2px;padding:12px 0 4px}
@@ -74,6 +75,7 @@ footer{text-align:center;font-size:9px;color:#577994;letter-spacing:2px;padding:
 </section>
 <div class="controls">
   <button id="voiceButton" type="button" onclick="toggleVoice()">🔊 Voz: ligada</button>
+  <button id="micButton" type="button" onclick="toggleMicrophone()">🎤 Microfone: ativo</button>
   <button type="button" onclick="showHelp()">❔ Ajuda</button>
   <button type="button" onclick="stopSpeaking()">🔇 Parar voz</button>
   <button id="autonomousButton" type="button" onclick="toggleAutonomousMode()">🤖 Ativar conversa humana</button>
@@ -86,6 +88,7 @@ footer{text-align:center;font-size:9px;color:#577994;letter-spacing:2px;padding:
 "use strict";
 
 let voiceEnabled = true;
+let micActive = true;
 let listeningEnabled = true;
 let recognitionActive = false;
 let waitingForModel = false;
@@ -104,6 +107,7 @@ const responseBox = document.getElementById("response");
 const statusBox = document.getElementById("status");
 const dot = document.getElementById("dot");
 const voiceButton = document.getElementById("voiceButton");
+const micButton = document.getElementById("micButton");
 const loadAIButton = document.getElementById("loadAIButton");
 const autonomousButton = document.getElementById("autonomousButton");
 
@@ -201,13 +205,9 @@ function finishSpeech() {
   if (!waitingForModel) setStatus("Sistema pronto", "online");
 
   if (activeSpeechSource === "autonomous" && autonomousMode) scheduleAutonomousTurn(15000);
-
-  if (window.AndroidVoice && typeof window.AndroidVoice.resumeListening === "function") {
-    try { window.AndroidVoice.resumeListening(); }
-    catch (error) { console.warn("Erro ao retomar escuta:", error); }
-  }
 }
 window.onNativeSpeechFinished = finishSpeech;
+window.onSpeechFinished = finishSpeech;
 
 function stopSpeaking() {
   clearTimeout(speakTimer);
@@ -219,9 +219,6 @@ function stopSpeaking() {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   setEmotion("happy");
   setStatus("Voz interrompida", "online");
-  if (window.AndroidVoice && typeof window.AndroidVoice.resumeListening === "function") {
-    try { window.AndroidVoice.resumeListening(); } catch (error) { console.warn(error); }
-  }
 }
 
 function toggleVoice() {
@@ -232,6 +229,26 @@ function toggleVoice() {
     clearTimeout(autonomousTimer);
   } else if (autonomousMode) scheduleAutonomousTurn(3000);
   setStatus(voiceEnabled ? "Voz ativada" : "Voz desativada", "online");
+}
+
+function toggleMicrophone() {
+  micActive = !micActive;
+  micButton.textContent = micActive ? "🎤 Microfone: ativo" : "🔇 Microfone: mudo";
+  micButton.classList.toggle("muted", !micActive);
+  
+  if (window.AndroidVoice) {
+    try {
+      if (micActive && typeof window.AndroidVoice.startListening === "function") {
+        window.AndroidVoice.startListening();
+        setStatus("Microfone ativado", "online");
+      } else if (!micActive && typeof window.AndroidVoice.stopListening === "function") {
+        window.AndroidVoice.stopListening();
+        setStatus("Microfone silenciado", "normal");
+      }
+    } catch (error) {
+      console.warn("Erro ao controlar o microfone:", error);
+    }
+  }
 }
 
 function chooseJarvisModel() {
@@ -258,7 +275,7 @@ function answer(raw) {
 }
 
 function send(text) {
-  if (waitingForModel || speaking) return;
+  if (waitingForModel || speaking || !micActive) return;
   const question = String(text || "").trim();
   if (!question) return;
 
@@ -298,13 +315,14 @@ function setWaiting(value) {
 }
 
 function showHelp() {
-    const message = "Estou conversando com você naturalmente. Pode me fazer perguntas ou pedir qualquer coisa.";
+    const message = "Estou ouvindo via microfone e conversando naturalmente com você. Pode me fazer perguntas ou pedir qualquer coisa.";
     showResponse(message, "happy");
     speak(message, "user");
 }
 
-/* CALLBACKS DE COMPATIBILIDADE TOTAL COM O KOTLIN */
+/* CALLBACKS DE COMPATIBILIDADE COM O KOTLIN */
 window.onNativeSpeechResult = function(text) {
+  if (!micActive) return;
   recognitionActive = false;
   const transcript = String(text || "").trim();
   if (!transcript || waitingForModel || speaking) return;
@@ -380,7 +398,7 @@ function scheduleAutonomousTurn(delay) {
 }
 
 function runAutonomousTurn() {
-  if (!autonomousMode || !voiceEnabled || speaking || waitingForModel) return;
+  if (!autonomousMode || !voiceEnabled || speaking || waitingForModel || !micActive) return;
   if (!autonomousModelReady || !window.AndroidVoice || typeof window.AndroidVoice.askModel !== "function") {
     scheduleAutonomousTurn(10000);
     return;

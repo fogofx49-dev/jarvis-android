@@ -28,17 +28,12 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.app.ActivityCompat
-import com.google.ai.edge.litertlm.Backend
-import com.google.ai.edge.litertlm.Contents
-import com.google.ai.edge.litertlm.Conversation
-import com.google.ai.edge.litertlm.ConversationConfig
-import com.google.ai.edge.litertlm.Engine
-import com.google.ai.edge.litertlm.EngineConfig
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
@@ -66,18 +61,18 @@ class MainActivity : Activity() {
     private var pageReady = false
 
     @Volatile
-    private var waitingForModel = false
+    private var waitingForCloud = false
 
     private val preferOfflineSpeech = false
     private val listeningHandler = Handler(Looper.getMainLooper())
-    private val aiExecutor = Executors.newSingleThreadExecutor()
-    private val modelRequestRunning = AtomicBoolean(false)
+    private val networkExecutor = Executors.newSingleThreadExecutor()
+    private val requestRunning = AtomicBoolean(false)
 
     private val restartListeningRunnable = Runnable {
         if (
             automaticListeningEnabled &&
             !jarvisSpeaking &&
-            !waitingForModel &&
+            !waitingForCloud &&
             !recognitionStarting &&
             pageReady &&
             !isFinishing &&
@@ -87,33 +82,16 @@ class MainActivity : Activity() {
         }
     }
 
-    private var modelUri: Uri? = null
-    private var modelFile: File? = null
-
-    @Volatile
-    private var modelEngine: Engine? = null
-
-    @Volatile
-    private var modelConversation: Conversation? = null
-
-    @Volatile
-    private var modelReady = false
-
-    @Volatile
-    private var modelLoading = false
-
     private var pendingFlashlightState: Boolean? = null
 
     companion object {
-        private const val TAG = "JARVIS"
-        private const val MODEL_TAG = "JARVIS_MODEL"
-
+        private const val TAG = "JARVIS_CLOUD"
         private const val MIC_PERMISSION = 101
-        private const val MODEL_PICKER = 102
         private const val FLASH_PERMISSION = 103
 
-        private const val MODEL_FILENAME = "model.litertlm"
-        private const val PREFERRED_VOICE_ID = ""
+        // Insira aqui a sua chave de API do Google Gemini (Google AI Studio)
+        private const val GEMINI_API_KEY = "SUA_CHAVE_DE_API_AQUI"
+        private const val GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY"
 
         private const val SYSTEM_INSTRUCTION = """
             Você é J.A.R.V.I.S., um assistente virtual pessoal de alta tecnologia inspirado na tecnologia Stark.
@@ -136,11 +114,8 @@ class MainActivity : Activity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 pageReady = true
-                showStatus(
-                    if (modelReady) "JARVIS pronto. Modelo local carregado."
-                    else "Interface pronta. A verificar o modelo local..."
-                )
-                initializeGemma()
+                showStatus("JARVIS pronto. Ligado à nuvem.")
+                notifyJavascriptEvent("onNativeModelLoaded")
                 startAutomaticListening()
             }
         }
@@ -211,7 +186,6 @@ class MainActivity : Activity() {
                     }
 
                     override fun onError(utteranceId: String?, errorCode: Int) {
-                        Log.w(TAG, "Erro TTS: $errorCode")
                         runOnUiThread {
                             jarvisSpeaking = false
                             notifyFirstAvailable("", "onNativeSpeechFinished", "onSpeechFinished")
@@ -259,7 +233,7 @@ class MainActivity : Activity() {
             if (!ttsReady || isFinishing || isDestroyed) return@runOnUiThread
 
             jarvisSpeaking = true
-            waitingForModel = false
+            waitingForCloud = false
             listeningHandler.removeCallbacks(restartListeningRunnable)
 
             try {
@@ -288,20 +262,6 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun listVoices(): String {
-        if (!::tts.isInitialized) return "[]"
-        val result = JSONArray()
-        val voices = tts.voices ?: emptySet<Voice>()
-        for (voice in voices) {
-            val item = JSONObject()
-            item.put("name", voice.name)
-            item.put("locale", voice.locale.toLanguageTag())
-            item.put("quality", voice.quality)
-            result.put(item)
-        }
-        return result.toString()
-    }
-
     // =========================================================
     // ESCUTA AUTOMÁTICA
     // =========================================================
@@ -317,7 +277,7 @@ class MainActivity : Activity() {
 
     private fun stopAutomaticListening() {
         automaticListeningEnabled = false
-        waitingForModel = false
+        waitingForCloud = false
         listeningHandler.removeCallbacks(restartListeningRunnable)
         try {
             recognizer?.cancel()
@@ -329,13 +289,13 @@ class MainActivity : Activity() {
 
     private fun scheduleListeningRestart(delayMillis: Long = 1000) {
         listeningHandler.removeCallbacks(restartListeningRunnable)
-        if (automaticListeningEnabled && !jarvisSpeaking && !waitingForModel && pageReady && !isFinishing && !isDestroyed) {
+        if (automaticListeningEnabled && !jarvisSpeaking && !waitingForCloud && pageReady && !isFinishing && !isDestroyed) {
             listeningHandler.postDelayed(restartListeningRunnable, delayMillis)
         }
     }
 
     private fun beginRecognition() {
-        if (!automaticListeningEnabled || jarvisSpeaking || waitingForModel || recognitionStarting || !pageReady || isFinishing || isDestroyed) return
+        if (!automaticListeningEnabled || jarvisSpeaking || waitingForCloud || recognitionStarting || !pageReady || isFinishing || isDestroyed) return
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             startAutomaticListening()
@@ -353,13 +313,7 @@ class MainActivity : Activity() {
             recognizer?.destroy()
             recognizer = null
 
-            val localAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && SpeechRecognizer.isOnDeviceRecognitionAvailable(this)
-            recognizer = if (preferOfflineSpeech && localAvailable) {
-                SpeechRecognizer.createOnDeviceSpeechRecognizer(this)
-            } else {
-                SpeechRecognizer.createSpeechRecognizer(this)
-            }
-
+            recognizer = SpeechRecognizer.createSpeechRecognizer(this)
             recognizer?.setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {
                     recognitionStarting = false
@@ -371,7 +325,7 @@ class MainActivity : Activity() {
                 override fun onEndOfSpeech() { showStatus("A processar a fala...") }
                 override fun onError(error: Int) {
                     recognitionStarting = false
-                    if (waitingForModel || jarvisSpeaking) return
+                    if (waitingForCloud || jarvisSpeaking) return
                     if (automaticListeningEnabled) {
                         scheduleListeningRestart(1500)
                     }
@@ -397,9 +351,9 @@ class MainActivity : Activity() {
                         return
                     }
 
-                    waitingForModel = true
+                    waitingForCloud = true
                     listeningHandler.removeCallbacks(restartListeningRunnable)
-                    showStatus("A processar comando...")
+                    showStatus("A consultar a nuvem...")
 
                     notifyJavascript("onNativeSpeechResult", commandText)
                 }
@@ -483,14 +437,13 @@ class MainActivity : Activity() {
     // =========================================================
 
     inner class AndroidBridge {
-        @JavascriptInterface fun listVoices() { notifyJavascript("onNativeVoicesListed", this@MainActivity.listVoices()) }
         @JavascriptInterface fun speak(text: String) { this@MainActivity.speak(text) }
         @JavascriptInterface fun stopSpeaking() { this@MainActivity.stopSpeaking() }
         @JavascriptInterface fun openApp(app: String) { runOnUiThread { openApplication(app) } }
         @JavascriptInterface fun startListening() { runOnUiThread { startAutomaticListening() } }
         @JavascriptInterface fun stopListening() { runOnUiThread { stopAutomaticListening() } }
-        @JavascriptInterface fun chooseModel() { runOnUiThread { openModelPicker() } }
-        @JavascriptInterface fun askModel(prompt: String) { this@MainActivity.askModel(prompt) }
+        @JavascriptInterface fun chooseModel() { showStatus("Modo nuvem ativo (sem ficheiro local necessário).") }
+        @JavascriptInterface fun askModel(prompt: String) { this@MainActivity.askCloudModel(prompt) }
 
         @JavascriptInterface
         fun getBattery(): String {
@@ -541,10 +494,6 @@ class MainActivity : Activity() {
         }
     }
 
-    // =========================================================
-    // ABRIR APLICAÇÕES (ATUALIZADO)
-    // =========================================================
-
     private fun openApplication(app: String) {
         try {
             val appName = app.lowercase(Locale.ROOT).trim()
@@ -563,162 +512,92 @@ class MainActivity : Activity() {
                         appName.contains("maps") || appName.contains("mapas") -> "com.google.android.apps.maps"
                         else -> null
                     }
-
-                    val launchIntent = if (packageName != null) {
-                        packageManager.getLaunchIntentForPackage(packageName)
-                    } else {
-                        packageManager.getLaunchIntentForPackage(app)
-                    }
-
-                    if (launchIntent != null) {
-                        launchIntent
-                    } else {
-                        showStatus("Não encontrei a aplicação: $app")
-                        speak("Não consegui encontrar a aplicação $app instalada.")
-                        return
-                    }
+                    val launchIntent = if (packageName != null) packageManager.getLaunchIntentForPackage(packageName) else packageManager.getLaunchIntentForPackage(app)
+                    launchIntent ?: return
                 }
             }
-
             startActivity(intent)
             showStatus("A abrir $app.")
             speak("A abrir $app.")
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Erro ao abrir aplicação.", e)
-            showStatus("Não consegui abrir $app.")
-            speak("Desculpe, ocorreu um erro ao tentar abrir $app.")
-        }
-    }
-
-    private fun openModelPicker() {
-        try {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                type = "*/*"
-            }
-            startActivityForResult(intent, MODEL_PICKER)
         } catch (_: Exception) {}
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode != MODEL_PICKER || resultCode != RESULT_OK) return
-        val uri = data?.data ?: return
-        modelUri = uri
-        showStatus("A copiar modelo...")
+    // =========================================================
+    // CONSULTA À API DO GEMINI NA NUVEM
+    // =========================================================
 
-        Thread {
-            try {
-                val temporaryFile = File(filesDir, "$MODEL_FILENAME.tmp")
-                contentResolver.openInputStream(uri)?.use { input ->
-                    FileOutputStream(temporaryFile).use { output -> input.copyTo(output) }
-                }
-                aiExecutor.execute {
-                    try {
-                        closeCurrentModel()
-                        val destination = File(filesDir, MODEL_FILENAME)
-                        if (destination.exists()) destination.delete()
-                        temporaryFile.renameTo(destination)
-                        modelFile = destination
-                        initializeGemmaOnExecutor(destination)
-                    } catch (e: Exception) {
-                        modelReady = false
-                        modelLoading = false
-                    }
-                }
-            } catch (_: Exception) {}
-        }.start()
-    }
-
-    private fun initializeGemma() {
-        val file = File(filesDir, MODEL_FILENAME)
-        modelFile = file
-        if (!file.exists()) return
-        if (modelReady || modelLoading) return
-
-        modelLoading = true
-        aiExecutor.execute {
-            try {
-                initializeGemmaOnExecutor(file)
-            } catch (_: Exception) {
-                modelReady = false
-                modelLoading = false
-            }
-        }
-    }
-
-    private fun initializeGemmaOnExecutor(file: File) {
-        var newEngine: Engine? = null
-        var newConversation: Conversation? = null
-        try {
-            val engineConfig = EngineConfig(modelPath = file.absolutePath, backend = Backend.CPU())
-            newEngine = Engine(engineConfig)
-            newEngine.initialize()
-
-            val conversationConfig = ConversationConfig(systemInstruction = Contents.of(SYSTEM_INSTRUCTION))
-            newConversation = newEngine.createConversation(conversationConfig)
-
-            modelEngine = newEngine
-            modelConversation = newConversation
-            modelReady = true
-            modelLoading = false
-
-            notifyJavascriptEvent("onNativeModelLoaded")
-        } catch (e: Exception) {
-            newConversation?.close()
-            newEngine?.close()
-            modelReady = false
-            modelLoading = false
-            throw e
-        }
-    }
-
-    private fun askModel(prompt: String) {
+    private fun askCloudModel(prompt: String) {
         val question = prompt.trim()
         if (question.isBlank()) return
 
-        waitingForModel = true
+        waitingForCloud = true
         listeningHandler.removeCallbacks(restartListeningRunnable)
 
-        if (!modelReady || modelConversation == null) {
-            showModelError("Modelo de IA não carregado.")
-            return
-        }
+        if (!requestRunning.compareAndSet(false, true)) return
 
-        if (!modelRequestRunning.compareAndSet(false, true)) return
+        showStatus("JARVIS a consultar a nuvem...")
 
-        showStatus("JARVIS a analisar...")
-
-        aiExecutor.execute {
+        networkExecutor.execute {
             try {
-                val conversation = modelConversation ?: throw IllegalStateException("Conversa indisponível")
-                val result = conversation.sendMessage(question, maxOutputToken = 512)
-                val answer = result.toString().trim()
-                showModelResponse(answer.ifBlank { "Sem resposta gerada." })
+                val url = URL(GEMINI_URL)
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+                conn.doOutput = true
+
+                val jsonBody = JSONObject().apply {
+                    put("system_instruction", JSONObject().apply {
+                        put("parts", JSONObject().apply {
+                            put("text", SYSTEM_INSTRUCTION)
+                        })
+                    })
+                    put("contents", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("parts", JSONArray().apply {
+                                put(JSONObject().apply {
+                                    put("text", question)
+                                })
+                            })
+                        })
+                    })
+                }
+
+                conn.outputStream.use { os ->
+                    val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
+                    os.write(input, 0, input.size)
+                }
+
+                val responseCode = conn.responseCode
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    val responseString = BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8)).use { it.readText() }
+                    val jsonResponse = JSONObject(responseString)
+                    val candidates = jsonResponse.getJSONArray("candidates")
+                    val content = candidates.getJSONObject(0).getJSONObject("content")
+                    val parts = content.getJSONArray("parts")
+                    val answer = parts.getJSONObject(0).getString("text").trim()
+
+                    showCloudResponse(answer)
+                } else {
+                    showCloudError("Erro de ligação à nuvem (Código: $responseCode)")
+                }
             } catch (e: Exception) {
-                showModelError("Erro ao processar IA.")
+                Log.e(TAG, "Erro ao consultar a API", e)
+                showCloudError("Falha na rede: ${e.message}")
             } finally {
-                modelRequestRunning.set(false)
+                requestRunning.set(false)
             }
         }
     }
 
-    private fun closeCurrentModel() {
-        try { modelConversation?.close() } catch (_: Exception) { modelConversation = null }
-        try { modelEngine?.close() } catch (_: Exception) { modelEngine = null }
-        modelReady = false
-    }
-
-    private fun showModelResponse(answer: String) {
-        waitingForModel = false
+    private fun showCloudResponse(answer: String) {
+        waitingForCloud = false
         notifyFirstAvailable(answer, "onNativeModelResponse", "onModelResponse")
         showStatus("Pronto.")
         scheduleListeningRestart(1500)
     }
 
-    private fun showModelError(message: String) {
-        waitingForModel = false
+    private fun showCloudError(message: String) {
+        waitingForCloud = false
         notifyFirstAvailable(message, "onNativeModelError", "onModelError")
         showStatus(message)
         scheduleListeningRestart(1500)
@@ -734,7 +613,7 @@ class MainActivity : Activity() {
         try { recognizer?.destroy() } catch (_: Exception) {}
         recognizer = null
         if (::tts.isInitialized) { tts.stop(); tts.shutdown() }
-        try { aiExecutor.execute { closeCurrentModel() }; aiExecutor.shutdown() } catch (_: Exception) { aiExecutor.shutdownNow() }
+        try { networkExecutor.shutdown() } catch (_: Exception) { networkExecutor.shutdownNow() }
         if (::webView.isInitialized) { webView.stopLoading(); webView.destroy() }
         super.onDestroy()
     }

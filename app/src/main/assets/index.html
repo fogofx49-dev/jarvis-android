@@ -303,6 +303,7 @@ function showHelp() {
     speak(message, "user");
 }
 
+/* CALLBACKS DE COMPATIBILIDADE TOTAL COM O KOTLIN */
 window.onNativeSpeechResult = function(text) {
   recognitionActive = false;
   const transcript = String(text || "").trim();
@@ -310,22 +311,45 @@ window.onNativeSpeechResult = function(text) {
   send(transcript);
 };
 
-window.onNativeModelResponse = function(text) {
+function handleModelResult(text) {
   const source = currentRequestSource;
   currentRequestSource = "user";
   setWaiting(false);
   const result = String(text || "").trim();
   showResponse(result, classifyEmotion(result));
   speak(result, source);
-};
+}
+
+window.onNativeModelResponse = handleModelResult;
+window.onModelResponse = handleModelResult;
+
+function handleModelError(message) {
+  currentRequestSource = "user";
+  setWaiting(false);
+  showResponse("Erro do modelo: " + String(message || "erro desconhecido"), "sad");
+  setStatus("Falha ao consultar o Gemma", "online");
+}
+
+window.onNativeModelError = handleModelError;
+window.onModelError = handleModelError;
 
 window.onNativeStatus = function(message) {
   const text = String(message || "");
-  if (/modelo pronto|carregado/i.test(text)) {
+  setStatus(text, /pensar|processar|carregar|copiar|ouvir/i.test(text) ? "busy" : "online");
+  if (/modelo pronto|carregado|jarvis pronto/i.test(text)) {
     loadAIButton.disabled = false;
     autonomousModelReady = true;
   }
 };
+
+window.onNativeModelLoaded = function(message) {
+  loadAIButton.disabled = false;
+  autonomousModelReady = true;
+  setStatus(message || "Modelo carregado", "online");
+  showResponse("Modelo local pronto. Sistema holográfico operacional.", "happy");
+  if (voiceEnabled) speak("Modelo local pronto. Estou preparado.", "user");
+};
+window.onModelLoaded = window.onNativeModelLoaded;
 
 function updateAutonomousButton() {
   autonomousButton.textContent = autonomousMode ? "⏸ Pausar conversa humana" : "🤖 Ativar conversa humana";

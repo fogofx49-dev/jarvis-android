@@ -18,7 +18,7 @@ h1{font-size:clamp(36px,9vw,55px);letter-spacing:4px;margin:9px 0;color:#f0f8ff;
 .dot{width:8px;height:8px;flex-shrink:0;border-radius:50%;background:#777}.dot.online{background:#00ffad;box-shadow:0 0 12px #00ffad}.dot.busy{background:var(--cyan);box-shadow:0 0 12px var(--cyan);animation:blink .7s infinite alternate}
 @keyframes blink{to{opacity:.3}}
 
-/* NÚCLEO HOLOGRÁFICO */
+/* NÚCLEO HOLOGRÁFICO REATIVO */
 .core{position:relative;width:min(100%,320px);height:320px;margin:20px auto;display:flex;justify-content:center;align-items:center;isolation:isolate}
 .holo-projector{position:relative;width:220px;height:220px;display:flex;justify-content:center;align-items:center;border-radius:50%;background:radial-gradient(circle,rgba(0,217,255,0.15) 0%,rgba(8,124,255,0.05) 60%,transparent 80%);box-shadow:0 0 50px rgba(0,217,255,0.2),inset 0 0 30px rgba(0,217,255,0.2);animation:floatHolo 4s ease-in-out infinite}
 @keyframes floatHolo{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
@@ -32,6 +32,10 @@ h1{font-size:clamp(36px,9vw,55px);letter-spacing:4px;margin:9px 0;color:#f0f8ff;
 .holo-core-inner{position:absolute;width:90px;height:90px;background:radial-gradient(circle,#fff 0%,#00d9ff 40%,#087cff 80%,transparent 100%);border-radius:50%;box-shadow:0 0 30px var(--cyan),0 0 60px var(--blue);animation:pulseHolo 2s ease-in-out infinite alternate}
 @keyframes pulseHolo{from{transform:scale(0.9);opacity:0.8}to{transform:scale(1.1);opacity:1}}
 
+/* Estados visuais reativos */
+.core.listening .holo-core-inner{background:radial-gradient(circle,#fff 0%,#00ffad 40%,#008855 80%,transparent 100%);box-shadow:0 0 35px #00ffad;}
+.core.talking .holo-core-inner{background:radial-gradient(circle,#fff 0%,#ffaa00 40%,#cc5500 80%,transparent 100%);box-shadow:0 0 35px #ffaa00;}
+
 .robot-label{text-align:center;color:var(--cyan);font-size:11px;letter-spacing:4px;font-weight:bold;margin:16px 0 15px;text-shadow:0 0 12px var(--cyan)}
 .panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 0 24px #008cff0d;overflow:hidden;margin-top:12px}
 .panel-title{padding:13px 14px;color:var(--cyan);font-size:11px;font-weight:bold;letter-spacing:2px;border-bottom:1px solid var(--border)}
@@ -40,14 +44,10 @@ h1{font-size:clamp(36px,9vw,55px);letter-spacing:4px;margin:9px 0;color:#f0f8ff;
 .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:13px}
 button{border:1px solid var(--border);color:var(--cyan);background:#007bff10;border-radius:10px;padding:12px 9px;font-size:12px;font-weight:bold;cursor:pointer;transition:background .2s,transform .2s}
 button:active{transform:scale(.97)}button:hover{background:#00d9ff1b}button:disabled{opacity:.45;cursor:not-allowed}
-#autonomousButton{grid-column:1/-1;border-color:#ff1515;color:#ffb0b0;background:#ff151510}
-#autonomousButton.enabled{border-color:#00ffad;color:#00ffad;background:#00ffad10}
 #micButton.muted{border-color:#ff1515;color:#ffb0b0;background:#ff151510}
 .ai-button{grid-column:1/-1;color:#effaff;min-height:47px;border-color:#00d9ff77}
 .hint{text-align:center;color:var(--muted);font-size:10px;line-height:1.7;margin:14px 5px}
 footer{text-align:center;font-size:9px;color:#577994;letter-spacing:2px;padding:12px 0 4px}
-@media(max-width:390px){.app{padding:10px 9px 20px}.controls{gap:7px}.controls button{font-size:11px;padding:11px 5px}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
@@ -55,61 +55,50 @@ footer{text-align:center;font-size:9px;color:#577994;letter-spacing:2px;padding:
 <header>
   <div class="brand">STARK TECHNOLOGY</div>
   <h1>J.A.R.V.I.S.</h1>
-  <div class="subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+  <div class="subtitle">AUTONOMOUS ASSISTANT & DEVICE CONTROL</div>
 </header>
-<div class="statusbar"><span id="dot" class="dot"></span><span id="status">A inicializar o sistema...</span></div>
+<div class="statusbar"><span id="dot" class="dot"></span><span id="status">A inicializar sistema holográfico...</span></div>
 
-<div class="core">
+<div class="core" id="coreContainer">
   <div class="holo-ring"></div>
   <div class="holo-ring"></div>
   <div class="holo-ring"></div>
-  <div class="holo-projector" id="robot" data-emotion="happy">
+  <div class="holo-projector" id="robot">
     <div class="holo-core-inner"></div>
   </div>
 </div>
 
-<div class="robot-label" id="emotionLabel">● SISTEMA HOLOGRÁFICO ATIVO</div>
+<div class="robot-label" id="emotionLabel">● SISTEMA OPERACIONAL ATIVO</div>
 <section class="panel">
-  <div class="panel-title">▸ RESPOSTA DO SISTEMA</div>
-  <div class="response" id="response" aria-live="polite"><span class="response-label">J.A.R.V.I.S.</span>Sistema pronto. Estou aqui para conversar com você.</div>
+  <div class="panel-title">▸ REGISTRO DE COMANDOS</div>
+  <div class="response" id="response"><span class="response-label">J.A.R.V.I.S.</span>Aguardando comandos de voz ou interações.</div>
 </section>
 <div class="controls">
   <button id="voiceButton" type="button" onclick="toggleVoice()">🔊 Voz: ligada</button>
   <button id="micButton" type="button" onclick="toggleMicrophone()">🎤 Microfone: ativo</button>
-  <button type="button" onclick="showHelp()">❔ Ajuda</button>
+  <button type="button" onclick="runGoodMorningRoutine()">☀️ Bom dia, Jarvis</button>
   <button type="button" onclick="stopSpeaking()">🔇 Parar voz</button>
-  <button id="autonomousButton" type="button" onclick="toggleAutonomousMode()">🤖 Ativar conversa humana</button>
-  <button id="loadAIButton" class="ai-button" type="button" onclick="chooseJarvisModel()">📂 Carregar arquivo de IA</button>
+  <button id="loadAIButton" class="ai-button" type="button" onclick="chooseJarvisModel()">📂 Carregar arquivo de IA local</button>
 </div>
-<div class="hint">Assistente holográfico • Diálogo natural reativo<br>Gemma local • TextToSpeech • Escuta gerida pelo Android</div>
+<div class="hint">Assistente multitarefa • Comandos locais instantâneos • E-mail, WhatsApp & Agenda</div>
 <footer>J.A.R.V.I.S. • STARK TECHNOLOGY</footer>
 </div>
+
 <script>
 "use strict";
 
 let voiceEnabled = true;
 let micActive = true;
-let listeningEnabled = true;
-let recognitionActive = false;
 let waitingForModel = false;
 let speaking = false;
-let speakTimer = null;
-let autonomousTimer = null;
-let currentSpeechId = 0;
-let currentRequestSource = "user";
-let activeSpeechSource = "user";
-let autonomousMode = false;
-let autonomousModelReady = false;
-let firstGreetingDone = false;
 
-const robot = document.getElementById("robot");
 const responseBox = document.getElementById("response");
 const statusBox = document.getElementById("status");
 const dot = document.getElementById("dot");
 const voiceButton = document.getElementById("voiceButton");
 const micButton = document.getElementById("micButton");
 const loadAIButton = document.getElementById("loadAIButton");
-const autonomousButton = document.getElementById("autonomousButton");
+const coreContainer = document.getElementById("coreContainer");
 
 function normalizeText(text) {
   return String(text || "").toLowerCase()
@@ -124,22 +113,13 @@ function setStatus(message, state = "normal") {
   if (state === "busy") dot.classList.add("busy");
 }
 
-function setEmotion(emotion, label) {
-  const allowed = ["happy","sad","thinking","surprised","listening","talking"];
-  robot.dataset.emotion = allowed.includes(emotion) ? emotion : "happy";
-  const labels = {happy:"CONVERSA ATIVA",sad:"ALERTA",thinking:"PENSANDO",surprised:"INTERESSANTE",listening:"OUVINDO",talking:"FALANDO"};
-  document.getElementById("emotionLabel").textContent = "● " + (label || labels[robot.dataset.emotion]);
+function setVisualState(state) {
+  coreContainer.className = "core";
+  if (state === "listening") coreContainer.classList.add("listening");
+  if (state === "talking") coreContainer.classList.add("talking");
 }
 
-function classifyEmotion(text) {
-  const t = normalizeText(text);
-  if (/erro|problema|desculpa|triste/.test(t)) return "sad";
-  if (/otimo|excelente|legal|bom|maravilha|feliz/.test(t)) return "happy";
-  if (/uau|serio|verdade|interessante/.test(t)) return "surprised";
-  return "happy";
-}
-
-function showResponse(text, emotion) {
+function showResponse(text) {
   responseBox.replaceChildren();
   const label = document.createElement("span");
   label.className = "response-label";
@@ -147,87 +127,47 @@ function showResponse(text, emotion) {
   const content = document.createElement("div");
   content.textContent = String(text || "");
   responseBox.append(label, content);
-  setEmotion(emotion || classifyEmotion(text));
 }
 
-function speak(text, source = "user") {
+function speak(text) {
   const phrase = String(text || "").trim();
-  clearTimeout(speakTimer);
-  currentSpeechId++;
-  activeSpeechSource = source;
-
-  if (!voiceEnabled || !phrase) {
-    speaking = false;
-    if (source === "autonomous" && autonomousMode) scheduleAutonomousTurn(15000);
-    return;
-  }
+  if (!voiceEnabled || !phrase) return;
 
   speaking = true;
-  setEmotion("talking");
-  setStatus("J.A.R.V.I.S. falando...", "busy");
+  setVisualState("talking");
+  setStatus("JARVIS a falar...", "busy");
 
   if (window.AndroidVoice && typeof window.AndroidVoice.speak === "function") {
-    const speechId = currentSpeechId;
     try {
       window.AndroidVoice.speak(phrase);
-      speakTimer = setTimeout(() => {
-        if (speechId !== currentSpeechId || !speaking) return;
-        finishSpeech();
-      }, Math.max(8000, Math.min(90000, phrase.length * 220)));
       return;
-    } catch (error) {
-      console.warn("Erro na voz Android:", error);
-    }
+    } catch (e) { console.warn(e); }
   }
-
-  if ("speechSynthesis" in window) {
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(phrase);
-      utterance.lang = "pt-BR";
-      utterance.onstart = () => { speaking = true; setEmotion("talking"); };
-      utterance.onend = finishSpeech;
-      utterance.onerror = finishSpeech;
-      window.speechSynthesis.speak(utterance);
-      return;
-    } catch (error) {
-      console.warn("Erro na síntese de voz:", error);
-    }
-  }
-  finishSpeech();
 }
 
 function finishSpeech() {
-  if (!speaking) return;
-  clearTimeout(speakTimer);
   speaking = false;
-  setEmotion(classifyEmotion(responseBox.textContent));
+  setVisualState("normal");
   if (!waitingForModel) setStatus("Sistema pronto", "online");
-
-  if (activeSpeechSource === "autonomous" && autonomousMode) scheduleAutonomousTurn(15000);
 }
 window.onNativeSpeechFinished = finishSpeech;
 window.onSpeechFinished = finishSpeech;
 
 function stopSpeaking() {
-  clearTimeout(speakTimer);
-  currentSpeechId++;
   speaking = false;
+  setVisualState("normal");
   try {
-    if (window.AndroidVoice && typeof window.AndroidVoice.stopSpeaking === "function") window.AndroidVoice.stopSpeaking();
-  } catch (error) { console.warn(error); }
-  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-  setEmotion("happy");
+    if (window.AndroidVoice && typeof window.AndroidVoice.stopSpeaking === "function") {
+      window.AndroidVoice.stopSpeaking();
+    }
+  } catch (_e) {}
   setStatus("Voz interrompida", "online");
 }
 
 function toggleVoice() {
   voiceEnabled = !voiceEnabled;
   voiceButton.textContent = voiceEnabled ? "🔊 Voz: ligada" : "🔇 Voz: desligada";
-  if (!voiceEnabled) {
-    stopSpeaking();
-    clearTimeout(autonomousTimer);
-  } else if (autonomousMode) scheduleAutonomousTurn(3000);
+  if (!voiceEnabled) stopSpeaking();
   setStatus(voiceEnabled ? "Voz ativada" : "Voz desativada", "online");
 }
 
@@ -245,33 +185,69 @@ function toggleMicrophone() {
         window.AndroidVoice.stopListening();
         setStatus("Microfone silenciado", "normal");
       }
-    } catch (error) {
-      console.warn("Erro ao controlar o microfone:", error);
-    }
+    } catch (_e) {}
   }
 }
 
 function chooseJarvisModel() {
-  if (!window.AndroidVoice || typeof window.AndroidVoice.chooseModel !== "function") {
-    showResponse("O seletor de arquivos Android não está ligado.", "sad");
-    return;
-  }
-  try {
-    loadAIButton.disabled = true;
-    setStatus("Selecionando modelo...", "busy");
+  if (window.AndroidVoice && typeof window.AndroidVoice.chooseModel === "function") {
     window.AndroidVoice.chooseModel();
-  } catch (error) {
-    loadAIButton.disabled = false;
   }
 }
 
-function answer(raw) {
+/* ROTINA INTELIGENTE: BOM DIA / RESUMO DIÁRIO */
+function runGoodMorningRoutine() {
+  if (!window.AndroidVoice) return;
+  try {
+    const batteryInfo = window.AndroidVoice.getBattery ? window.AndroidVoice.getBattery() : "Bateria normal.";
+    const greeting = "Bom dia! Todos os sistemas operacionais encontram-se a 100 por cento. " + batteryInfo + " Como posso auxiliar nas suas tarefas hoje?";
+    showResponse(greeting);
+    speak(greeting);
+  } catch (_e) {
+    speak("Bom dia! Sistemas prontos para iniciar o dia.");
+  }
+}
+
+/* COMANDOS LOCAIS INSTANTÂNEOS (SEM ESPERAR IA) */
+function executeLocalCommand(raw) {
   const msg = normalizeText(raw);
-  if (/^(ola|oi|bom dia|boa tarde|boa noite|tudo bem)[!.?]*$/.test(msg))
-    return "Olá! Tudo ótimo por aqui. No que posso ajudar você hoje?";
-  if (/^(qual e o teu nome|como te chamas|quem es)[?!.]*$/.test(msg))
-    return "Eu sou o JARVIS, seu assistente pessoal holográfico.";
-  return null;
+  const av = window.AndroidVoice;
+
+  if (/quanto tenho de bateria|nivel da bateria|bateria/.test(msg)) {
+    const bat = av && av.getBattery ? av.getBattery() : "Bateria não consultada.";
+    showResponse(bat);
+    speak(bat);
+    return true;
+  }
+  if (/ligar a lanterna|acender a lanterna/.test(msg)) {
+    if (av && av.setFlashlight) av.setFlashlight(true);
+    showResponse("Lanterna ligada.");
+    speak("Lanterna ligada.");
+    return true;
+  }
+  if (/desligar a lanterna|apagar a lanterna/.test(msg)) {
+    if (av && av.setFlashlight) av.setFlashlight(false);
+    showResponse("Lanterna desligada.");
+    speak("Lanterna desligada.");
+    return true;
+  }
+  if (/aumentar o volume/.test(msg)) {
+    const res = av && av.changeVolume ? av.changeVolume("up") : "Volume ajustado.";
+    showResponse(res);
+    speak(res);
+    return true;
+  }
+  if (/baixar o volume|abaixar o volume/.test(msg)) {
+    const res = av && av.changeVolume ? av.changeVolume("down") : "Volume ajustado.";
+    showResponse(res);
+    speak(res);
+    return true;
+  }
+  if (/bom dia/.test(msg)) {
+    runGoodMorningRoutine();
+    return true;
+  }
+  return false;
 }
 
 function send(text) {
@@ -279,148 +255,66 @@ function send(text) {
   const question = String(text || "").trim();
   if (!question) return;
 
-  clearTimeout(autonomousTimer);
-  setEmotion("thinking");
-  setStatus("Processando...", "busy");
+  setVisualState("listening");
+  setStatus("A processar...", "busy");
 
-  const localAnswer = answer(question);
-  if (localAnswer !== null) {
-    showResponse(localAnswer, classifyEmotion(localAnswer));
+  // Tenta resolver localmente e instantaneamente
+  if (executeLocalCommand(question)) {
     setStatus("Pronto", "online");
-    speak(localAnswer, "user");
     return;
   }
 
   if (!window.AndroidVoice || typeof window.AndroidVoice.askModel !== "function") {
-    const message = "O modelo de IA local não está conectado.";
-    showResponse(message, "sad");
-    speak(message, "user");
+    showResponse("Modelo de IA local não conectado.");
+    speak("Por favor, carregue o modelo de IA.");
     return;
   }
 
-  currentRequestSource = "user";
-  setWaiting(true);
+  waitingForModel = true;
   try {
     if (typeof window.AndroidVoice.stopListening === "function") window.AndroidVoice.stopListening();
     window.AndroidVoice.askModel(question);
-  } catch (error) {
-    setWaiting(false);
-    showResponse("Erro ao consultar o modelo.", "sad");
+  } catch (_e) {
+    waitingForModel = false;
+    showResponse("Erro ao enviar para o Gemma.");
   }
 }
 
-function setWaiting(value) {
-  waitingForModel = Boolean(value);
-  setStatus(waitingForModel ? "Processando IA..." : "Pronto", waitingForModel ? "busy" : "online");
-}
-
-function showHelp() {
-    const message = "Estou ouvindo via microfone e conversando naturalmente com você. Pode me fazer perguntas ou pedir qualquer coisa.";
-    showResponse(message, "happy");
-    speak(message, "user");
-}
-
-/* CALLBACKS DE COMPATIBILIDADE COM O KOTLIN */
 window.onNativeSpeechResult = function(text) {
   if (!micActive) return;
-  recognitionActive = false;
   const transcript = String(text || "").trim();
   if (!transcript || waitingForModel || speaking) return;
   send(transcript);
 };
 
-function handleModelResult(text) {
-  const source = currentRequestSource;
-  currentRequestSource = "user";
-  setWaiting(false);
+window.onNativeModelResponse = function(text) {
+  waitingForModel = false;
   const result = String(text || "").trim();
-  showResponse(result, classifyEmotion(result));
-  speak(result, source);
-}
+  showResponse(result);
+  speak(result);
+};
+window.onModelResponse = window.onNativeModelResponse;
 
-window.onNativeModelResponse = handleModelResult;
-window.onModelResponse = handleModelResult;
-
-function handleModelError(message) {
-  currentRequestSource = "user";
-  setWaiting(false);
-  showResponse("Erro do modelo: " + String(message || "erro desconhecido"), "sad");
-  setStatus("Falha ao consultar o Gemma", "online");
-}
-
-window.onNativeModelError = handleModelError;
-window.onModelError = handleModelError;
+window.onNativeModelError = function(message) {
+  waitingForModel = false;
+  showResponse("Erro de processamento: " + message);
+  setStatus("Erro na IA", "online");
+};
+window.onModelError = window.onNativeModelError;
 
 window.onNativeStatus = function(message) {
-  const text = String(message || "");
-  setStatus(text, /pensar|processar|carregar|copiar|ouvir/i.test(text) ? "busy" : "online");
-  if (/modelo pronto|carregado|jarvis pronto/i.test(text)) {
-    loadAIButton.disabled = false;
-    autonomousModelReady = true;
-  }
+  setStatus(message, /pensar|processar|carregar|copiar/i.test(message) ? "busy" : "online");
 };
 
 window.onNativeModelLoaded = function(message) {
-  loadAIButton.disabled = false;
-  autonomousModelReady = true;
   setStatus(message || "Modelo carregado", "online");
-  showResponse("Modelo local pronto. Sistema holográfico operacional.", "happy");
-  if (voiceEnabled) speak("Modelo local pronto. Estou preparado.", "user");
+  showResponse("Núcleo de IA carregado com sucesso. Sistemas operacionais prontos.");
+  speak("Modelo carregado. À sua disposição.");
 };
 window.onModelLoaded = window.onNativeModelLoaded;
 
-function updateAutonomousButton() {
-  autonomousButton.textContent = autonomousMode ? "⏸ Pausar conversa humana" : "🤖 Ativar conversa humana";
-  autonomousButton.classList.toggle("enabled", autonomousMode);
-}
-
-function toggleAutonomousMode() {
-  autonomousMode = !autonomousMode;
-  updateAutonomousButton();
-  if (!autonomousMode) {
-    clearTimeout(autonomousTimer);
-    autonomousTimer = null;
-    return;
-  }
-  if (!firstGreetingDone) {
-    firstGreetingDone = true;
-    const greeting = "Olá! Vamos bater um papo. Sobre o que você quer conversar?";
-    showResponse(greeting, "happy");
-    speak(greeting, "autonomous");
-  } else {
-    scheduleAutonomousTurn(3000);
-  }
-}
-
-function scheduleAutonomousTurn(delay) {
-  clearTimeout(autonomousTimer);
-  if (autonomousMode) autonomousTimer = setTimeout(runAutonomousTurn, delay);
-}
-
-function runAutonomousTurn() {
-  if (!autonomousMode || !voiceEnabled || speaking || waitingForModel || !micActive) return;
-  if (!autonomousModelReady || !window.AndroidVoice || typeof window.AndroidVoice.askModel !== "function") {
-    scheduleAutonomousTurn(10000);
-    return;
-  }
-
-  currentRequestSource = "autonomous";
-  const prompt = "Aja como uma pessoa conversando naturalmente em português do Brasil. Faça uma pergunta curta puxando assunto ou comente algo breve para continuar o papo.";
-  setWaiting(true);
-
-  try {
-    if (typeof window.AndroidVoice.stopListening === "function") window.AndroidVoice.stopListening();
-    window.AndroidVoice.askModel(prompt);
-  } catch (error) {
-    currentRequestSource = "user";
-    setWaiting(false);
-    scheduleAutonomousTurn(15000);
-  }
-}
-
 window.addEventListener("load", () => {
-  setStatus("Sistema holográfico operacional", "online");
-  updateAutonomousButton();
+  setStatus("Sistemas holográficos operacionais", "online");
 });
 </script>
 </body>

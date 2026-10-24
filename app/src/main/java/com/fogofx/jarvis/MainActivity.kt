@@ -541,18 +541,54 @@ class MainActivity : Activity() {
         }
     }
 
+    // =========================================================
+    // ABRIR APLICAÇÕES (ATUALIZADO)
+    // =========================================================
+
     private fun openApplication(app: String) {
         try {
-            val intent = when (app.lowercase(Locale.ROOT)) {
+            val appName = app.lowercase(Locale.ROOT).trim()
+            val intent = when (appName) {
                 "youtube" -> Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com"))
                 "google" -> Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com"))
-                "settings", "configurações" -> Intent(Settings.ACTION_SETTINGS)
-                "camera", "câmara" -> Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE)
-                else -> return
+                "settings", "configurações", "configuracoes" -> Intent(Settings.ACTION_SETTINGS)
+                "camera", "câmara", "camara" -> Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE)
+                else -> {
+                    val packageName = when {
+                        appName.contains("whatsapp") -> "com.whatsapp"
+                        appName.contains("spotify") -> "com.spotify.music"
+                        appName.contains("instagram") -> "com.instagram.android"
+                        appName.contains("telegram") -> "org.telegram.messenger"
+                        appName.contains("facebook") -> "com.facebook.katana"
+                        appName.contains("maps") || appName.contains("mapas") -> "com.google.android.apps.maps"
+                        else -> null
+                    }
+
+                    val launchIntent = if (packageName != null) {
+                        packageManager.getLaunchIntentForPackage(packageName)
+                    } else {
+                        packageManager.getLaunchIntentForPackage(app)
+                    }
+
+                    if (launchIntent != null) {
+                        launchIntent
+                    } else {
+                        showStatus("Não encontrei a aplicação: $app")
+                        speak("Não consegui encontrar a aplicação $app instalada.")
+                        return
+                    }
+                }
             }
+
             startActivity(intent)
             showStatus("A abrir $app.")
-        } catch (_: Exception) {}
+            speak("A abrir $app.")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro ao abrir aplicação.", e)
+            showStatus("Não consegui abrir $app.")
+            speak("Desculpe, ocorreu um erro ao tentar abrir $app.")
+        }
     }
 
     private fun openModelPicker() {

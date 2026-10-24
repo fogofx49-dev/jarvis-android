@@ -1079,6 +1079,42 @@ class MainActivity : Activity() {
                 this@MainActivity.openWifiSettings()
             }
         }
+
+        @JavascriptInterface
+        fun sendEmail(recipient: String, subject: String, body: String) {
+            runOnUiThread {
+                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                    data = Uri.parse("mailto:$recipient")
+                    putExtra(Intent.EXTRA_SUBJECT, subject)
+                    putExtra(Intent.EXTRA_TEXT, body)
+                }
+                try {
+                    startActivity(intent)
+                    showStatus("A abrir o aplicativo de e-mail...")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Erro ao abrir e-mail.", e)
+                    showStatus("Não foi possível abrir o e-mail.")
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun addCalendarEvent(title: String, description: String) {
+            runOnUiThread {
+                val intent = Intent(Intent.ACTION_INSERT).apply {
+                    data = android.provider.CalendarContract.Events.CONTENT_URI
+                    putExtra(android.provider.CalendarContract.Events.TITLE, title)
+                    putExtra(android.provider.CalendarContract.Events.DESCRIPTION, description)
+                }
+                try {
+                    startActivity(intent)
+                    showStatus("A criar evento no calendário...")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Erro ao aceder ao calendário.", e)
+                    showStatus("Não foi possível aceder ao calendário.")
+                }
+            }
+        }
     }
 
     // =========================================================

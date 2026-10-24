@@ -1,5 +1,4 @@
-
-package com.fogofx.jarvis
+Package com.fogofx.jarvis
 
 import android.Manifest
 import android.app.Activity
@@ -263,11 +262,13 @@ class MainActivity : Activity() {
                             runOnUiThread {
                                 jarvisSpeaking = false
 
-                                notifyJavascriptEvent(
-                                    "onNativeSpeechFinished"
+                                notifyFirstAvailable(
+                                    "",
+                                    "onNativeSpeechFinished",
+                                    "onSpeechFinished"
                                 )
 
-                                scheduleListeningRestart(1000)
+                                scheduleListeningRestart(800)
                             }
                         }
 
@@ -275,11 +276,13 @@ class MainActivity : Activity() {
                             runOnUiThread {
                                 jarvisSpeaking = false
 
-                                notifyJavascriptEvent(
-                                    "onNativeSpeechFinished"
+                                notifyFirstAvailable(
+                                    "",
+                                    "onNativeSpeechFinished",
+                                    "onSpeechFinished"
                                 )
 
-                                scheduleListeningRestart(1200)
+                                scheduleListeningRestart(1000)
                             }
                         }
 
@@ -292,11 +295,13 @@ class MainActivity : Activity() {
                             runOnUiThread {
                                 jarvisSpeaking = false
 
-                                notifyJavascriptEvent(
-                                    "onNativeSpeechFinished"
+                                notifyFirstAvailable(
+                                    "",
+                                    "onNativeSpeechFinished",
+                                    "onSpeechFinished"
                                 )
 
-                                scheduleListeningRestart(1200)
+                                scheduleListeningRestart(1000)
                             }
                         }
                     }
@@ -712,12 +717,6 @@ class MainActivity : Activity() {
                             "onNativeSpeechResult",
                             commandText
                         )
-
-                        /*
-                         * O HTML deve chamar AndroidVoice.askModel(text)
-                         * dentro de onNativeSpeechResult.
-                         * Não reiniciamos a escuta aqui.
-                         */
                     }
 
                     override fun onPartialResults(
@@ -1469,8 +1468,6 @@ class MainActivity : Activity() {
     private fun showModelResponse(answer: String) {
         waitingForModel = false
 
-        // Usa um único evento: o nativo tem prioridade.
-        // Se não existir, usa o nome antigo como alternativa.
         notifyFirstAvailable(
             answer,
             "onNativeModelResponse",

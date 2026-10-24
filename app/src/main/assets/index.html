@@ -40,16 +40,16 @@ h1{font-size:clamp(36px,9vw,55px);letter-spacing:4px;margin:9px 0;color:#f0f8ff;
 .response{min-height:75px;padding:13px;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
 .response-label{display:block;font-size:9px;color:var(--cyan);letter-spacing:2px;margin-bottom:5px}
 
-/* BARRA DE INPUT ESTILO GEMINI/ASSISTENTE */
+/* BARRA DE INPUT ESTILO ASSISTENTE */
 .input-bar{display:flex;align-items:center;background:rgba(10,22,38,0.95);border:1px solid var(--border);border-radius:28px;padding:6px 12px;margin:12px 0;gap:8px;box-shadow:0 0 15px rgba(0,217,255,0.15)}
 .input-bar button.icon-btn{background:transparent;border:none;color:var(--cyan);font-size:18px;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center}
+.input-bar button.icon-btn.active{color:#00ffad;text-shadow:0 0 10px #00ffad}
 .input-bar input{flex:1;background:transparent;border:none;color:var(--text);font-size:14px;outline:none;padding:6px}
 .input-bar input::placeholder{color:var(--muted)}
 
 .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
 button{border:1px solid var(--border);color:var(--cyan);background:#007bff10;border-radius:10px;padding:11px 8px;font-size:11px;font-weight:bold;cursor:pointer;transition:background .2s,transform .2s}
 button:active{transform:scale(.97)}button:hover{background:#00d9ff1b}
-#micButton.muted{border-color:#ff1515;color:#ffb0b0;background:#ff151510}
 .ai-button{grid-column:1/-1;color:#effaff;min-height:44px;border-color:#00d9ff77}
 .hint{text-align:center;color:var(--muted);font-size:9px;line-height:1.6;margin:10px 5px}
 footer{text-align:center;font-size:8px;color:#577994;letter-spacing:2px;padding:8px 0 2px}
@@ -78,16 +78,15 @@ footer{text-align:center;font-size:8px;color:#577994;letter-spacing:2px;padding:
   <div class="response" id="response"><span class="response-label">J.A.R.V.I.S.</span>Aguardando comandos de voz ou interações.</div>
 </section>
 
-<!-- CAIXA DE INPUT DIRETA ESTILO ASSISTENTE -->
+<!-- CAIXA DE INPUT COM MICROFONE INTEGRADO -->
 <div class="input-bar">
-  <button class="icon-btn" type="button" onclick="clearInput()" title="Adicionar">+</button>
+  <button class="icon-btn" type="button" onclick="clearInput()" title="Limpar">+</button>
   <input type="text" id="userInput" placeholder="Peça ao J.A.R.V.I.S..." onkeydown="handleKey(event)">
-  <button class="icon-btn" type="button" onclick="submitTypedText()" title="Enviar">🎙️</button>
+  <button class="icon-btn" id="micBtn" type="button" onclick="toggleMicrophone()" title="Ativar/Desativar Microfone">🎙️</button>
 </div>
 
 <div class="controls">
   <button id="voiceButton" type="button" onclick="toggleVoice()">🔊 Voz: ligada</button>
-  <button id="micButton" type="button" onclick="toggleMicrophone()">🎤 Microfone: ativo</button>
   <button type="button" onclick="runGoodMorningRoutine()">☀️ Bom dia, Jarvis</button>
   <button type="button" onclick="stopSpeaking()">🔇 Parar voz</button>
   <button id="loadAIButton" class="ai-button" type="button" onclick="chooseJarvisModel()">📂 Carregar arquivo de IA local</button>
@@ -108,7 +107,7 @@ const responseBox = document.getElementById("response");
 const statusBox = document.getElementById("status");
 const dot = document.getElementById("dot");
 const voiceButton = document.getElementById("voiceButton");
-const micButton = document.getElementById("micButton");
+const micBtn = document.getElementById("micBtn");
 const loadAIButton = document.getElementById("loadAIButton");
 const coreContainer = document.getElementById("coreContainer");
 const userInput = document.getElementById("userInput");
@@ -186,8 +185,8 @@ function toggleVoice() {
 
 function toggleMicrophone() {
   micActive = !micActive;
-  micButton.textContent = micActive ? "🎤 Microfone: ativo" : "🔇 Microfone: mudo";
-  micButton.classList.toggle("muted", !micActive);
+  micBtn.classList.toggle("active", micActive);
+  micBtn.style.opacity = micActive ? "1" : "0.5";
   
   if (window.AndroidVoice) {
     try {
@@ -349,6 +348,7 @@ window.onModelLoaded = window.onNativeModelLoaded;
 
 window.addEventListener("load", () => {
   setStatus("Sistemas holográficos operacionais", "online");
+  micBtn.classList.add("active");
 });
 </script>
 </body>

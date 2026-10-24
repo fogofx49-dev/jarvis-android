@@ -19,35 +19,40 @@ h1{font-size:clamp(36px,9vw,55px);letter-spacing:4px;margin:9px 0;color:#f0f8ff;
 @keyframes blink{to{opacity:.3}}
 
 /* NÚCLEO HOLOGRÁFICO REATIVO */
-.core{position:relative;width:min(100%,320px);height:320px;margin:20px auto;display:flex;justify-content:center;align-items:center;isolation:isolate}
-.holo-projector{position:relative;width:220px;height:220px;display:flex;justify-content:center;align-items:center;border-radius:50%;background:radial-gradient(circle,rgba(0,217,255,0.15) 0%,rgba(8,124,255,0.05) 60%,transparent 80%);box-shadow:0 0 50px rgba(0,217,255,0.2),inset 0 0 30px rgba(0,217,255,0.2);animation:floatHolo 4s ease-in-out infinite}
-@keyframes floatHolo{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.core{position:relative;width:min(100%,260px);height:260px;margin:15px auto;display:flex;justify-content:center;align-items:center;isolation:isolate}
+.holo-projector{position:relative;width:180px;height:180px;display:flex;justify-content:center;align-items:center;border-radius:50%;background:radial-gradient(circle,rgba(0,217,255,0.15) 0%,rgba(8,124,255,0.05) 60%,transparent 80%);box-shadow:0 0 40px rgba(0,217,255,0.2),inset 0 0 25px rgba(0,217,255,0.2);animation:floatHolo 4s ease-in-out infinite}
+@keyframes floatHolo{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 
 .holo-ring{position:absolute;border-radius:50%;border:2px dashed rgba(0,217,255,0.4);animation:rotateHolo 20s linear infinite}
-.holo-ring:nth-child(1){width:260px;height:260px;border-color:rgba(0,217,255,0.3);border-style:solid;border-top-color:transparent;border-bottom-color:transparent;animation-duration:12s}
-.holo-ring:nth-child(2){width:300px;height:300px;border-color:rgba(8,124,255,0.4);animation-duration:25s;animation-direction:reverse}
-.holo-ring:nth-child(3){width:180px;height:180px;border:1px solid rgba(0,217,255,0.6);animation-duration:8s}
+.holo-ring:nth-child(1){width:220px;height:220px;border-color:rgba(0,217,255,0.3);border-style:solid;border-top-color:transparent;border-bottom-color:transparent;animation-duration:12s}
+.holo-ring:nth-child(2){width:250px;height:250px;border-color:rgba(8,124,255,0.4);animation-duration:25s;animation-direction:reverse}
+.holo-ring:nth-child(3){width:150px;height:150px;border:1px solid rgba(0,217,255,0.6);animation-duration:8s}
 @keyframes rotateHolo{to{transform:rotate(360deg)}}
 
-.holo-core-inner{position:absolute;width:90px;height:90px;background:radial-gradient(circle,#fff 0%,#00d9ff 40%,#087cff 80%,transparent 100%);border-radius:50%;box-shadow:0 0 30px var(--cyan),0 0 60px var(--blue);animation:pulseHolo 2s ease-in-out infinite alternate}
+.holo-core-inner{position:absolute;width:75px;height:75px;background:radial-gradient(circle,#fff 0%,#00d9ff 40%,#087cff 80%,transparent 100%);border-radius:50%;box-shadow:0 0 25px var(--cyan),0 0 50px var(--blue);animation:pulseHolo 2s ease-in-out infinite alternate}
 @keyframes pulseHolo{from{transform:scale(0.9);opacity:0.8}to{transform:scale(1.1);opacity:1}}
 
-/* Estados visuais reativos */
-.core.listening .holo-core-inner{background:radial-gradient(circle,#fff 0%,#00ffad 40%,#008855 80%,transparent 100%);box-shadow:0 0 35px #00ffad;}
-.core.talking .holo-core-inner{background:radial-gradient(circle,#fff 0%,#ffaa00 40%,#cc5500 80%,transparent 100%);box-shadow:0 0 35px #ffaa00;}
+.core.listening .holo-core-inner{background:radial-gradient(circle,#fff 0%,#00ffad 40%,#008855 80%,transparent 100%);box-shadow:0 0 30px #00ffad;}
+.core.talking .holo-core-inner{background:radial-gradient(circle,#fff 0%,#ffaa00 40%,#cc5500 80%,transparent 100%);box-shadow:0 0 30px #ffaa00;}
 
-.robot-label{text-align:center;color:var(--cyan);font-size:11px;letter-spacing:4px;font-weight:bold;margin:16px 0 15px;text-shadow:0 0 12px var(--cyan)}
-.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 0 24px #008cff0d;overflow:hidden;margin-top:12px}
-.panel-title{padding:13px 14px;color:var(--cyan);font-size:11px;font-weight:bold;letter-spacing:2px;border-bottom:1px solid var(--border)}
-.response{min-height:90px;padding:15px;font-size:14px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
-.response-label{display:block;font-size:10px;color:var(--cyan);letter-spacing:2px;margin-bottom:7px}
-.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:13px}
-button{border:1px solid var(--border);color:var(--cyan);background:#007bff10;border-radius:10px;padding:12px 9px;font-size:12px;font-weight:bold;cursor:pointer;transition:background .2s,transform .2s}
-button:active{transform:scale(.97)}button:hover{background:#00d9ff1b}button:disabled{opacity:.45;cursor:not-allowed}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 0 24px #008cff0d;overflow:hidden;margin-top:10px}
+.panel-title{padding:11px 14px;color:var(--cyan);font-size:10px;font-weight:bold;letter-spacing:2px;border-bottom:1px solid var(--border)}
+.response{min-height:75px;padding:13px;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.response-label{display:block;font-size:9px;color:var(--cyan);letter-spacing:2px;margin-bottom:5px}
+
+/* BARRA DE INPUT ESTILO GEMINI/ASSISTENTE */
+.input-bar{display:flex;align-items:center;background:rgba(10,22,38,0.95);border:1px solid var(--border);border-radius:28px;padding:6px 12px;margin:12px 0;gap:8px;box-shadow:0 0 15px rgba(0,217,255,0.15)}
+.input-bar button.icon-btn{background:transparent;border:none;color:var(--cyan);font-size:18px;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center}
+.input-bar input{flex:1;background:transparent;border:none;color:var(--text);font-size:14px;outline:none;padding:6px}
+.input-bar input::placeholder{color:var(--muted)}
+
+.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+button{border:1px solid var(--border);color:var(--cyan);background:#007bff10;border-radius:10px;padding:11px 8px;font-size:11px;font-weight:bold;cursor:pointer;transition:background .2s,transform .2s}
+button:active{transform:scale(.97)}button:hover{background:#00d9ff1b}
 #micButton.muted{border-color:#ff1515;color:#ffb0b0;background:#ff151510}
-.ai-button{grid-column:1/-1;color:#effaff;min-height:47px;border-color:#00d9ff77}
-.hint{text-align:center;color:var(--muted);font-size:10px;line-height:1.7;margin:14px 5px}
-footer{text-align:center;font-size:9px;color:#577994;letter-spacing:2px;padding:12px 0 4px}
+.ai-button{grid-column:1/-1;color:#effaff;min-height:44px;border-color:#00d9ff77}
+.hint{text-align:center;color:var(--muted);font-size:9px;line-height:1.6;margin:10px 5px}
+footer{text-align:center;font-size:8px;color:#577994;letter-spacing:2px;padding:8px 0 2px}
 </style>
 </head>
 <body>
@@ -68,11 +73,18 @@ footer{text-align:center;font-size:9px;color:#577994;letter-spacing:2px;padding:
   </div>
 </div>
 
-<div class="robot-label" id="emotionLabel">● SISTEMA OPERACIONAL ATIVO</div>
 <section class="panel">
   <div class="panel-title">▸ REGISTRO DE COMANDOS</div>
   <div class="response" id="response"><span class="response-label">J.A.R.V.I.S.</span>Aguardando comandos de voz ou interações.</div>
 </section>
+
+<!-- CAIXA DE INPUT DIRETA ESTILO ASSISTENTE -->
+<div class="input-bar">
+  <button class="icon-btn" type="button" onclick="clearInput()" title="Adicionar">+</button>
+  <input type="text" id="userInput" placeholder="Peça ao J.A.R.V.I.S..." onkeydown="handleKey(event)">
+  <button class="icon-btn" type="button" onclick="submitTypedText()" title="Enviar">🎙️</button>
+</div>
+
 <div class="controls">
   <button id="voiceButton" type="button" onclick="toggleVoice()">🔊 Voz: ligada</button>
   <button id="micButton" type="button" onclick="toggleMicrophone()">🎤 Microfone: ativo</button>
@@ -99,6 +111,7 @@ const voiceButton = document.getElementById("voiceButton");
 const micButton = document.getElementById("micButton");
 const loadAIButton = document.getElementById("loadAIButton");
 const coreContainer = document.getElementById("coreContainer");
+const userInput = document.getElementById("userInput");
 
 function normalizeText(text) {
   return String(text || "").toLowerCase()
@@ -195,6 +208,24 @@ function chooseJarvisModel() {
   }
 }
 
+function clearInput() {
+  userInput.value = "";
+  userInput.focus();
+}
+
+function handleKey(event) {
+  if (event.key === "Enter") {
+    submitTypedText();
+  }
+}
+
+function submitTypedText() {
+  const text = userInput.value;
+  if (!text.trim()) return;
+  userInput.value = "";
+  send(text);
+}
+
 /* ROTINA INTELIGENTE: BOM DIA / RESUMO DIÁRIO */
 function runGoodMorningRoutine() {
   if (!window.AndroidVoice) return;
@@ -208,7 +239,7 @@ function runGoodMorningRoutine() {
   }
 }
 
-/* COMANDOS LOCAIS INSTANTÂNEOS (SEM ESPERAR IA) */
+/* COMANDOS LOCAIS INSTANTÂNEOS */
 function executeLocalCommand(raw) {
   const msg = normalizeText(raw);
   const av = window.AndroidVoice;
@@ -251,22 +282,23 @@ function executeLocalCommand(raw) {
 }
 
 function send(text) {
-  if (waitingForModel || speaking || !micActive) return;
+  if (waitingForModel || speaking) return;
   const question = String(text || "").trim();
   if (!question) return;
 
   setVisualState("listening");
   setStatus("A processar...", "busy");
 
-  // Tenta resolver localmente e instantaneamente
   if (executeLocalCommand(question)) {
     setStatus("Pronto", "online");
+    setVisualState("normal");
     return;
   }
 
   if (!window.AndroidVoice || typeof window.AndroidVoice.askModel !== "function") {
     showResponse("Modelo de IA local não conectado.");
     speak("Por favor, carregue o modelo de IA.");
+    setVisualState("normal");
     return;
   }
 
@@ -277,6 +309,7 @@ function send(text) {
   } catch (_e) {
     waitingForModel = false;
     showResponse("Erro ao enviar para o Gemma.");
+    setVisualState("normal");
   }
 }
 
@@ -299,6 +332,7 @@ window.onNativeModelError = function(message) {
   waitingForModel = false;
   showResponse("Erro de processamento: " + message);
   setStatus("Erro na IA", "online");
+  setVisualState("normal");
 };
 window.onModelError = window.onNativeModelError;
 

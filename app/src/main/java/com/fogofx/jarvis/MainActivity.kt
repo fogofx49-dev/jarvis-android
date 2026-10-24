@@ -1,4 +1,4 @@
-Package com.fogofx.jarvis
+package com.fogofx.jarvis
 
 import android.Manifest
 import android.app.Activity

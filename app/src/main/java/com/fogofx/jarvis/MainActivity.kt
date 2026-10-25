@@ -337,6 +337,17 @@ class MainActivity : Activity() {
                 toggleFlashlight(false)
                 "Lanterna desligada."
             }
+            text.contains("mensagem") || text.contains("mandar") || text.contains("whatsapp") -> {
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    data = Uri.parse("https://api.whatsapp.com/send?text=${Uri.encode(prompt)}")
+                }
+                try {
+                    startActivity(intent)
+                    "A preparar envio de mensagem."
+                } catch (_: Exception) {
+                    "Não foi possível abrir o aplicativo de mensagens."
+                }
+            }
             text.contains("bom dia") -> {
                 "Bom dia, chefe. Todos os sistemas operacionais a cem por cento. Como posso ajudar?"
             }
@@ -361,6 +372,22 @@ class MainActivity : Activity() {
         @JavascriptInterface fun chooseModel() { showStatus("Sistema online.") }
         @JavascriptInterface fun askModel(prompt: String) { processJarvisCommand(prompt) }
         @JavascriptInterface fun askCloudAI(prompt: String) { processJarvisCommand(prompt) }
+
+        @JavascriptInterface
+        fun sendMessage(recipient: String, message: String) {
+            mainHandler.post {
+                val intent = Intent(Intent.ACTION_VIEW).apply {
+                    data = Uri.parse("https://api.whatsapp.com/send?phone=${Uri.encode(recipient)}&text=${Uri.encode(message)}")
+                }
+                try {
+                    startActivity(intent)
+                    showStatus("A preparar mensagem para $recipient...")
+                    speak("A preparar a sua mensagem.")
+                } catch (_: Exception) {
+                    showStatus("Erro ao abrir aplicação de mensagens.")
+                }
+            }
+        }
 
         @JavascriptInterface
         fun getBattery(): String {

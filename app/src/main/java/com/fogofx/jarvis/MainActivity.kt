@@ -89,8 +89,8 @@ class MainActivity : Activity() {
         private const val MIC_PERMISSION = 101
         private const val FLASH_PERMISSION = 103
 
-        // Insira aqui a sua chave de API do Google Gemini (Google AI Studio)
-        private const val GEMINI_API_KEY = "SUA_CHAVE_DE_API_AQUI"
+        // Chave de API configurada para o Google Gemini
+        private const val GEMINI_API_KEY = "AQ.Ab8RN6JtTwxMpWApQ-Qvc2wuRHtByPO8BTQa9V26r_dM7EdyDg"
         private const val GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY"
 
         private const val SYSTEM_INSTRUCTION = """

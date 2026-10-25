@@ -89,14 +89,17 @@ footer{text-align:center;font-size:8px;color:#577994;letter-spacing:2px;padding:
   <button id="voiceButton" type="button" onclick="toggleVoice()">🔊 Voz: ligada</button>
   <button type="button" onclick="runGoodMorningRoutine()">☀️ Bom dia, Jarvis</button>
   <button type="button" onclick="stopSpeaking()">🔇 Parar voz</button>
-  <button id="loadAIButton" class="ai-button" type="button" onclick="chooseJarvisModel()">📂 Carregar arquivo de IA local</button>
+  <button id="loadAIButton" class="ai-button" type="button" onclick="chooseJarvisModel()">📂 Estado da Nuvem</button>
 </div>
 <div class="hint">Assistente multitarefa • Comandos locais instantâneos • E-mail, WhatsApp & Agenda</div>
 <footer>J.A.R.V.I.S. • STARK TECHNOLOGY</footer>
 </div>
 
-<script>
-"use strict";
+<script type="module">
+import { GoogleGenAI } from "https://esm.run/@google/genai";
+
+// CHAVE DE API INTEGRADA COM SUCESSO:
+const ai = new GoogleGenAI({ apiKey: "AQ.Ab8RN6JCVq2jpRC_UqzmAdeYh1B1R_fmT7S7n54EProLC0WiNw" });
 
 let voiceEnabled = true;
 let micActive = true;
@@ -108,7 +111,6 @@ const statusBox = document.getElementById("status");
 const dot = document.getElementById("dot");
 const voiceButton = document.getElementById("voiceButton");
 const micBtn = document.getElementById("micBtn");
-const loadAIButton = document.getElementById("loadAIButton");
 const coreContainer = document.getElementById("coreContainer");
 const userInput = document.getElementById("userInput");
 
@@ -182,6 +184,7 @@ function toggleVoice() {
   if (!voiceEnabled) stopSpeaking();
   setStatus(voiceEnabled ? "Voz ativada" : "Voz desativada", "online");
 }
+window.toggleVoice = toggleVoice;
 
 function toggleMicrophone() {
   micActive = !micActive;
@@ -200,23 +203,27 @@ function toggleMicrophone() {
     } catch (_e) {}
   }
 }
+window.toggleMicrophone = toggleMicrophone;
 
 function chooseJarvisModel() {
-  if (window.AndroidVoice && typeof window.AndroidVoice.chooseModel === "function") {
-    window.AndroidVoice.chooseModel();
-  }
+  showStatus("Ligado à nuvem Google Gemini.", "online");
+  showResponse("Sistema conectado diretamente à nuvem Google Gemini via SDK oficial.");
+  speak("Sistemas em nuvem totalmente operacionais.");
 }
+window.chooseJarvisModel = chooseJarvisModel;
 
 function clearInput() {
   userInput.value = "";
   userInput.focus();
 }
+window.clearInput = clearInput;
 
 function handleKey(event) {
   if (event.key === "Enter") {
     submitTypedText();
   }
 }
+window.handleKey = handleKey;
 
 function submitTypedText() {
   const text = userInput.value;
@@ -224,8 +231,8 @@ function submitTypedText() {
   userInput.value = "";
   send(text);
 }
+window.submitTypedText = submitTypedText;
 
-/* ROTINA INTELIGENTE: BOM DIA / RESUMO DIÁRIO */
 function runGoodMorningRoutine() {
   if (!window.AndroidVoice) return;
   try {
@@ -237,8 +244,8 @@ function runGoodMorningRoutine() {
     speak("Bom dia! Sistemas prontos para iniciar o dia.");
   }
 }
+window.runGoodMorningRoutine = runGoodMorningRoutine;
 
-/* COMANDOS LOCAIS INSTANTÂNEOS */
 function executeLocalCommand(raw) {
   const msg = normalizeText(raw);
   const av = window.AndroidVoice;
@@ -280,7 +287,7 @@ function executeLocalCommand(raw) {
   return false;
 }
 
-function send(text) {
+async function send(text) {
   if (waitingForModel || speaking) return;
   const question = String(text || "").trim();
   if (!question) return;
@@ -294,20 +301,33 @@ function send(text) {
     return;
   }
 
-  if (!window.AndroidVoice || typeof window.AndroidVoice.askModel !== "function") {
-    showResponse("Modelo de IA local não conectado.");
-    speak("Por favor, carregue o modelo de IA.");
-    setVisualState("normal");
-    return;
-  }
-
   waitingForModel = true;
   try {
-    if (typeof window.AndroidVoice.stopListening === "function") window.AndroidVoice.stopListening();
-    window.AndroidVoice.askModel(question);
-  } catch (_e) {
+    if (window.AndroidVoice && typeof window.AndroidVoice.stopListening === "function") {
+      window.AndroidVoice.stopListening();
+    }
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-flash-latest',
+      contents: question,
+      config: {
+        systemInstruction: "Você é J.A.R.V.I.S., um assistente virtual pessoal de alta tecnologia inspirado na tecnologia Stark. Responda em português do Brasil, de forma natural, educada, clara, útil e ligeiramente sofisticada."
+      }
+    });
+
+    const answer = response.text ? response.text.trim() : "Sem resposta gerada.";
     waitingForModel = false;
-    showResponse("Erro ao enviar para o Gemma.");
+    showResponse(answer);
+    speak(answer);
+    setStatus("Pronto", "online");
+    setVisualState("normal");
+
+  } catch (e) {
+    waitingForModel = false;
+    console.error(e);
+    showResponse("Erro de comunicação com a nuvem.");
+    speak("Desculpe, ocorreu um erro ao consultar a nuvem.");
+    setStatus("Erro na IA", "online");
     setVisualState("normal");
   }
 }
@@ -319,35 +339,12 @@ window.onNativeSpeechResult = function(text) {
   send(transcript);
 };
 
-window.onNativeModelResponse = function(text) {
-  waitingForModel = false;
-  const result = String(text || "").trim();
-  showResponse(result);
-  speak(result);
-};
-window.onModelResponse = window.onNativeModelResponse;
-
-window.onNativeModelError = function(message) {
-  waitingForModel = false;
-  showResponse("Erro de processamento: " + message);
-  setStatus("Erro na IA", "online");
-  setVisualState("normal");
-};
-window.onModelError = window.onNativeModelError;
-
 window.onNativeStatus = function(message) {
   setStatus(message, /pensar|processar|carregar|copiar/i.test(message) ? "busy" : "online");
 };
 
-window.onNativeModelLoaded = function(message) {
-  setStatus(message || "Modelo carregado", "online");
-  showResponse("Núcleo de IA carregado com sucesso. Sistemas operacionais prontos.");
-  speak("Modelo carregado. À sua disposição.");
-};
-window.onModelLoaded = window.onNativeModelLoaded;
-
 window.addEventListener("load", () => {
-  setStatus("Sistemas holográficos operacionais", "online");
+  setStatus("Sistemas holográficos online via nuvem", "online");
   micBtn.classList.add("active");
 });
 </script>

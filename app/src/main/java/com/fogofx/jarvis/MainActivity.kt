@@ -366,7 +366,7 @@ class MainActivity : Activity() {
                 "Bom dia, chefe. Todos os sistemas operacionais a cem por cento. Como posso ajudar?"
             }
             else -> {
-                "Compreendido perfeitamente. A processar o seu pedido."
+                "Compreendido. A processar o pedido: $prompt."
             }
         }
 

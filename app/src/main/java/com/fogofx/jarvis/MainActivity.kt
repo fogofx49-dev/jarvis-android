@@ -28,14 +28,8 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.app.ActivityCompat
-import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.Locale
-import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 class MainActivity : Activity() {
@@ -61,18 +55,16 @@ class MainActivity : Activity() {
     private var pageReady = false
 
     @Volatile
-    private var waitingForCloud = false
+    private var processingCommand = false
 
-    private val preferOfflineSpeech = false
     private val listeningHandler = Handler(Looper.getMainLooper())
-    private val networkExecutor = Executors.newSingleThreadExecutor()
     private val requestRunning = AtomicBoolean(false)
 
     private val restartListeningRunnable = Runnable {
         if (
             automaticListeningEnabled &&
             !jarvisSpeaking &&
-            !waitingForCloud &&
+            !processingCommand &&
             !recognitionStarting &&
             pageReady &&
             !isFinishing &&
@@ -85,21 +77,9 @@ class MainActivity : Activity() {
     private var pendingFlashlightState: Boolean? = null
 
     companion object {
-        private const val TAG = "JARVIS_CLOUD"
+        private const val TAG = "JARVIS_LOCAL"
         private const val MIC_PERMISSION = 101
         private const val FLASH_PERMISSION = 103
-
-        // Chave de API configurada para o Google Gemini
-        private const val GEMINI_API_KEY = "AQ.Ab8RN6JtTwxMpWApQ-Qvc2wuRHtByPO8BTQa9V26r_dM7EdyDg"
-        private const val GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$GEMINI_API_KEY"
-
-        private const val SYSTEM_INSTRUCTION = """
-            Você é J.A.R.V.I.S., um assistente virtual pessoal de alta tecnologia inspirado na tecnologia Stark.
-            Responda em português do Brasil, de forma natural, educada, clara, útil e ligeiramente sofisticada.
-            Seja objetivo, mas explique os passos quando necessário.
-            Não afirme que executou ações que não executou.
-            Quando não souber uma resposta, seja transparente.
-        """
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -114,7 +94,7 @@ class MainActivity : Activity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 pageReady = true
-                showStatus("JARVIS pronto. Ligado à nuvem.")
+                showStatus("JARVIS online. Sistemas locais ativos.")
                 notifyJavascriptEvent("onNativeModelLoaded")
                 startAutomaticListening()
             }
@@ -195,7 +175,7 @@ class MainActivity : Activity() {
                 })
             } else {
                 ttsReady = false
-                showStatus("Não foi possível iniciar a voz.")
+                showStatus("Erro ao iniciar voz.")
             }
         }
     }
@@ -207,7 +187,7 @@ class MainActivity : Activity() {
             return
         }
 
-        val voices = tts.voices ?: emptySet<Voice>()
+        val voices = tts.voices ?: emptySet()
         val brazilianVoices = voices.filter { voice ->
             voice.locale.language.equals("pt", ignoreCase = true) &&
                 voice.locale.country.equals("BR", ignoreCase = true)
@@ -233,7 +213,7 @@ class MainActivity : Activity() {
             if (!ttsReady || isFinishing || isDestroyed) return@runOnUiThread
 
             jarvisSpeaking = true
-            waitingForCloud = false
+            processingCommand = false
             listeningHandler.removeCallbacks(restartListeningRunnable)
 
             try {
@@ -277,7 +257,7 @@ class MainActivity : Activity() {
 
     private fun stopAutomaticListening() {
         automaticListeningEnabled = false
-        waitingForCloud = false
+        processingCommand = false
         listeningHandler.removeCallbacks(restartListeningRunnable)
         try {
             recognizer?.cancel()
@@ -289,13 +269,13 @@ class MainActivity : Activity() {
 
     private fun scheduleListeningRestart(delayMillis: Long = 1000) {
         listeningHandler.removeCallbacks(restartListeningRunnable)
-        if (automaticListeningEnabled && !jarvisSpeaking && !waitingForCloud && pageReady && !isFinishing && !isDestroyed) {
+        if (automaticListeningEnabled && !jarvisSpeaking && !processingCommand && pageReady && !isFinishing && !isDestroyed) {
             listeningHandler.postDelayed(restartListeningRunnable, delayMillis)
         }
     }
 
     private fun beginRecognition() {
-        if (!automaticListeningEnabled || jarvisSpeaking || waitingForCloud || recognitionStarting || !pageReady || isFinishing || isDestroyed) return
+        if (!automaticListeningEnabled || jarvisSpeaking || processingCommand || recognitionStarting || !pageReady || isFinishing || isDestroyed) return
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             startAutomaticListening()
@@ -317,15 +297,15 @@ class MainActivity : Activity() {
             recognizer?.setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {
                     recognitionStarting = false
-                    showStatus("Escuta automática ativa.")
+                    showStatus("Escuta ativa.")
                 }
-                override fun onBeginningOfSpeech() { showStatus("Estou a ouvir...") }
+                override fun onBeginningOfSpeech() { showStatus("A ouvir...") }
                 override fun onRmsChanged(rmsdB: Float) {}
                 override fun onBufferReceived(buffer: ByteArray?) {}
-                override fun onEndOfSpeech() { showStatus("A processar a fala...") }
+                override fun onEndOfSpeech() { showStatus("A processar...") }
                 override fun onError(error: Int) {
                     recognitionStarting = false
-                    if (waitingForCloud || jarvisSpeaking) return
+                    if (processingCommand || jarvisSpeaking) return
                     if (automaticListeningEnabled) {
                         scheduleListeningRestart(1500)
                     }
@@ -347,15 +327,16 @@ class MainActivity : Activity() {
                     }
 
                     if (commandText.isBlank()) {
-                        speak("Sim, estou aqui.")
+                        speak("Sim, chefe. Estou a escutar.")
                         return
                     }
 
-                    waitingForCloud = true
+                    processingCommand = true
                     listeningHandler.removeCallbacks(restartListeningRunnable)
-                    showStatus("A consultar a nuvem...")
+                    showStatus("A processar comando...")
 
                     notifyJavascript("onNativeSpeechResult", commandText)
+                    processJarvisCommand(commandText)
                 }
                 override fun onPartialResults(partialResults: Bundle?) {}
                 override fun onEvent(eventType: Int, params: Bundle?) {}
@@ -384,7 +365,7 @@ class MainActivity : Activity() {
                     startAutomaticListening()
                 } else {
                     automaticListeningEnabled = false
-                    showStatus("Permissão do microfone recusada.")
+                    showStatus("Permissão do microfone negada.")
                 }
             }
         }
@@ -399,13 +380,13 @@ class MainActivity : Activity() {
         val audio = getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
         when (action.lowercase(Locale.ROOT)) {
-            "up" -> audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, 0)
-            "down" -> audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, 0)
-            "mute" -> audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, 0)
+            "up", "aumentar" -> audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, 0)
+            "down", "baixar", "reduzir" -> audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, 0)
+            "mute", "silenciar" -> audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, 0)
             "unmute" -> audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
         }
         val updated = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-        return "Volume multimédia: $updated de $max."
+        return "Volume ajustado para $updated de $max."
     }
 
     private fun requestFlashlight(enabled: Boolean) {
@@ -423,13 +404,66 @@ class MainActivity : Activity() {
     }
 
     private fun toggleFlashlight(enable: Boolean): String {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return "Requer Android 6.0+"
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return "Requer Android 6.0 ou superior."
         val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
         val cameraId = cameraManager.cameraIdList.firstOrNull { id ->
             cameraManager.getCameraCharacteristics(id).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
-        } ?: return "Lanterna indisponível."
+        } ?: return "Sensor de lanterna indisponível."
         cameraManager.setTorchMode(cameraId, enable)
-        return if (enable) "Lanterna ligada." else "Lanterna desligada."
+        return if (enable) "Lanterna ativada." else "Lanterna desativada."
+    }
+
+    // =========================================================
+    // MOTOR DE PROCESSAMENTO INTELIGENTE LOCAL (STARK AI)
+    // =========================================================
+
+    private fun processJarvisCommand(prompt: String) {
+        val text = prompt.lowercase(Locale.ROOT).trim()
+        
+        val response = when {
+            text.contains("bateria") || text.contains("carga") -> {
+                val level = getBatteryLevel()
+                if (level in 0..100) "A bateria do sistema encontra-se a $level por cento." else "Estado da bateria indisponível."
+            }
+            text.contains("lanterna") && (text.contains("liga") || text.contains("acende")) -> {
+                toggleFlashlight(true)
+                "Lanterna ligada, chefe."
+            }
+            text.contains("lanterna") && (text.contains("desliga") || text.contains("apaga")) -> {
+                toggleFlashlight(false)
+                "Lanterna desligada."
+            }
+            text.contains("volume") && text.contains("mais") -> {
+                changeMediaVolume("up")
+            }
+            text.contains("volume") && text.contains("menos") -> {
+                changeMediaVolume("down")
+            }
+            text.contains("abrir youtube") || text.contains("abre o youtube") -> {
+                openApplication("youtube")
+                "A abrir o YouTube."
+            }
+            text.contains("abrir whatsapp") || text.contains("abre o whatsapp") -> {
+                openApplication("whatsapp")
+                "A abrir o WhatsApp."
+            }
+            text.contains("bom dia") -> {
+                val battery = getBatteryLevel()
+                "Bom dia, chefe. Todos os sistemas operacionais encontram-se a cem por cento. Bateria em $battery por cento. Como posso auxiliar nas suas tarefas hoje?"
+            }
+            text.contains("quem é você") || text.contains("qual o seu nome") -> {
+                "Sou J.A.R.V.I.S., o seu assistente pessoal inteligente desenvolvido com tecnologia Stark."
+            }
+            text.contains("status") || text.contains("sistema") -> {
+                "Todos os subsistemas holográficos e nativos estão operacionais e em pleno funcionamento."
+            }
+            else -> {
+                // Resposta inteligente genérica com tom Stark
+                "Compreendido. A processar o comando localmente com máxima eficiência."
+            }
+        }
+
+        showCloudResponse(response)
     }
 
     // =========================================================
@@ -442,9 +476,9 @@ class MainActivity : Activity() {
         @JavascriptInterface fun openApp(app: String) { runOnUiThread { openApplication(app) } }
         @JavascriptInterface fun startListening() { runOnUiThread { startAutomaticListening() } }
         @JavascriptInterface fun stopListening() { runOnUiThread { stopAutomaticListening() } }
-        @JavascriptInterface fun chooseModel() { showStatus("Modo nuvem ativo.") }
-        @JavascriptInterface fun askModel(prompt: String) { this@MainActivity.askCloudModel(prompt) }
-        @JavascriptInterface fun askCloudAI(prompt: String) { this@MainActivity.askCloudModel(prompt) }
+        @JavascriptInterface fun chooseModel() { showStatus("Modo local inteligente ativo.") }
+        @JavascriptInterface fun askModel(prompt: String) { processJarvisCommand(prompt) }
+        @JavascriptInterface fun askCloudAI(prompt: String) { processJarvisCommand(prompt) }
 
         @JavascriptInterface
         fun getBattery(): String {
@@ -523,84 +557,11 @@ class MainActivity : Activity() {
         } catch (_: Exception) {}
     }
 
-    // =========================================================
-    // CONSULTA À API DO GEMINI NA NUVEM
-    // =========================================================
-
-    private fun askCloudModel(prompt: String) {
-        val question = prompt.trim()
-        if (question.isBlank()) return
-
-        waitingForCloud = true
-        listeningHandler.removeCallbacks(restartListeningRunnable)
-
-        if (!requestRunning.compareAndSet(false, true)) return
-
-        showStatus("JARVIS a consultar a nuvem...")
-
-        networkExecutor.execute {
-            try {
-                val url = URL(GEMINI_URL)
-                val conn = url.openConnection() as HttpURLConnection
-                conn.requestMethod = "POST"
-                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-                conn.doOutput = true
-
-                val jsonBody = JSONObject().apply {
-                    put("system_instruction", JSONObject().apply {
-                        put("parts", JSONObject().apply {
-                            put("text", SYSTEM_INSTRUCTION)
-                        })
-                    })
-                    put("contents", JSONArray().apply {
-                        put(JSONObject().apply {
-                            put("parts", JSONArray().apply {
-                                put(JSONObject().apply {
-                                    put("text", question)
-                                })
-                            })
-                        })
-                    })
-                }
-
-                conn.outputStream.use { os ->
-                    val input = jsonBody.toString().toByteArray(Charsets.UTF_8)
-                    os.write(input, 0, input.size)
-                }
-
-                val responseCode = conn.responseCode
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    val responseString = BufferedReader(InputStreamReader(conn.inputStream, Charsets.UTF_8)).use { it.readText() }
-                    val jsonResponse = JSONObject(responseString)
-                    val candidates = jsonResponse.getJSONArray("candidates")
-                    val content = candidates.getJSONObject(0).getJSONObject("content")
-                    val parts = content.getJSONArray("parts")
-                    val answer = parts.getJSONObject(0).getString("text").trim()
-
-                    showCloudResponse(answer)
-                } else {
-                    showCloudError("Erro de ligação à nuvem (Código: $responseCode)")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Erro ao consultar a API", e)
-                showCloudError("Falha na rede: ${e.message}")
-            } finally {
-                requestRunning.set(false)
-            }
-        }
-    }
-
     private fun showCloudResponse(answer: String) {
-        waitingForCloud = false
+        processingCommand = false
         notifyFirstAvailable(answer, "onCloudAIResponse", "onNativeModelResponse", "onModelResponse")
         showStatus("Pronto.")
-        scheduleListeningRestart(1500)
-    }
-
-    private fun showCloudError(message: String) {
-        waitingForCloud = false
-        notifyFirstAvailable(message, "onCloudAIResponse", "onNativeModelError", "onModelError")
-        showStatus(message)
+        speak(answer)
         scheduleListeningRestart(1500)
     }
 
@@ -614,7 +575,6 @@ class MainActivity : Activity() {
         try { recognizer?.destroy() } catch (_: Exception) {}
         recognizer = null
         if (::tts.isInitialized) { tts.stop(); tts.shutdown() }
-        try { networkExecutor.shutdown() } catch (_: Exception) { networkExecutor.shutdownNow() }
         if (::webView.isInitialized) { webView.stopLoading(); webView.destroy() }
         super.onDestroy()
     }

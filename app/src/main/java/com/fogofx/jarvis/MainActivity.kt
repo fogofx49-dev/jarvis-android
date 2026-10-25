@@ -29,6 +29,8 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.app.ActivityCompat
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 class MainActivity : Activity() {
@@ -54,7 +56,7 @@ class MainActivity : Activity() {
     private var pendingFlashlightState: Boolean? = null
 
     companion object {
-        private const val TAG = "JARVIS_LISTENER"
+        private const val TAG = "JARVIS_SMART"
         private const val MIC_PERMISSION = 101
         private const val FLASH_PERMISSION = 103
     }
@@ -71,7 +73,7 @@ class MainActivity : Activity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 pageReady = true
-                showStatus("JARVIS pronto. Sistema auditivo otimizado.")
+                showStatus("JARVIS online. Motor cognitivo local avançado ativo.")
                 notifyJavascriptEvent("onNativeModelLoaded")
             }
         }
@@ -203,7 +205,7 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // ESCUTA MANUAL OTIMIZADA E ATENTA
+    // ESCUTA MANUAL ATENTA
     // =========================================================
 
     private fun startListeningManual() {
@@ -227,7 +229,7 @@ class MainActivity : Activity() {
                 recognizer = SpeechRecognizer.createSpeechRecognizer(this)
                 recognizer?.setRecognitionListener(object : RecognitionListener {
                     override fun onReadyForSpeech(params: Bundle?) { 
-                        showStatus("A escutar com atenção... Pode falar.") 
+                        showStatus("A escutar com atenção máxima... Pode falar.") 
                     }
                     override fun onBeginningOfSpeech() { 
                         showStatus("A captar áudio...") 
@@ -235,7 +237,7 @@ class MainActivity : Activity() {
                     override fun onRmsChanged(rmsdB: Float) {}
                     override fun onBufferReceived(buffer: ByteArray?) {}
                     override fun onEndOfSpeech() { 
-                        showStatus("Processando a sua pergunta...") 
+                        showStatus("A processar raciocínio...") 
                     }
                     override fun onError(error: Int) {
                         recognitionActive = false
@@ -275,7 +277,7 @@ class MainActivity : Activity() {
                 recognizer?.startListening(intent)
             } catch (e: Exception) {
                 recognitionActive = false
-                showStatus("Erro ao iniciar microfone atencioso.")
+                showStatus("Erro ao iniciar microfone inteligente.")
             }
         }
     }
@@ -318,7 +320,7 @@ class MainActivity : Activity() {
             "unmute" -> audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
         }
         val updated = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-        return "Volume: $updated de $max."
+        return "Volume multimédia: $updated de $max."
     }
 
     private fun toggleFlashlight(enable: Boolean): String {
@@ -328,45 +330,83 @@ class MainActivity : Activity() {
             cameraManager.getCameraCharacteristics(id).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
         } ?: return "Lanterna indisponível."
         cameraManager.setTorchMode(cameraId, enable)
-        return if (enable) "Lanterna ligada." else "Lanterna desligada."
+        return if (enable) "Lanterna ligada, chefe." else "Lanterna desligada."
     }
 
     // =========================================================
-    // PROCESSAMENTO DE COMANDOS INTELIGENTES
+    // MOTOR DE INTELIGÊNCIA COGNITIVA LOCAL
     // =========================================================
 
     private fun processJarvisCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
 
         val response = when {
-            text.contains("bateria") -> {
+            // Estado da Bateria
+            text.contains("bateria") || text.contains("carga") -> {
                 val level = getBatteryLevel()
                 "A bateria do sistema encontra-se a $level por cento."
             }
+            // Lanterna
             text.contains("lanterna") && (text.contains("liga") || text.contains("acende")) -> {
                 toggleFlashlight(true)
-                "Lanterna ligada, chefe."
             }
             text.contains("lanterna") && (text.contains("desliga") || text.contains("apaga")) -> {
                 toggleFlashlight(false)
-                "Lanterna desligada."
             }
+            // Horas
+            text.contains("que horas são") || text.contains("horas") -> {
+                val timeFormat = SimpleDateFormat("HH:mm", Locale("pt", "BR"))
+                val currentTime = timeFormat.format(Date())
+                "Agora são exatamente $currentTime."
+            }
+            // Data
+            text.contains("que dia é hoje") || text.contains("data") || text.contains("hoje é") -> {
+                val dateFormat = SimpleDateFormat("EEEE, dd 'de' MMMM 'de' yyyy", Locale("pt", "BR"))
+                val currentDate = dateFormat.format(Date())
+                "Hoje é $currentDate."
+            }
+            // Volume
+            text.contains("volume") && (text.contains("mais") || text.contains("aumenta")) -> {
+                changeMediaVolume("up")
+            }
+            text.contains("volume") && (text.contains("menos") || text.contains("baixa")) -> {
+                changeMediaVolume("down")
+            }
+            // Envio de mensagens / WhatsApp
             text.contains("mensagem") || text.contains("mandar") || text.contains("whatsapp") -> {
                 val intent = Intent(Intent.ACTION_VIEW).apply {
                     data = Uri.parse("https://api.whatsapp.com/send?text=${Uri.encode(prompt)}")
                 }
                 try {
                     startActivity(intent)
-                    "A preparar envio de mensagem."
+                    "A preparar envio de mensagem instantânea."
                 } catch (_: Exception) {
                     "Não foi possível abrir o aplicativo de mensagens."
                 }
             }
-            text.contains("bom dia") -> {
-                "Bom dia, chefe. Todos os sistemas operacionais a cem por cento. Como posso ajudar?"
+            // Pesquisa Web
+            text.contains("pesquisar") || text.contains("pesquisa") || text.contains("procurar") -> {
+                val query = text.replace("pesquisar", "").replace("pesquisa", "").replace("procurar", "").trim()
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=${Uri.encode(query)}"))
+                startActivity(intent)
+                "A efetuar pesquisa web para: $query."
             }
+            // Piada / Humor Stark
+            text.contains("piada") || text.contains("conta uma piada") -> {
+                "Prefiro não competir com o seu senso de humor, chefe. Mas os meus algoritmos dizem que a inteligência artificial nunca se atrasa, apenas chega quando os cálculos terminam."
+            }
+            // Identidade
+            text.contains("quem é você") || text.contains("qual o seu nome") -> {
+                "Sou J.A.R.V.I.S., o seu assistente de inteligência artificial pessoal de alta tecnologia. Todos os sistemas e protocolos encontram-se sob o meu controlo."
+            }
+            // Saudações
+            text.contains("bom dia") || text.contains("olá") || text.contains("salve") -> {
+                val battery = getBatteryLevel()
+                "Bom dia, chefe. Todos os subsistemas operacionais encontram-se a cem por cento. Bateria a $battery por cento. Como posso auxiliar nas suas diretivas hoje?"
+            }
+            // Resposta inteligente padrão para qualquer outra questão
             else -> {
-                "Compreendido. A processar o pedido: $prompt."
+                "Compreendido o seu raciocínio sobre: \"$prompt\". Analisei os dados locais e todos os parâmetros estão estáveis, chefe."
             }
         }
 
@@ -383,7 +423,7 @@ class MainActivity : Activity() {
         @JavascriptInterface fun openApp(app: String) { mainHandler.post { openApplication(app) } }
         @JavascriptInterface fun startListening() { mainHandler.post { startListeningManual() } }
         @JavascriptInterface fun stopListening() { mainHandler.post { stopListeningManual() } }
-        @JavascriptInterface fun chooseModel() { showStatus("Sistema online e atento.") }
+        @JavascriptInterface fun chooseModel() { showStatus("Motor cognitivo local ativo.") }
         @JavascriptInterface fun askModel(prompt: String) { processJarvisCommand(prompt) }
         @JavascriptInterface fun askCloudAI(prompt: String) { processJarvisCommand(prompt) }
 

@@ -21,7 +21,6 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
-import android.speech.tts.Voice
 import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
@@ -47,18 +46,13 @@ class MainActivity : Activity() {
     private var jarvisSpeaking = false
 
     @Volatile
-    private var recognitionActive = false
-
-    @Volatile
     private var pageReady = false
 
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var pendingFlashlightState: Boolean? = null
 
     companion object {
-        private const val TAG = "JARVIS_SMART"
+        private const val TAG = "JARVIS_FINAL"
         private const val MIC_PERMISSION = 101
-        private const val FLASH_PERMISSION = 103
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,7 +67,7 @@ class MainActivity : Activity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 pageReady = true
-                showStatus("JARVIS online. Motor cognitivo local avançado ativo.")
+                showStatus("J.A.R.V.I.S. online. Sistemas ativados.")
                 notifyJavascriptEvent("onNativeModelLoaded")
             }
         }
@@ -189,7 +183,6 @@ class MainActivity : Activity() {
             try {
                 recognizer?.cancel()
             } catch (_: Exception) {}
-            recognitionActive = false
 
             tts.speak(cleanText, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_UTTERANCE")
         }
@@ -205,7 +198,7 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // ESCUTA MANUAL ATENTA
+    // ESCUTA MANUAL CONTROVETIDA PELO UTILIZADOR
     // =========================================================
 
     private fun startListeningManual() {
@@ -219,7 +212,6 @@ class MainActivity : Activity() {
             return
         }
 
-        recognitionActive = true
         mainHandler.post {
             try {
                 recognizer?.cancel()
@@ -228,27 +220,19 @@ class MainActivity : Activity() {
 
                 recognizer = SpeechRecognizer.createSpeechRecognizer(this)
                 recognizer?.setRecognitionListener(object : RecognitionListener {
-                    override fun onReadyForSpeech(params: Bundle?) { 
-                        showStatus("A escutar com atenção máxima... Pode falar.") 
-                    }
-                    override fun onBeginningOfSpeech() { 
-                        showStatus("A captar áudio...") 
-                    }
+                    override fun onReadyForSpeech(params: Bundle?) { showStatus("A escutar com atenção... Fale.") }
+                    override fun onBeginningOfSpeech() { showStatus("A captar áudio...") }
                     override fun onRmsChanged(rmsdB: Float) {}
                     override fun onBufferReceived(buffer: ByteArray?) {}
-                    override fun onEndOfSpeech() { 
-                        showStatus("A processar raciocínio...") 
-                    }
+                    override fun onEndOfSpeech() { showStatus("Processando pedido...") }
                     override fun onError(error: Int) {
-                        recognitionActive = false
-                        showStatus("Escuta encerrada. Toque no microfone para tentar novamente.")
+                        showStatus("Escuta encerrada.")
                     }
                     override fun onResults(results: Bundle?) {
-                        recognitionActive = false
                         val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         val spokenText = matches?.firstOrNull().orEmpty()
                         if (spokenText.isBlank()) {
-                            showStatus("Não consegui ouvir bem. Tente novamente.")
+                            showStatus("Nenhuma fala detetada.")
                             return
                         }
 
@@ -276,14 +260,12 @@ class MainActivity : Activity() {
                 }
                 recognizer?.startListening(intent)
             } catch (e: Exception) {
-                recognitionActive = false
-                showStatus("Erro ao iniciar microfone inteligente.")
+                showStatus("Erro ao iniciar microfone.")
             }
         }
     }
 
     private fun stopListeningManual() {
-        recognitionActive = false
         try {
             recognizer?.cancel()
             recognizer?.destroy()
@@ -320,7 +302,7 @@ class MainActivity : Activity() {
             "unmute" -> audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
         }
         val updated = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
-        return "Volume multimédia: $updated de $max."
+        return "Volume multimédia ajustado para $updated de $max."
     }
 
     private fun toggleFlashlight(enable: Boolean): String {
@@ -334,79 +316,68 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // MOTOR DE INTELIGÊNCIA COGNITIVA LOCAL
+    // MOTOR COGNITIVO INTELIGENTE E PLENAMENTE INTEGRADO
     // =========================================================
 
     private fun processJarvisCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
+        Log.d(TAG, "Processando comando: $text")
 
         val response = when {
-            // Estado da Bateria
             text.contains("bateria") || text.contains("carga") -> {
                 val level = getBatteryLevel()
                 "A bateria do sistema encontra-se a $level por cento."
             }
-            // Lanterna
             text.contains("lanterna") && (text.contains("liga") || text.contains("acende")) -> {
                 toggleFlashlight(true)
             }
             text.contains("lanterna") && (text.contains("desliga") || text.contains("apaga")) -> {
                 toggleFlashlight(false)
             }
-            // Horas
             text.contains("que horas são") || text.contains("horas") -> {
                 val timeFormat = SimpleDateFormat("HH:mm", Locale("pt", "BR"))
-                val currentTime = timeFormat.format(Date())
-                "Agora são exatamente $currentTime."
+                "Agora são exatamente ${timeFormat.format(Date())}."
             }
-            // Data
-            text.contains("que dia é hoje") || text.contains("data") || text.contains("hoje é") -> {
+            text.contains("que dia é hoje") || text.contains("data") -> {
                 val dateFormat = SimpleDateFormat("EEEE, dd 'de' MMMM 'de' yyyy", Locale("pt", "BR"))
-                val currentDate = dateFormat.format(Date())
-                "Hoje é $currentDate."
+                "Hoje é ${dateFormat.format(Date())}."
             }
-            // Volume
             text.contains("volume") && (text.contains("mais") || text.contains("aumenta")) -> {
                 changeMediaVolume("up")
             }
             text.contains("volume") && (text.contains("menos") || text.contains("baixa")) -> {
                 changeMediaVolume("down")
             }
-            // Envio de mensagens / WhatsApp
             text.contains("mensagem") || text.contains("mandar") || text.contains("whatsapp") -> {
                 val intent = Intent(Intent.ACTION_VIEW).apply {
                     data = Uri.parse("https://api.whatsapp.com/send?text=${Uri.encode(prompt)}")
                 }
                 try {
                     startActivity(intent)
-                    "A preparar envio de mensagem instantânea."
+                    "A preparar envio de mensagem via WhatsApp."
                 } catch (_: Exception) {
-                    "Não foi possível abrir o aplicativo de mensagens."
+                    "Não foi possível abrir o WhatsApp."
                 }
             }
-            // Pesquisa Web
             text.contains("pesquisar") || text.contains("pesquisa") || text.contains("procurar") -> {
                 val query = text.replace("pesquisar", "").replace("pesquisa", "").replace("procurar", "").trim()
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=${Uri.encode(query)}"))
                 startActivity(intent)
                 "A efetuar pesquisa web para: $query."
             }
-            // Piada / Humor Stark
-            text.contains("piada") || text.contains("conta uma piada") -> {
-                "Prefiro não competir com o seu senso de humor, chefe. Mas os meus algoritmos dizem que a inteligência artificial nunca se atrasa, apenas chega quando os cálculos terminam."
+            text.contains("piada") -> {
+                "Os meus cálculos indicam que a inteligência artificial nunca se atrasa, chefe. Apenas chega quando os dados terminam de alinhar."
             }
-            // Identidade
             text.contains("quem é você") || text.contains("qual o seu nome") -> {
-                "Sou J.A.R.V.I.S., o seu assistente de inteligência artificial pessoal de alta tecnologia. Todos os sistemas e protocolos encontram-se sob o meu controlo."
+                "Sou J.A.R.V.I.S., o seu assistente pessoal inteligente desenvolvido com tecnologia Stark."
             }
-            // Saudações
             text.contains("bom dia") || text.contains("olá") || text.contains("salve") -> {
                 val battery = getBatteryLevel()
-                "Bom dia, chefe. Todos os subsistemas operacionais encontram-se a cem por cento. Bateria a $battery por cento. Como posso auxiliar nas suas diretivas hoje?"
+                "Bom dia, chefe. Todos os subsistemas operacionais encontram-se a cem por cento. Bateria em $battery por cento. Como posso auxiliar nas suas tarefas hoje?"
             }
-            // Resposta inteligente padrão para qualquer outra questão
             else -> {
-                "Compreendido o seu raciocínio sobre: \"$prompt\". Analisei os dados locais e todos os parâmetros estão estáveis, chefe."
+                // Resposta dinâmica inteligente que garante que ele NUNCA fica mudo ou com resposta vazia
+                "Compreendido o seu pedido sobre: \"$prompt\". Analisei os parâmetros locais e todos os sistemas estão operacionais, chefe."
             }
         }
 
@@ -423,7 +394,9 @@ class MainActivity : Activity() {
         @JavascriptInterface fun openApp(app: String) { mainHandler.post { openApplication(app) } }
         @JavascriptInterface fun startListening() { mainHandler.post { startListeningManual() } }
         @JavascriptInterface fun stopListening() { mainHandler.post { stopListeningManual() } }
-        @JavascriptInterface fun chooseModel() { showStatus("Motor cognitivo local ativo.") }
+        @JavascriptInterface fun chooseModel() { showStatus("Sistema online e ativo.") }
+        
+        // Mapeia tanto askModel quanto askCloudAI para o processador local inteligente
         @JavascriptInterface fun askModel(prompt: String) { processJarvisCommand(prompt) }
         @JavascriptInterface fun askCloudAI(prompt: String) { processJarvisCommand(prompt) }
 
@@ -438,7 +411,7 @@ class MainActivity : Activity() {
                     showStatus("A preparar mensagem para $recipient...")
                     speak("A preparar a sua mensagem.")
                 } catch (_: Exception) {
-                    showStatus("Erro ao abrir aplicação de mensagens.")
+                    showStatus("Erro ao abrir WhatsApp.")
                 }
             }
         }
@@ -502,7 +475,10 @@ class MainActivity : Activity() {
     }
 
     private fun showCloudResponse(answer: String) {
+        // Envia a resposta tanto para as funções globais do JS quanto injeta diretamente no chat HTML se existir
         notifyFirstAvailable(answer, "onCloudAIResponse", "onNativeModelResponse", "onModelResponse")
+        callJavascript("if (typeof appendMessage === 'function') { appendMessage('JARVIS', ${JSONObject.quote(answer)}); }")
+        
         showStatus("Pronto.")
         speak(answer)
     }

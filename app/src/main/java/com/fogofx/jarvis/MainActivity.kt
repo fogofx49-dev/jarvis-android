@@ -442,8 +442,9 @@ class MainActivity : Activity() {
         @JavascriptInterface fun openApp(app: String) { runOnUiThread { openApplication(app) } }
         @JavascriptInterface fun startListening() { runOnUiThread { startAutomaticListening() } }
         @JavascriptInterface fun stopListening() { runOnUiThread { stopAutomaticListening() } }
-        @JavascriptInterface fun chooseModel() { showStatus("Modo nuvem ativo (sem ficheiro local necessário).") }
+        @JavascriptInterface fun chooseModel() { showStatus("Modo nuvem ativo.") }
         @JavascriptInterface fun askModel(prompt: String) { this@MainActivity.askCloudModel(prompt) }
+        @JavascriptInterface fun askCloudAI(prompt: String) { this@MainActivity.askCloudModel(prompt) }
 
         @JavascriptInterface
         fun getBattery(): String {
@@ -591,14 +592,14 @@ class MainActivity : Activity() {
 
     private fun showCloudResponse(answer: String) {
         waitingForCloud = false
-        notifyFirstAvailable(answer, "onNativeModelResponse", "onModelResponse")
+        notifyFirstAvailable(answer, "onCloudAIResponse", "onNativeModelResponse", "onModelResponse")
         showStatus("Pronto.")
         scheduleListeningRestart(1500)
     }
 
     private fun showCloudError(message: String) {
         waitingForCloud = false
-        notifyFirstAvailable(message, "onNativeModelError", "onModelError")
+        notifyFirstAvailable(message, "onCloudAIResponse", "onNativeModelError", "onModelError")
         showStatus(message)
         scheduleListeningRestart(1500)
     }

@@ -54,7 +54,7 @@ class MainActivity : Activity() {
     private var pendingFlashlightState: Boolean? = null
 
     companion object {
-        private const val TAG = "JARVIS_MANUAL"
+        private const val TAG = "JARVIS_LISTENER"
         private const val MIC_PERMISSION = 101
         private const val FLASH_PERMISSION = 103
     }
@@ -71,7 +71,7 @@ class MainActivity : Activity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 pageReady = true
-                showStatus("JARVIS pronto. Controlo manual ativado.")
+                showStatus("JARVIS pronto. Sistema auditivo otimizado.")
                 notifyJavascriptEvent("onNativeModelLoaded")
             }
         }
@@ -203,7 +203,7 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // ESCUTA MANUAL (APENAS QUANDO SOLICITADA)
+    // ESCUTA MANUAL OTIMIZADA E ATENTA
     // =========================================================
 
     private fun startListeningManual() {
@@ -226,28 +226,40 @@ class MainActivity : Activity() {
 
                 recognizer = SpeechRecognizer.createSpeechRecognizer(this)
                 recognizer?.setRecognitionListener(object : RecognitionListener {
-                    override fun onReadyForSpeech(params: Bundle?) { showStatus("A escutar... Fale agora.") }
-                    override fun onBeginningOfSpeech() { showStatus("A ouvir...") }
+                    override fun onReadyForSpeech(params: Bundle?) { 
+                        showStatus("A escutar com atenção... Pode falar.") 
+                    }
+                    override fun onBeginningOfSpeech() { 
+                        showStatus("A captar áudio...") 
+                    }
                     override fun onRmsChanged(rmsdB: Float) {}
                     override fun onBufferReceived(buffer: ByteArray?) {}
-                    override fun onEndOfSpeech() { showStatus("Processando fala...") }
+                    override fun onEndOfSpeech() { 
+                        showStatus("Processando a sua pergunta...") 
+                    }
                     override fun onError(error: Int) {
                         recognitionActive = false
-                        showStatus("Escuta encerrada.")
+                        showStatus("Escuta encerrada. Toque no microfone para tentar novamente.")
                     }
                     override fun onResults(results: Bundle?) {
                         recognitionActive = false
                         val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         val spokenText = matches?.firstOrNull().orEmpty()
                         if (spokenText.isBlank()) {
-                            showStatus("Nenhuma fala detetada.")
+                            showStatus("Não consegui ouvir bem. Tente novamente.")
                             return
                         }
 
                         notifyJavascript("onNativeSpeechResult", spokenText)
                         processJarvisCommand(spokenText)
                     }
-                    override fun onPartialResults(partialResults: Bundle?) {}
+                    override fun onPartialResults(partialResults: Bundle?) {
+                        val partials = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val currentText = partials?.firstOrNull().orEmpty()
+                        if (currentText.isNotBlank()) {
+                            showStatus("Ouvindo: \"$currentText\"")
+                        }
+                    }
                     override fun onEvent(eventType: Int, params: Bundle?) {}
                 })
 
@@ -255,13 +267,15 @@ class MainActivity : Activity() {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
+                    putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, true)
                     putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false)
-                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
                 }
                 recognizer?.startListening(intent)
             } catch (e: Exception) {
                 recognitionActive = false
-                showStatus("Erro ao iniciar microfone.")
+                showStatus("Erro ao iniciar microfone atencioso.")
             }
         }
     }
@@ -318,7 +332,7 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // PROCESSAMENTO DE COMANDOS E MENSAGENS
+    // PROCESSAMENTO DE COMANDOS INTELIGENTES
     // =========================================================
 
     private fun processJarvisCommand(prompt: String) {
@@ -327,7 +341,7 @@ class MainActivity : Activity() {
         val response = when {
             text.contains("bateria") -> {
                 val level = getBatteryLevel()
-                "A bateria está em $level por cento."
+                "A bateria do sistema encontra-se a $level por cento."
             }
             text.contains("lanterna") && (text.contains("liga") || text.contains("acende")) -> {
                 toggleFlashlight(true)
@@ -352,7 +366,7 @@ class MainActivity : Activity() {
                 "Bom dia, chefe. Todos os sistemas operacionais a cem por cento. Como posso ajudar?"
             }
             else -> {
-                "Compreendido. Comando processado com sucesso."
+                "Compreendido perfeitamente. A processar o seu pedido."
             }
         }
 
@@ -369,7 +383,7 @@ class MainActivity : Activity() {
         @JavascriptInterface fun openApp(app: String) { mainHandler.post { openApplication(app) } }
         @JavascriptInterface fun startListening() { mainHandler.post { startListeningManual() } }
         @JavascriptInterface fun stopListening() { mainHandler.post { stopListeningManual() } }
-        @JavascriptInterface fun chooseModel() { showStatus("Sistema online.") }
+        @JavascriptInterface fun chooseModel() { showStatus("Sistema online e atento.") }
         @JavascriptInterface fun askModel(prompt: String) { processJarvisCommand(prompt) }
         @JavascriptInterface fun askCloudAI(prompt: String) { processJarvisCommand(prompt) }
 

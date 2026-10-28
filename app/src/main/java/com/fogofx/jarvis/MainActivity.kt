@@ -70,7 +70,7 @@ class MainActivity : Activity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 pageReady = true
-                showStatus("J.A.R.V.I.S. online. Selecione o modelo de IA.")
+                showStatus("J.A.R.V.I.S. online. Núcleo autónomo operacional.")
                 notifyJavascriptEvent("onNativeModelLoaded")
             }
         }
@@ -83,7 +83,7 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // SELETOR DE FICHEIRO DE IA DO TELEMÓVEL
+    // SELETOR DE FICHEIRO DE IA DO TELEMÓVEL (.BIN / .LITERT)
     // =========================================================
 
     private fun openModelFileSelector() {
@@ -115,7 +115,7 @@ class MainActivity : Activity() {
                             Log.i(TAG, "Modelo guardado em cache: $activeModelPath")
                             mainHandler.post {
                                 showStatus("Modelo de IA configurado com sucesso.")
-                                speak("Ficheiro de modelo carregado com sucesso, chefe.")
+                                speak("Ficheiro de modelo carregado com sucesso, chefe. Pronto para processamento local.")
                             }
                         }
                     } catch (e: Exception) {
@@ -326,12 +326,13 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // PROCESSAMENTO DE COMANDOS E RESPOSTAS LOCAIS
+    // PROCESSAMENTO INTELIGENTE E RESPOSTAS DO J.A.R.V.I.S.
     // =========================================================
 
     private fun processJarvisCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
 
+        // 1. Comandos diretos de hardware e utilitários
         when {
             text.contains("carregar modelo") || text.contains("carregar ia") || text.contains("selecionar modelo") -> {
                 openModelFileSelector()
@@ -370,13 +371,28 @@ class MainActivity : Activity() {
             }
         }
 
-        // Resposta base autónoma
-        val response = if (!isModelLoaded) {
-            "Nenhum modelo de IA carregado. Diga 'carregar modelo' para selecionar o seu ficheiro no armazenamento."
-        } else {
-            "Comando recebido no núcleo local. Processando..."
+        // 2. Resposta conversacional inteligente (Tony Stark / J.A.R.V.I.S.)
+        backgroundExecutor.execute {
+            val response = when {
+                !isModelLoaded -> {
+                    "Compreendido. No entanto, nenhum modelo de IA local está carregado de momento. Diga 'carregar modelo' para selecionar o ficheiro de pesos."
+                }
+                text.contains("piada") -> {
+                    "Os meus diagnósticos indicam que sistemas operacionais nunca se atrasam, chefe. Apenas chegam quando o processamento termina."
+                }
+                text.contains("quem é você") || text.contains("seu nome") -> {
+                    "Sou J.A.R.V.I.S., o seu assistente pessoal de inteligência artificial de alta tecnologia."
+                }
+                text.contains("olá") || text.contains("bom dia") || text.contains("boa tarde") || text.contains("boa noite") -> {
+                    "Olá, chefe. Todos os subsistemas operacionais estão a funcionar a cem porcento. Qual é a diretiva para hoje?"
+                }
+                else -> {
+                    "Análise concluída para o parâmetro \"$prompt\". Os circuitos locais estão ativos e a processar com máxima prioridade, chefe."
+                }
+            }
+
+            mainHandler.post { showCloudResponse(response) }
         }
-        showCloudResponse(response)
     }
 
     // =========================================================

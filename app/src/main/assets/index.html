@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#020b12">
 <title>J.A.R.V.I.S. | Stark Technology</title>
 
@@ -16,9 +17,7 @@
   --border: rgba(0, 234, 255, .28);
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
@@ -268,13 +267,9 @@ button {
   transition: .2s;
 }
 
-button:active {
-  transform: scale(.97);
-}
+button:active { transform: scale(.97); }
 
-button:hover {
-  background: rgba(0,234,255,.17);
-}
+button:hover { background: rgba(0,234,255,.17); }
 
 button:disabled {
   opacity: .45;
@@ -301,6 +296,20 @@ button:disabled {
   grid-column: 1 / -1;
   border-color: rgba(0,255,160,.38);
   color: #6bffc7;
+}
+
+.handsfree-button {
+  grid-column: 1 / -1;
+  border-color: rgba(0,234,255,.65);
+  color: var(--cyan);
+  background: rgba(0,234,255,.12);
+  box-shadow: 0 0 14px rgba(0,234,255,.08);
+}
+
+.handsfree-button.active {
+  color: #ffb5b5;
+  border-color: rgba(255,70,70,.7);
+  background: rgba(255,35,35,.12);
 }
 
 .hint {
@@ -373,6 +382,13 @@ footer {
   </section>
 
   <div class="controls">
+    <button
+      id="handsFreeButton"
+      class="handsfree-button"
+      type="button"
+      onclick="toggleHandsFree()"
+    >🎧 Iniciar mãos-livres</button>
+
     <button id="voiceButton" type="button" onclick="toggleVoice()">🔊 Voz: ligada</button>
     <button type="button" onclick="showHelp()">❔ Ajuda</button>
     <button type="button" onclick="clearChat()">🗑️ Limpar conversa</button>
@@ -381,8 +397,8 @@ footer {
   </div>
 
   <div class="hint">
-    As perguntas gerais são enviadas para o modelo local quando estiver carregado.
-    A disponibilidade da IA depende do modelo e da integração Android.
+    O modo mãos-livres ouve apenas depois de ser ativado.
+    As perguntas gerais são processadas pelo modelo Gemma local.
   </div>
 
   <footer>J.A.R.V.I.S. • STARK TECHNOLOGY</footer>
@@ -394,6 +410,7 @@ footer {
 let waitingForModel = false;
 let voiceEnabled = true;
 let recognitionActive = false;
+let handsFreeEnabled = false;
 let browserRecognition = null;
 let lastQuestion = "";
 let modelSelectionRequested = false;
@@ -403,6 +420,7 @@ const userInput = document.getElementById("userInput");
 const sendButton = document.getElementById("sendButton");
 const micButton = document.getElementById("micButton");
 const voiceButton = document.getElementById("voiceButton");
+const handsFreeButton = document.getElementById("handsFreeButton");
 const loadAIButton = document.getElementById("loadAIButton");
 
 function normalizeText(text) {
@@ -415,7 +433,9 @@ function normalizeText(text) {
 }
 
 function setStatus(message, state = "normal") {
-  document.getElementById("status").textContent = String(message || "");
+  document.getElementById("status").textContent =
+    String(message || "");
+
   const dot = document.getElementById("dot");
   dot.className = "dot";
 
@@ -425,7 +445,8 @@ function setStatus(message, state = "normal") {
 
 function addMessage(text, sender = "bot") {
   const message = document.createElement("div");
-  message.className = "message " + (sender === "user" ? "user" : "bot");
+  message.className =
+    "message " + (sender === "user" ? "user" : "bot");
 
   const who = document.createElement("span");
   who.className = "who";
@@ -444,37 +465,66 @@ function setWaiting(value) {
   waitingForModel = Boolean(value);
   sendButton.disabled = waitingForModel;
   userInput.disabled = waitingForModel;
+
   setStatus(
     waitingForModel ? "A processar a pergunta..." : "Pronto",
     waitingForModel ? "busy" : "online"
   );
 }
 
-function speak(text) {
-  if (!voiceEnabled || !text) return;
+// ---------------------------------------------------------
+// VOZ E SINCRONIZAÇÃO COM O ANDROID
+// ---------------------------------------------------------
 
-  // Preferir a voz Android, se estiver disponível.
+function notifyNativeResponseFinished() {
+  try {
+    if (window.AndroidVoice &&
+        typeof window.AndroidVoice.responseFinished === "function") {
+      window.AndroidVoice.responseFinished();
+    }
+  } catch (error) {
+    console.warn("Não foi possível concluir a resposta:", error);
+  }
+}
+
+function speak(text) {
+  const clean = String(text || "").trim();
+
+  if (!voiceEnabled || !clean) {
+    notifyNativeResponseFinished();
+    return;
+  }
+
+  // No Android, a conclusão da fala é detetada pelo Kotlin.
   try {
     if (window.AndroidVoice &&
         typeof window.AndroidVoice.speak === "function") {
-      window.AndroidVoice.speak(String(text));
+      window.AndroidVoice.speak(clean);
       return;
     }
   } catch (error) {
     console.warn("Voz Android indisponível:", error);
   }
 
-  // Alternativa para navegadores que suportam síntese de voz.
+  // Alternativa para ambientes com Web Speech API.
   if ("speechSynthesis" in window) {
     try {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(String(text));
+
+      const utterance = new SpeechSynthesisUtterance(clean);
       utterance.lang = "pt-BR";
+
+      utterance.onend = notifyNativeResponseFinished;
+      utterance.onerror = notifyNativeResponseFinished;
+
       window.speechSynthesis.speak(utterance);
+      return;
     } catch (error) {
       console.warn("Síntese de voz indisponível:", error);
     }
   }
+
+  notifyNativeResponseFinished();
 }
 
 function stopSpeaking() {
@@ -491,24 +541,109 @@ function stopSpeaking() {
     window.speechSynthesis.cancel();
   }
 
+  if (handsFreeEnabled) {
+    notifyNativeResponseFinished();
+  }
+
   setStatus("Voz interrompida", "online");
 }
 
 function toggleVoice() {
   voiceEnabled = !voiceEnabled;
-  voiceButton.textContent = voiceEnabled ? "🔊 Voz: ligada" : "🔇 Voz: desligada";
 
-  if (!voiceEnabled) stopSpeaking();
+  voiceButton.textContent = voiceEnabled
+    ? "🔊 Voz: ligada"
+    : "🔇 Voz: desligada";
 
-  setStatus(voiceEnabled ? "Voz ativada" : "Voz desativada", "online");
+  if (!voiceEnabled) {
+    stopSpeaking();
+  }
+
+  setStatus(
+    voiceEnabled ? "Voz ativada" : "Voz desativada",
+    "online"
+  );
 }
+
+// ---------------------------------------------------------
+// MODO MÃOS-LIVRES
+// ---------------------------------------------------------
+
+function toggleHandsFree() {
+  if (handsFreeEnabled) {
+    stopHandsFree();
+  } else {
+    startHandsFree();
+  }
+}
+
+function startHandsFree() {
+  if (!window.AndroidVoice ||
+      typeof window.AndroidVoice.startHandsFree !== "function") {
+    addMessage(
+      "O modo mãos-livres requer a versão atualizada do MainActivity.kt."
+    );
+    setStatus("Integração Android indisponível");
+    return;
+  }
+
+  try {
+    window.AndroidVoice.startHandsFree();
+  } catch (error) {
+    addMessage("Não consegui iniciar o modo mãos-livres: " + error.message);
+    setStatus("Erro ao iniciar o modo mãos-livres");
+  }
+}
+
+function stopHandsFree() {
+  try {
+    if (window.AndroidVoice &&
+        typeof window.AndroidVoice.stopHandsFree === "function") {
+      window.AndroidVoice.stopHandsFree();
+    } else {
+      handsFreeEnabled = false;
+      updateHandsFreeButton();
+    }
+  } catch (error) {
+    console.warn(error);
+  }
+}
+
+function updateHandsFreeButton() {
+  handsFreeButton.classList.toggle("active", handsFreeEnabled);
+
+  handsFreeButton.textContent = handsFreeEnabled
+    ? "⏹ Parar mãos-livres"
+    : "🎧 Iniciar mãos-livres";
+
+  micButton.disabled = handsFreeEnabled || recognitionActive;
+
+  if (handsFreeEnabled) {
+    setStatus("Mãos-livres ativo", "online");
+  }
+}
+
+function onNativeHandsFreeState(enabled, message) {
+  handsFreeEnabled = Boolean(enabled);
+  updateHandsFreeButton();
+
+  if (message) {
+    setStatus(
+      message,
+      handsFreeEnabled ? "online" : "normal"
+    );
+  }
+}
+
+// ---------------------------------------------------------
+// SELEÇÃO DO MODELO
+// ---------------------------------------------------------
 
 function chooseJarvisModel() {
   if (!window.AndroidVoice ||
       typeof window.AndroidVoice.chooseModel !== "function") {
     addMessage(
-      "Não consigo abrir o seletor de ficheiros. Confirma se o AndroidBridge está ligado ao WebView no MainActivity.kt.",
-      "bot"
+      "Não consigo abrir o seletor de ficheiros. Confirma a integração Android."
     );
     setStatus("Integração Android indisponível");
     return;
@@ -527,6 +662,10 @@ function chooseJarvisModel() {
   }
 }
 
+// ---------------------------------------------------------
+// RESPOSTAS LOCAIS
+// ---------------------------------------------------------
+
 function isExactCommand(text, patterns) {
   return patterns.some(pattern => pattern.test(text));
 }
@@ -534,7 +673,6 @@ function isExactCommand(text, patterns) {
 function answer(raw) {
   const msg = normalizeText(raw);
 
-  // Saudações simples, sem capturar perguntas mais longas.
   if (/^(ola|oi|bom dia|boa tarde|boa noite|e ai|tudo bem)[!.?]*$/.test(msg)) {
     return "Olá! Sou o JARVIS. Como posso ajudar-te?";
   }
@@ -555,7 +693,6 @@ function answer(raw) {
     return "Continua a aprender e a melhorar. Cada pequeno passo aproxima-te do teu objetivo!";
   }
 
-  // Hora e data são respondidas localmente apenas para pedidos explícitos.
   if (/^(que horas sao|diz-me as horas|qual e a hora agora)[?!.]*$/.test(msg)) {
     return "A hora indicada pelo dispositivo é " +
       new Date().toLocaleTimeString("pt-BR", {
@@ -571,6 +708,10 @@ function answer(raw) {
 
   return null;
 }
+
+// ---------------------------------------------------------
+// COMANDOS ANDROID
+// ---------------------------------------------------------
 
 function openNativeApp(appName, statusText) {
   if (!window.AndroidVoice ||
@@ -594,7 +735,6 @@ function openNativeApp(appName, statusText) {
 function handleExplicitCommand(text) {
   const msg = normalizeText(text);
 
-  // Apenas frases de comando completas abrem aplicações.
   if (isExactCommand(msg, [
     /^(abre|abrir|inicia|iniciar|vai para) o youtube$/,
     /^(abre|abrir|inicia|iniciar|vai para) youtube$/,
@@ -623,6 +763,10 @@ function handleExplicitCommand(text) {
   return false;
 }
 
+// ---------------------------------------------------------
+// ENVIO DE PERGUNTAS
+// ---------------------------------------------------------
+
 function send() {
   if (waitingForModel) return;
 
@@ -633,10 +777,8 @@ function send() {
   userInput.value = "";
   addMessage(text, "user");
 
-  // Executa aplicações apenas para comandos explícitos.
   if (handleExplicitCommand(text)) return;
 
-  // Respostas locais exatas; perguntas gerais seguem para o Gemma.
   const localAnswer = answer(text);
 
   if (localAnswer !== null) {
@@ -650,8 +792,10 @@ function send() {
       typeof window.AndroidVoice.askModel !== "function") {
     const message =
       "O modelo de IA não está ligado. Carrega o ficheiro .litertlm e confirma a integração do MainActivity.kt.";
+
     addMessage(message, "bot");
     setStatus("Modelo de IA indisponível");
+    speak(message);
     return;
   }
 
@@ -662,13 +806,17 @@ function send() {
     setWaiting(false);
     addMessage("Não consegui enviar a pergunta ao modelo: " + error.message);
     setStatus("Erro ao consultar o modelo");
+    speak("Não consegui enviar a pergunta ao modelo.");
   }
 }
 
-function startMic() {
-  if (recognitionActive) return;
+// ---------------------------------------------------------
+// MICROFONE MANUAL
+// ---------------------------------------------------------
 
-  // Preferir o reconhecimento de voz Android.
+function startMic() {
+  if (recognitionActive || handsFreeEnabled) return;
+
   if (window.AndroidVoice &&
       typeof window.AndroidVoice.startListening === "function") {
     try {
@@ -684,7 +832,6 @@ function startMic() {
     }
   }
 
-  // Alternativa para navegadores com Web Speech API.
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -699,6 +846,7 @@ function startMic() {
     browserRecognition.lang = "pt-BR";
     browserRecognition.interimResults = false;
     browserRecognition.maxAlternatives = 1;
+
     recognitionActive = true;
     micButton.disabled = true;
     setStatus("A ouvir...", "busy");
@@ -719,7 +867,7 @@ function startMic() {
 
     browserRecognition.onend = function() {
       recognitionActive = false;
-      micButton.disabled = false;
+      micButton.disabled = handsFreeEnabled;
       if (!waitingForModel) setStatus("Pronto", "online");
     };
 
@@ -731,6 +879,10 @@ function startMic() {
     addMessage("Erro no microfone: " + error.message);
   }
 }
+
+// ---------------------------------------------------------
+// CONVERSA E CALLBACKS NATIVOS
+// ---------------------------------------------------------
 
 function clearChat() {
   chat.replaceChildren();
@@ -749,12 +901,11 @@ function showHelp() {
     "• Abre o YouTube\n" +
     "• Abre o Google\n" +
     "• Abre as definições\n\n" +
-    "Para outras perguntas, carrega o modelo local .litertlm.";
+    "Ativa o modo mãos-livres para conversar sem carregar no microfone a cada frase.";
 
   addMessage(help, "bot");
   speak("Estou pronto. Podes fazer perguntas ou usar os comandos disponíveis.");
 }
-
 
 function onNativeModelResponse(text) {
   setWaiting(false);
@@ -764,6 +915,7 @@ function onNativeModelResponse(text) {
   if (!response) {
     addMessage("O modelo não devolveu uma resposta. Verifica o modelo de IA.");
     setStatus("Resposta vazia", "online");
+    speak("O modelo não devolveu uma resposta.");
     return;
   }
 
@@ -772,17 +924,15 @@ function onNativeModelResponse(text) {
   setStatus("Resposta recebida", "online");
 }
 
-// Ligação correta com o MainActivity.kt
 window.onModelResponse = onNativeModelResponse;
 
 function onNativeStatus(message) {
   const text = String(message || "Estado atualizado");
-
   const busy = /pensar|processar|carregar|copiar/i.test(text);
 
   setStatus(text, busy ? "busy" : "online");
 
-  if (/modelo pronto|modelo carregado/i.test(text)) {
+  if (/modelo pronto|modelo carregado|gemma local pronto/i.test(text)) {
     modelSelectionRequested = false;
     loadAIButton.disabled = false;
   }
@@ -790,19 +940,20 @@ function onNativeStatus(message) {
 
 function onNativeSpeechResult(text) {
   recognitionActive = false;
-  micButton.disabled = false;
+  micButton.disabled = handsFreeEnabled;
 
   if (text) {
     userInput.value = text;
     send();
   } else {
     setStatus("Não foi reconhecida nenhuma frase");
+    notifyNativeResponseFinished();
   }
 }
 
 function onNativeSpeechError(message) {
   recognitionActive = false;
-  micButton.disabled = false;
+  micButton.disabled = handsFreeEnabled;
 
   setStatus(message || "Erro no reconhecimento de voz");
 }
@@ -810,23 +961,26 @@ function onNativeSpeechError(message) {
 function onNativeModelError(message) {
   setWaiting(false);
 
-  addMessage(
-    "Erro do modelo: " + (message || "erro desconhecido"),
-    "bot"
-  );
+  const errorMessage =
+    "Erro do modelo: " + (message || "erro desconhecido");
 
+  addMessage(errorMessage, "bot");
   setStatus("Falha ao consultar o modelo", "online");
+
+  // O Kotlin também liberta a espera e tenta retomar a escuta.
 }
 
-// Ligação correta com o MainActivity.kt
 window.onModelError = onNativeModelError;
 
 function onNativeModelLoaded(message) {
   modelSelectionRequested = false;
   loadAIButton.disabled = false;
-
   setStatus(message || "Modelo carregado", "online");
 }
+
+// ---------------------------------------------------------
+// TECLADO E ARRANQUE
+// ---------------------------------------------------------
 
 userInput.addEventListener("keydown", function(event) {
   if (event.key === "Enter" && !event.shiftKey) {
@@ -837,6 +991,7 @@ userInput.addEventListener("keydown", function(event) {
 
 window.addEventListener("load", function() {
   setStatus("Interface pronta. Carrega o modelo de IA.", "online");
+  updateHandsFreeButton();
 });
 </script>
 </body>

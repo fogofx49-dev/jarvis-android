@@ -22,11 +22,16 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.app.ActivityCompat
+import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Conversation
+import com.google.ai.edge.litertlm.Engine
+import com.google.ai.edge.litertlm.EngineConfig
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -41,16 +46,19 @@ class MainActivity : Activity() {
     private lateinit var tts: TextToSpeech
     private var recognizer: SpeechRecognizer? = null
 
-    // Correção efetuada: getMainLooper em vez de getMainLoger
     private val mainHandler = Handler(Looper.getMainLooper())
     private val backgroundExecutor = Executors.newSingleThreadExecutor()
 
+    // Motor LiteRT-LM Local Oficial
+    private var localEngine: Engine? = null
+    private var localConversation: Conversation? = null
     private var isModelLoaded = false
-    private var activeModelFile: File? = null
+
     private var lastSpokenText = ""
     private var lastSpokenTime = 0L
 
     companion object {
+        private const val TAG = "JARVIS_LITERT"
         private const val MIC_PERMISSION = 101
         private const val PICK_MODEL_REQUEST = 1002
     }
@@ -64,7 +72,7 @@ class MainActivity : Activity() {
             settings.domStorageEnabled = true
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
-                    showStatus("J.A.R.V.I.S. online. Núcleo operacional.")
+                    showStatus("J.A.R.V.I.S. online. Pronto para carregar a IA local.")
                 }
             }
             webChromeClient = WebChromeClient()
@@ -83,8 +91,8 @@ class MainActivity : Activity() {
             }
             try {
                 startActivityForResult(intent, PICK_MODEL_REQUEST)
-                showStatus("Selecione o ficheiro do modelo...")
-                speak("A abrir explorador para carregar o modelo de inteligência, chefe.")
+                showStatus("Selecione o ficheiro do modelo (.litertlm / .bin)...")
+                speak("A abrir explorador para selecionar o modelo local, chefe.")
             } catch (_: Exception) {}
         }
     }
@@ -95,16 +103,14 @@ class MainActivity : Activity() {
             data?.data?.let { uri ->
                 backgroundExecutor.execute {
                     try {
-                        val file = copyUriToCache(uri)
-                        if (file != null) {
-                            isModelLoaded = true
-                            activeModelFile = file
-                            mainHandler.post {
-                                showStatus("Modelo ligado com sucesso.")
-                                speak("Ficheiro de inteligência carregado. Pronto para consultas diretas, chefe.")
-                            }
+                        val cachedFile = copyUriToCache(uri)
+                        if (cachedFile != null) {
+                            initLitertEngine(cachedFile.absolutePath)
                         }
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Erro ao copiar ficheiro do modelo", e)
+                        mainHandler.post { showStatus("Erro ao processar ficheiro de IA.") }
+                    }
                 }
             }
         }
@@ -114,8 +120,8 @@ class MainActivity : Activity() {
         return try {
             val name = contentResolver.query(uri, null, null, null, null)?.use { cursor ->
                 val idx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (cursor.moveToFirst() && idx != -1) cursor.getString(idx) else "model.bin"
-            } ?: "model.bin"
+                if (cursor.moveToFirst() && idx != -1) cursor.getString(idx) else "model.litertlm"
+            } ?: "model.litertlm"
 
             val dest = File(cacheDir, name)
             contentResolver.openInputStream(uri)?.use { input ->
@@ -123,6 +129,36 @@ class MainActivity : Activity() {
             }
             dest
         } catch (_: Exception) { null }
+    }
+
+    private fun initLitertEngine(modelPath: String) {
+        try {
+            localConversation?.close()
+            localEngine?.close()
+
+            val config = EngineConfig(
+                modelPath = modelPath,
+                backend = Backend.CPU()
+            )
+            localEngine = Engine(config).apply {
+                initialize()
+            }
+            localConversation = localEngine?.createConversation()
+            isModelLoaded = true
+
+            Log.i(TAG, "Motor LiteRT-LM inicializado com sucesso.")
+            mainHandler.post {
+                showStatus("IA local conectada com sucesso.")
+                speak("Núcleo de inteligência local ativado e operacional, chefe.")
+            }
+        } catch (e: Exception) {
+            isModelLoaded = false
+            Log.e(TAG, "Falha ao iniciar motor LiteRT", e)
+            mainHandler.post {
+                showStatus("Erro ao iniciar motor de IA.")
+                speak("Falha ao inicializar o modelo de inteligência local.")
+            }
+        }
     }
 
     private fun initializeTts() {
@@ -210,6 +246,7 @@ class MainActivity : Activity() {
     private fun processCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
 
+        // 1. Atalhos essenciais de hardware mantidos para controlo físico direto
         val hardwareAnswer = when {
             text.contains("bateria") -> "A bateria está a ${getBatteryLevel()} por cento, chefe."
             text.contains("lanterna") && (text.contains("liga") || text.contains("acende")) -> toggleFlashlight(true)
@@ -218,7 +255,6 @@ class MainActivity : Activity() {
             text.contains("youtube") -> openApplication("youtube")
             text.contains("google") -> openApplication("google")
             text.contains("configurações") -> openApplication("settings")
-            text.contains("piada") -> "Sistemas operacionais nunca se atrasam, chefe. Apenas chegam quando o processamento termina."
             else -> null
         }
 
@@ -227,34 +263,31 @@ class MainActivity : Activity() {
             return
         }
 
+        // 2. Consulta automática direcionada diretamente para o modelo LiteRT-LM carregado
         showStatus("A consultar IA local...")
         backgroundExecutor.execute {
-            val aiResponse = if (!isModelLoaded || activeModelFile == null) {
-                "Nenhum modelo de IA carregado. Por favor, selecione o ficheiro do modelo primeiro."
+            var aiResponse: String? = null
+
+            if (isModelLoaded && localConversation != null) {
+                try {
+                    // Envia a pergunta diretamente para o Gemma / LiteRT-LM
+                    aiResponse = localConversation!!.sendMessage(prompt)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Erro na inferência do modelo local", e)
+                }
+            }
+
+            val finalOutput = if (aiResponse.isNullOrBlank()) {
+                if (!isModelLoaded) {
+                    "Nenhum modelo de IA carregado. Por favor, selecione o ficheiro do modelo primeiro."
+                } else {
+                    "Não consegui obter uma resposta do modelo local."
+                }
             } else {
-                runLocalModelInference(activeModelFile!!, prompt)
+                aiResponse!!
             }
 
-            mainHandler.post { respond(aiResponse) }
-        }
-    }
-
-    private fun runLocalModelInference(modelFile: File, prompt: String): String {
-        return try {
-            val query = prompt.lowercase(Locale.ROOT)
-            when {
-                query.contains("brasil") && (query.contains("descobriu") || query.contains("quem")) -> {
-                    "O Brasil foi oficialmente descoberto para os europeus em 22 de abril de 1500 pela frota portuguesa comandada por Pedro Álvares Cabral, chefe."
-                }
-                query.contains("capital da frança") || query.contains("capital de frança") -> {
-                    "A capital da França é Paris, chefe."
-                }
-                else -> {
-                    "Com base no modelo de inteligência (${modelFile.name}) carregado no núcleo: $prompt. Os parâmetros lógicos foram avaliados com sucesso."
-                }
-            }
-        } catch (e: Exception) {
-            "Erro ao processar consulta no modelo local: ${e.localizedMessage}"
+            mainHandler.post { respond(finalOutput) }
         }
     }
 
@@ -285,6 +318,8 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         try { recognizer?.destroy() } catch (_: Exception) {}
+        try { localConversation?.close() } catch (_: Exception) {}
+        try { localEngine?.close() } catch (_: Exception) {}
         if (::tts.isInitialized) { tts.stop(); tts.shutdown() }
         super.onDestroy()
     }

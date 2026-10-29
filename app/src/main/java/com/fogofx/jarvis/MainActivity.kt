@@ -29,9 +29,9 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.app.ActivityCompat
 import com.google.ai.edge.litertlm.Backend
-import com.google.ai.edge.litertlm.Content
+import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.Engine
-import com.google.ai.edge.litertlm.ModelConfig
+import com.google.ai.edge.litertlm.EngineConfig
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -53,8 +53,9 @@ class MainActivity : Activity() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val backgroundExecutor = Executors.newSingleThreadExecutor()
 
-    // Motor LiteRT-LM Local
+    // Motor e Conversa do LiteRT-LM Local
     private var localEngine: Engine? = null
+    private var localConversation: Conversation? = null
     private var isModelLoaded = false
 
     private var lastSpokenText: String = ""
@@ -98,7 +99,7 @@ class MainActivity : Activity() {
             }
             try {
                 startActivityForResult(intent, PICK_MODEL_REQUEST)
-                showStatus("Selecione o ficheiro do modelo...")
+                showStatus("Selecione o ficheiro do modelo (.litertlm / .bin)...")
                 speak("A abrir explorador para selecionar o modelo local, chefe.")
             } catch (e: Exception) {
                 showStatus("Erro ao abrir explorador.")
@@ -127,12 +128,20 @@ class MainActivity : Activity() {
 
     private fun initLitertEngine(modelPath: String) {
         try {
+            localConversation?.close()
             localEngine?.close()
-            val config = ModelConfig(modelPath).apply {
-                backend = Backend.CPU
+
+            // Configuração oficial do motor LiteRT-LM para Android
+            val config = EngineConfig(
+                modelPath = modelPath,
+                backend = Backend.CPU()
+            )
+            localEngine = Engine(config).apply {
+                initialize()
             }
-            localEngine = Engine(config)
+            localConversation = localEngine?.createConversation()
             isModelLoaded = true
+
             Log.i(TAG, "Motor LiteRT-LM inicializado com sucesso.")
             mainHandler.post {
                 showStatus("IA local conectada com sucesso.")
@@ -150,7 +159,7 @@ class MainActivity : Activity() {
 
     private fun copyUriToCache(uri: Uri): File? {
         return try {
-            val fileName = getFileName(uri) ?: "model.bin"
+            val fileName = getFileName(uri) ?: "model.litertlm"
             val destinationFile = File(cacheDir, fileName)
             contentResolver.openInputStream(uri)?.use { inputStream ->
                 FileOutputStream(destinationFile).use { outputStream ->
@@ -335,7 +344,7 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // PROCESSAMENTO HÍBRIDO (HARDWARE + IA LOCAL LITERT)
+    // PROCESSAMENTO HÍBRIDO (HARDWARE + IA LOCAL LITERT-LM)
     // =========================================================
 
     private fun processJarvisCommand(prompt: String) {
@@ -380,17 +389,16 @@ class MainActivity : Activity() {
             }
         }
 
-        // 2. Processamento via Motor de IA Local (LiteRT-LM)
-        showStatus("A processar localmente...")
+        // 2. Processamento real via Modelo Local LiteRT-LM
+        showStatus("A processar na IA local...")
         backgroundExecutor.execute {
             var aiResponse: String? = null
-            if (isModelLoaded && localEngine != null) {
+            if (isModelLoaded && localConversation != null) {
                 try {
-                    val inputContent = Content.Builder().addText(prompt).build()
-                    val response = localEngine!!.generate(inputContent)
-                    aiResponse = response.text()
+                    // Envia a mensagem para a conversação ativa do LiteRT-LM
+                    aiResponse = localConversation!!.sendMessage(prompt)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Erro na geração do modelo local", e)
+                    Log.e(TAG, "Erro na inferência do modelo local", e)
                 }
             }
 
@@ -398,7 +406,7 @@ class MainActivity : Activity() {
                 aiResponse = if (!isModelLoaded) {
                     "Nenhum modelo de IA carregado. Diga 'carregar modelo'."
                 } else {
-                    "Processamento local concluído para: $prompt"
+                    "Não consegui obter uma resposta do modelo local."
                 }
             }
 
@@ -479,6 +487,7 @@ class MainActivity : Activity() {
         stopListeningManual()
         try { recognizer?.destroy() } catch (_: Exception) {}
         recognizer = null
+        try { localConversation?.close() } catch (_: Exception) {}
         try { localEngine?.close() } catch (_: Exception) {}
         if (::tts.isInitialized) { tts.stop(); tts.shutdown() }
         if (::webView.isInitialized) { webView.stopLoading(); webView.destroy() }

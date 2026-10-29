@@ -17,6 +17,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.AlarmClock
+import android.provider.CalendarContract
 import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
@@ -41,8 +42,10 @@ import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
@@ -122,8 +125,7 @@ class MainActivity : Activity() {
         tts = TextToSpeech(this) { status ->
             mainHandler.post {
                 if (status == TextToSpeech.SUCCESS) {
-                    val languageResult =
-                        tts.setLanguage(Locale("pt", "BR"))
+                    val languageResult = tts.setLanguage(Locale("pt", "BR"))
 
                     tts.setSpeechRate(0.96f)
                     tts.setPitch(0.92f)
@@ -463,10 +465,7 @@ class MainActivity : Activity() {
         mainHandler.post {
             if (handsFree && !handsFreeEnabled) return@post
 
-            if (
-                handsFree &&
-                (waitingForResponse || isTtsSpeaking)
-            ) {
+            if (handsFree && (waitingForResponse || isTtsSpeaking)) {
                 return@post
             }
 
@@ -606,12 +605,14 @@ class MainActivity : Activity() {
 
                         override fun onPartialResults(
                             partialResults: Bundle?
-                        ) {}
+                        ) {
+                        }
 
                         override fun onEvent(
                             eventType: Int,
                             params: Bundle?
-                        ) {}
+                        ) {
+                        }
                     }
                 )
 
@@ -1034,11 +1035,166 @@ class MainActivity : Activity() {
     }
 
     // ---------------------------------------------------------
+    // LEMBRETES - INTEGRADO NO CALENDÁRIO ANDROID
+    // ---------------------------------------------------------
+
+    private fun handleReminderCommand(command: String): String? {
+        val cmd = command.lowercase(Locale.ROOT).trim()
+
+        val reminderPhrases = listOf(
+            "cria um lembrete",
+            "criar um lembrete",
+            "cria lembrete",
+            "criar lembrete",
+            "adiciona um lembrete",
+            "novo lembrete",
+            "lembra-me",
+            "lembra me",
+            "me lembra",
+            "lembrete para",
+            "define um lembrete",
+            "marca um lembrete"
+        )
+
+        if (reminderPhrases.none { cmd.contains(it) }) {
+            return null
+        }
+
+        // Extrair o título do comando.
+        var title = command.trim()
+
+        val prefixes = listOf(
+            "cria um lembrete",
+            "criar um lembrete",
+            "cria lembrete",
+            "criar lembrete",
+            "adiciona um lembrete",
+            "novo lembrete",
+            "lembra-me de",
+            "lembra me de",
+            "lembra-me",
+            "lembra me",
+            "me lembra de",
+            "me lembra",
+            "define um lembrete",
+            "marca um lembrete"
+        )
+
+        for (prefix in prefixes) {
+            val index = title.indexOf(prefix, ignoreCase = true)
+
+            if (index >= 0) {
+                title = title.substring(index + prefix.length).trim()
+                break
+            }
+        }
+
+        // Retirar a data e a hora do título.
+        title = title
+            .replace(
+                Regex("""\bamanhã\b|\bamanha\b|\bhoje\b""", RegexOption.IGNORE_CASE),
+                " "
+            )
+            .replace(
+                Regex(
+                    """\bàs?\s*\d{1,2}(?:\s*[:h]\s*\d{2}|\s+horas?)?\b""",
+                    RegexOption.IGNORE_CASE
+                ),
+                " "
+            )
+            .replace(Regex("""\s+"""), " ")
+            .trim(' ', '.', ',', '!', '?', ':')
+
+        if (title.isBlank()) {
+            title = "Lembrete do JARVIS"
+        }
+
+        // Definir hoje ou amanhã.
+        val start = Calendar.getInstance()
+
+        if (cmd.contains("amanhã") || cmd.contains("amanha")) {
+            start.add(Calendar.DAY_OF_YEAR, 1)
+        }
+
+        // Reconhecer horas como 15:30, 15h30 ou 15 horas.
+        val timeMatch = Regex(
+            """\b([01]?\d|2[0-3])(?:\s*[:h]\s*([0-5]\d)|\s+horas?)\b"""
+        ).find(cmd)
+
+        val hasTime = timeMatch != null
+
+        if (timeMatch != null) {
+            val hour = timeMatch.groupValues[1].toInt()
+            val minute = timeMatch.groupValues[2]
+                .takeIf { it.isNotBlank() }
+                ?.toInt() ?: 0
+
+            start.set(Calendar.HOUR_OF_DAY, hour)
+            start.set(Calendar.MINUTE, minute)
+        } else {
+            // Hora sugerida quando o utilizador não especifica uma.
+            start.set(Calendar.HOUR_OF_DAY, 9)
+            start.set(Calendar.MINUTE, 0)
+        }
+
+        start.set(Calendar.SECOND, 0)
+        start.set(Calendar.MILLISECOND, 0)
+
+        val end = start.clone() as Calendar
+        end.add(Calendar.MINUTE, 30)
+
+        val calendarIntent = Intent(Intent.ACTION_INSERT).apply {
+            data = CalendarContract.Events.CONTENT_URI
+
+            putExtra(CalendarContract.Events.TITLE, title)
+            putExtra(
+                CalendarContract.Events.DESCRIPTION,
+                "Criado pelo J.A.R.V.I.S. Android"
+            )
+            putExtra(
+                CalendarContract.EXTRA_EVENT_BEGIN_TIME,
+                start.timeInMillis
+            )
+            putExtra(
+                CalendarContract.EXTRA_EVENT_END_TIME,
+                end.timeInMillis
+            )
+            putExtra(
+                CalendarContract.Events.EVENT_TIMEZONE,
+                TimeZone.getDefault().id
+            )
+            putExtra(CalendarContract.Events.ALL_DAY, false)
+        }
+
+        return try {
+            startActivity(calendarIntent)
+
+            val formattedTime = String.format(
+                Locale.ROOT,
+                "%02d:%02d",
+                start.get(Calendar.HOUR_OF_DAY),
+                start.get(Calendar.MINUTE)
+            )
+
+            if (hasTime) {
+                "A abrir o calendário para criares o lembrete '$title' às $formattedTime. Confirma e guarda."
+            } else {
+                "A abrir o calendário para criares o lembrete '$title'. Sugeri as 09:00; confirma a data e a hora antes de guardar."
+            }
+        } catch (_: Exception) {
+            "Não consegui abrir o calendário. Verifica se tens uma aplicação de calendário instalada."
+        }
+    }
+
+    // ---------------------------------------------------------
     // COMANDOS ANDROID
     // ---------------------------------------------------------
 
     private fun handleExtraAndroidCommand(command: String): String? {
         val cmd = command.lowercase(Locale.ROOT).trim()
+
+        // Verificar primeiro se é um pedido de lembrete.
+        handleReminderCommand(command)?.let { return it }
 
         // Estado da bateria e carregamento
         if (
@@ -1074,10 +1230,7 @@ class MainActivity : Activity() {
         }
 
         // Abrir câmara
-        if (
-            cmd.contains("câmara") ||
-            cmd.contains("camera")
-        ) {
+        if (cmd.contains("câmara") || cmd.contains("camera")) {
             return launchAndroidIntent(
                 Intent(MediaStore.ACTION_IMAGE_CAPTURE),
                 "A abrir a câmara.",
@@ -1413,8 +1566,8 @@ class MainActivity : Activity() {
     private fun processCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
 
-        // Primeiro, executar comandos Android reconhecidos
-        val extraAnswer = handleExtraAndroidCommand(text)
+        // Passar o texto original para preservar o título do lembrete.
+        val extraAnswer = handleExtraAndroidCommand(prompt)
 
         if (extraAnswer != null) {
             respond(extraAnswer)

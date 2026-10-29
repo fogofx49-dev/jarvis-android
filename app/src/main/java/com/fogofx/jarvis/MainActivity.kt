@@ -17,6 +17,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.AlarmClock
+import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.provider.Settings
@@ -114,7 +115,7 @@ class MainActivity : Activity() {
     }
 
     // ---------------------------------------------------------
-    // VOZ ANDROID - TEXT TO SPEECH
+    // TEXT TO SPEECH
     // ---------------------------------------------------------
 
     private fun initializeTts() {
@@ -905,7 +906,7 @@ class MainActivity : Activity() {
     }
 
     // ---------------------------------------------------------
-    // COMANDOS ANDROID EXISTENTES
+    // BATERIA E LANTERNA
     // ---------------------------------------------------------
 
     private fun getBatteryLevel(): Int {
@@ -946,45 +947,100 @@ class MainActivity : Activity() {
         }
     }
 
+    // ---------------------------------------------------------
+    // ABRIR APLICAÇÕES
+    // ---------------------------------------------------------
+
     private fun openApplication(appNameInput: String): String {
         val appName = appNameInput.lowercase(Locale.ROOT).trim()
 
-        return try {
-            val intent = when (appName) {
-                "youtube" -> Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse("https://www.youtube.com")
-                )
+        val packageName = when (appName) {
+            "youtube" -> "com.google.android.youtube"
+            "whatsapp" -> "com.whatsapp"
+            "chrome", "google chrome" -> "com.android.chrome"
+            "spotify" -> "com.spotify.music"
+            "instagram" -> "com.instagram.android"
+            "facebook" -> "com.facebook.katana"
+            "telegram" -> "org.telegram.messenger"
+            "gmail" -> "com.google.android.gm"
+            "google maps", "maps" -> "com.google.android.apps.maps"
+            else -> null
+        }
 
-                "google" -> Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse("https://www.google.com")
-                )
+        return try {
+            when (appName) {
+                "google" -> {
+                    startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("https://www.google.com")
+                        )
+                    )
+                    return "A abrir o Google."
+                }
+
+                "youtube" -> {
+                    val intent =
+                        packageManager.getLaunchIntentForPackage(
+                            "com.google.android.youtube"
+                        )
+
+                    if (intent != null) {
+                        startActivity(intent)
+                    } else {
+                        startActivity(
+                            Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://www.youtube.com")
+                            )
+                        )
+                    }
+
+                    return "A abrir o YouTube."
+                }
 
                 "settings",
                 "configurações",
-                "configuracoes" -> Intent(Settings.ACTION_SETTINGS)
-
-                else -> packageManager.getLaunchIntentForPackage(
-                    appNameInput
-                ) ?: return "Não encontrei o aplicativo $appNameInput."
+                "configuracoes" -> {
+                    startActivity(Intent(Settings.ACTION_SETTINGS))
+                    return "A abrir as definições."
+                }
             }
 
-            startActivity(intent)
-            "A abrir $appName."
+            if (packageName != null) {
+                val intent =
+                    packageManager.getLaunchIntentForPackage(packageName)
+
+                if (intent != null) {
+                    startActivity(intent)
+                    return "A abrir $appName."
+                }
+
+                return "Não encontrei o aplicativo $appName instalado."
+            }
+
+            val intent =
+                packageManager.getLaunchIntentForPackage(appNameInput)
+
+            if (intent != null) {
+                startActivity(intent)
+                "A abrir $appName."
+            } else {
+                "Não encontrei o aplicativo $appName instalado."
+            }
         } catch (_: Exception) {
             "Não foi possível abrir $appName."
         }
     }
 
     // ---------------------------------------------------------
-    // NOVOS COMANDOS ANDROID
+    // COMANDOS ANDROID
     // ---------------------------------------------------------
 
     private fun handleExtraAndroidCommand(command: String): String? {
         val cmd = command.lowercase(Locale.ROOT).trim()
 
-        // Consultar o estado do carregamento
+        // Estado da bateria e carregamento
         if (
             cmd.contains("está a carregar") ||
             cmd.contains("esta a carregar") ||
@@ -1018,7 +1074,10 @@ class MainActivity : Activity() {
         }
 
         // Abrir câmara
-        if (cmd.contains("câmara") || cmd.contains("camera")) {
+        if (
+            cmd.contains("câmara") ||
+            cmd.contains("camera")
+        ) {
             return launchAndroidIntent(
                 Intent(MediaStore.ACTION_IMAGE_CAPTURE),
                 "A abrir a câmara.",
@@ -1036,7 +1095,7 @@ class MainActivity : Activity() {
                 startActivity(calculatorIntent)
                 return "A abrir a calculadora."
             } catch (_: Exception) {
-                // Tentar pacotes conhecidos.
+                // Tentar outros pacotes.
             }
 
             val packages = listOf(
@@ -1045,10 +1104,12 @@ class MainActivity : Activity() {
                 "com.sec.android.app.popupcalculator"
             )
 
-            for (packageName in packages) {
+            for (calculatorPackage in packages) {
                 try {
                     val appIntent =
-                        packageManager.getLaunchIntentForPackage(packageName)
+                        packageManager.getLaunchIntentForPackage(
+                            calculatorPackage
+                        )
 
                     if (appIntent != null) {
                         startActivity(appIntent)
@@ -1064,8 +1125,8 @@ class MainActivity : Activity() {
 
         // Abrir mapas
         if (
-            cmd.contains("mapas") ||
             cmd.contains("google maps") ||
+            cmd.contains("mapas") ||
             cmd.contains("navegação") ||
             cmd.contains("navegacao")
         ) {
@@ -1097,7 +1158,7 @@ class MainActivity : Activity() {
             )
         }
 
-        // Aumentar volume
+        // Volume multimédia
         if (
             cmd.contains("aumenta o volume") ||
             cmd.contains("aumentar o volume") ||
@@ -1107,7 +1168,6 @@ class MainActivity : Activity() {
             return "A aumentar o volume."
         }
 
-        // Diminuir volume
         if (
             cmd.contains("diminui o volume") ||
             cmd.contains("diminuir o volume") ||
@@ -1118,7 +1178,6 @@ class MainActivity : Activity() {
             return "A diminuir o volume."
         }
 
-        // Silenciar áudio multimédia
         if (
             cmd == "silenciar" ||
             cmd.contains("silencia o som") ||
@@ -1130,7 +1189,6 @@ class MainActivity : Activity() {
             return "Comando de silêncio executado."
         }
 
-        // Reativar áudio multimédia
         if (
             cmd.contains("reativa o som") ||
             cmd.contains("ativa o som") ||
@@ -1171,7 +1229,6 @@ class MainActivity : Activity() {
             )
         }
 
-        // Mostrar alarmes existentes
         if (
             cmd.contains("alarme") ||
             cmd.contains("despertador") ||
@@ -1182,6 +1239,139 @@ class MainActivity : Activity() {
                 Intent(AlarmClock.ACTION_SHOW_ALARMS),
                 "A abrir os alarmes.",
                 "Não consegui abrir os alarmes."
+            )
+        }
+
+        // Abrir aplicações conhecidas por voz
+        val isOpenRequest =
+            cmd.contains("abre ") ||
+            cmd.startsWith("abrir ") ||
+            cmd.startsWith("inicia ") ||
+            cmd.startsWith("iniciar ")
+
+        if (isOpenRequest) {
+            val apps = listOf(
+                "google maps",
+                "whatsapp",
+                "chrome",
+                "google chrome",
+                "spotify",
+                "instagram",
+                "facebook",
+                "telegram",
+                "gmail",
+                "youtube",
+                "google"
+            )
+
+            val requestedApp = apps.firstOrNull {
+                cmd.contains(it)
+            }
+
+            if (requestedApp != null) {
+                return openApplication(requestedApp)
+            }
+        }
+
+        // Abrir contactos
+        if (
+            cmd.contains("abre contactos") ||
+            cmd.contains("abrir contactos") ||
+            cmd.contains("abre os contactos") ||
+            cmd.contains("abre contatos") ||
+            cmd.contains("abrir contatos") ||
+            cmd.contains("abre os contatos")
+        ) {
+            return launchAndroidIntent(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    ContactsContract.Contacts.CONTENT_URI
+                ),
+                "A abrir os contactos.",
+                "Não consegui abrir os contactos."
+            )
+        }
+
+        // Abrir o marcador sem iniciar uma chamada
+        if (
+            cmd.contains("abre o telefone") ||
+            cmd.contains("abrir telefone") ||
+            cmd.contains("abre o marcador") ||
+            cmd.contains("abrir marcador") ||
+            cmd.contains("abre chamadas")
+        ) {
+            return launchAndroidIntent(
+                Intent(Intent.ACTION_DIAL),
+                "A abrir o telefone.",
+                "Não consegui abrir o telefone."
+            )
+        }
+
+        // Abrir calendário
+        if (
+            cmd.contains("abre o calendário") ||
+            cmd.contains("abre o calendario") ||
+            cmd.contains("abrir calendário") ||
+            cmd.contains("abrir calendario")
+        ) {
+            val calendarIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_APP_CALENDAR)
+            }
+
+            return launchAndroidIntent(
+                calendarIntent,
+                "A abrir o calendário.",
+                "Não encontrei uma aplicação de calendário disponível."
+            )
+        }
+
+        // Definições do ecrã
+        if (
+            cmd.contains("definições do ecrã") ||
+            cmd.contains("definicoes do ecra") ||
+            cmd.contains("configurações do ecrã") ||
+            cmd.contains("configuracoes do ecra") ||
+            cmd.contains("brilho do ecrã") ||
+            cmd.contains("brilho do ecra")
+        ) {
+            return launchAndroidIntent(
+                Intent(Settings.ACTION_DISPLAY_SETTINGS),
+                "A abrir as definições do ecrã.",
+                "Não consegui abrir as definições do ecrã."
+            )
+        }
+
+        // Definições das notificações da aplicação
+        if (
+            cmd.contains("definições de notificações") ||
+            cmd.contains("definicoes de notificacoes") ||
+            cmd.contains("configurações de notificações") ||
+            cmd.contains("configuracoes de notificacoes")
+        ) {
+            return launchAndroidIntent(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(
+                        Settings.EXTRA_APP_PACKAGE,
+                        this@MainActivity.packageName
+                    )
+                },
+                "A abrir as definições de notificações do JARVIS.",
+                "Não consegui abrir as definições de notificações."
+            )
+        }
+
+        // Definições de poupança de bateria
+        if (
+            cmd.contains("definições da bateria") ||
+            cmd.contains("definicoes da bateria") ||
+            cmd.contains("configurações da bateria") ||
+            cmd.contains("configuracoes da bateria") ||
+            cmd.contains("economia de bateria")
+        ) {
+            return launchAndroidIntent(
+                Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS),
+                "A abrir as definições de poupança de bateria.",
+                "Não consegui abrir essas definições."
             )
         }
 
@@ -1223,7 +1413,7 @@ class MainActivity : Activity() {
     private fun processCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
 
-        // Executar os novos comandos antes de consultar o Gemma
+        // Primeiro, executar comandos Android reconhecidos
         val extraAnswer = handleExtraAndroidCommand(text)
 
         if (extraAnswer != null) {
@@ -1254,6 +1444,20 @@ class MainActivity : Activity() {
                 "Agora são ${
                     SimpleDateFormat(
                         "HH:mm",
+                        Locale("pt", "BR")
+                    ).format(Date())
+                }."
+            }
+
+            text.contains("data de hoje") ||
+                text == "que dia é hoje" ||
+                text == "qual é a data" ||
+                text == "qual e a data" ||
+                text == "diz-me a data" ||
+                text == "diz a data" -> {
+                "Hoje é ${
+                    SimpleDateFormat(
+                        "dd 'de' MMMM 'de' yyyy",
                         Locale("pt", "BR")
                     ).format(Date())
                 }."
@@ -1459,7 +1663,10 @@ class MainActivity : Activity() {
         stopRecognitionInternal()
 
         try {
-            tts.stop()
+            if (::tts.isInitialized) {
+                tts.stop()
+                tts.shutdown()
+            }
         } catch (_: Exception) {
         }
 
@@ -1477,10 +1684,6 @@ class MainActivity : Activity() {
         modelEngine = null
 
         backgroundExecutor.shutdown()
-
-        if (::tts.isInitialized) {
-            tts.shutdown()
-        }
 
         if (::webView.isInitialized) {
             webView.removeJavascriptInterface("AndroidVoice")

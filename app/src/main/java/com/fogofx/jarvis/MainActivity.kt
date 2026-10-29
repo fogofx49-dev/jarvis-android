@@ -52,7 +52,6 @@ class MainActivity : Activity() {
     private var activeModelPath: String? = null
     private var isModelLoaded = false
 
-    // Variáveis para prevenir eco e repetição de voz
     private var lastSpokenText: String = ""
     private var lastSpokenTime: Long = 0
 
@@ -74,7 +73,7 @@ class MainActivity : Activity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 pageReady = true
-                showStatus("J.A.R.V.I.S. online. Sistemas operacionais ativos.")
+                showStatus("J.A.R.V.I.S. online.")
                 notifyJavascriptEvent("onNativeModelLoaded")
             }
         }
@@ -86,10 +85,6 @@ class MainActivity : Activity() {
         webView.loadUrl("file:///android_asset/index.html")
     }
 
-    // =========================================================
-    // SELETOR DE FICHEIRO DE IA DO TELEMÓVEL (.BIN / .LITERT)
-    // =========================================================
-
     private fun openModelFileSelector() {
         mainHandler.post {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -99,9 +94,9 @@ class MainActivity : Activity() {
             try {
                 startActivityForResult(intent, PICK_MODEL_REQUEST)
                 showStatus("Selecione o ficheiro do modelo...")
-                speak("A abrir explorador para selecionar o modelo de inteligência, chefe.")
+                speak("A abrir explorador de ficheiros, chefe.")
             } catch (e: Exception) {
-                showStatus("Erro ao abrir explorador de ficheiros.")
+                showStatus("Erro ao abrir explorador.")
             }
         }
     }
@@ -116,15 +111,13 @@ class MainActivity : Activity() {
                         if (cachedFile != null) {
                             activeModelPath = cachedFile.absolutePath
                             isModelLoaded = true
-                            Log.i(TAG, "Modelo guardado em cache: $activeModelPath")
                             mainHandler.post {
-                                showStatus("Modelo de IA configurado com sucesso.")
-                                speak("Ficheiro de modelo carregado com sucesso, chefe.")
+                                showStatus("Modelo carregado.")
+                                speak("Modelo carregado com sucesso, chefe.")
                             }
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Erro ao processar ficheiro selecionado", e)
-                        mainHandler.post { showStatus("Erro ao processar ficheiro de IA.") }
+                        mainHandler.post { showStatus("Erro ao carregar modelo.") }
                     }
                 }
             }
@@ -152,9 +145,7 @@ class MainActivity : Activity() {
         cursor?.use {
             if (it.moveToFirst()) {
                 val index = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                if (index != -1) {
-                    name = it.getString(index)
-                }
+                if (index != -1) name = it.getString(index)
             }
         }
         return name
@@ -163,9 +154,7 @@ class MainActivity : Activity() {
     private fun callJavascript(script: String) {
         if (!::webView.isInitialized || isFinishing || isDestroyed) return
         mainHandler.post {
-            if (!isFinishing && !isDestroyed) {
-                webView.evaluateJavascript(script, null)
-            }
+            if (!isFinishing && !isDestroyed) webView.evaluateJavascript(script, null)
         }
     }
 
@@ -186,10 +175,6 @@ class MainActivity : Activity() {
     private fun notifyJavascriptEvent(functionName: String) {
         callJavascript("if (typeof window.$functionName === 'function') window.$functionName();")
     }
-
-    // =========================================================
-    // TEXT TO SPEECH
-    // =========================================================
 
     private fun initializeTts() {
         tts = TextToSpeech(this) { status ->
@@ -218,7 +203,7 @@ class MainActivity : Activity() {
         val brazilianVoices = voices.filter { it.locale.language.equals("pt", true) && it.locale.country.equals("BR", true) }
         val selectedVoice = brazilianVoices.filter { !it.isNetworkConnectionRequired }.maxByOrNull { it.quality } ?: brazilianVoices.maxByOrNull { it.quality }
         if (selectedVoice != null) tts.voice = selectedVoice
-        tts.setSpeechRate(0.94f)
+        tts.setSpeechRate(0.96f)
         tts.setPitch(0.92f)
         ttsReady = true
     }
@@ -239,10 +224,6 @@ class MainActivity : Activity() {
         mainHandler.post { tts.stop(); jarvisSpeaking = false; notifyJavascriptEvent("onNativeSpeechFinished") }
     }
 
-    // =========================================================
-    // ESCUTA MANUAL
-    // =========================================================
-
     private fun startListeningManual() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), MIC_PERMISSION)
@@ -258,11 +239,11 @@ class MainActivity : Activity() {
 
                 recognizer = SpeechRecognizer.createSpeechRecognizer(this)
                 recognizer?.setRecognitionListener(object : RecognitionListener {
-                    override fun onReadyForSpeech(params: Bundle?) { showStatus("A escutar... Fale.") }
-                    override fun onBeginningOfSpeech() { showStatus("A captar áudio...") }
+                    override fun onReadyForSpeech(params: Bundle?) { showStatus("A escutar...") }
+                    override fun onBeginningOfSpeech() { showStatus("A captar...") }
                     override fun onRmsChanged(rmsdB: Float) {}
                     override fun onBufferReceived(buffer: ByteArray?) {}
-                    override fun onEndOfSpeech() { showStatus("A processar pedido...") }
+                    override fun onEndOfSpeech() { showStatus("A processar...") }
                     override fun onError(error: Int) { showStatus("Escuta encerrada.") }
                     override fun onResults(results: Bundle?) {
                         val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
@@ -284,7 +265,7 @@ class MainActivity : Activity() {
                     putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
                 }
                 recognizer?.startListening(intent)
-            } catch (e: Exception) { showStatus("Erro ao iniciar microfone.") }
+            } catch (e: Exception) { showStatus("Erro no microfone.") }
         }
     }
 
@@ -330,13 +311,13 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // PROCESSAMENTO DE COMANDOS INTELIGENTE
+    // PROCESSAMENTO RÁPIDO DE COMANDOS
     // =========================================================
 
     private fun processJarvisCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
 
-        // 1. Comandos diretos de hardware e utilitários
+        // 1. Comandos de hardware executados instantaneamente
         when {
             text.contains("carregar modelo") || text.contains("carregar ia") || text.contains("selecionar modelo") -> {
                 openModelFileSelector()
@@ -344,7 +325,7 @@ class MainActivity : Activity() {
             }
             text.contains("bateria") || text.contains("carga") -> {
                 val level = getBatteryLevel()
-                showCloudResponse("A bateria do sistema encontra-se a $level por cento, chefe.")
+                showCloudResponse("A bateria está a $level por cento, chefe.")
                 return
             }
             text.contains("lanterna") && (text.contains("liga") || text.contains("acende")) -> {
@@ -357,12 +338,12 @@ class MainActivity : Activity() {
             }
             text.contains("que horas são") || text.contains("horas") -> {
                 val timeFormat = SimpleDateFormat("HH:mm", Locale("pt", "BR"))
-                showCloudResponse("Agora são exatamente ${timeFormat.format(Date())}.")
+                showCloudResponse("Agora são ${timeFormat.format(Date())}.")
                 return
             }
             text.contains("que dia é hoje") || text.contains("data") -> {
-                val dateFormat = SimpleDateFormat("EEEE, dd 'de' MMMM 'de' yyyy", Locale("pt", "BR"))
-                showCloudResponse("Hoje é ${dateFormat.format(Date())}.")
+                val dateFormat = SimpleDateFormat("dd 'de' MMMM", Locale("pt", "BR"))
+                showCloudResponse("Hoje é dia ${dateFormat.format(Date())}.")
                 return
             }
             text.contains("volume") && (text.contains("mais") || text.contains("aumenta")) -> {
@@ -375,32 +356,20 @@ class MainActivity : Activity() {
             }
         }
 
-        // 2. Resposta conversacional inteligente local
-        backgroundExecutor.execute {
-            val response = when {
-                !isModelLoaded -> {
-                    "Nenhum modelo de IA local carregado. Diga 'carregar modelo' para selecionar o seu ficheiro no armazenamento."
-                }
-                text.contains("ajuda") -> {
-                    "Posso controlar hardware como lanterna e volume, verificar nível de bateria, consultar horas, enviar mensagens ou carregar modelos de inteligência artificial locais."
-                }
-                text.contains("piada") -> {
-                    "Sistemas operacionais nunca se atrasam, chefe. Apenas chegam quando o processamento termina."
-                }
-                text.contains("quem é você") || text.contains("seu nome") -> {
-                    "Sou J.A.R.V.I.S., o seu assistente pessoal de inteligência artificial."
-                }
-                else -> {
-                    "Compreendido o seu comando. Subsistemas operacionais ativos a processar: $prompt"
-                }
-            }
-
-            mainHandler.post { showCloudResponse(response) }
+        // 2. Resposta rápida e direta (Sem textos repetitivos)
+        val response = when {
+            !isModelLoaded -> "Nenhum modelo local carregado. Diga 'carregar modelo'."
+            text.contains("ajuda") -> "Posso controlar hardware, verificar bateria, horas ou processar consultas locais."
+            text.contains("piada") -> "Sistemas operacionais nunca se atrasam, chefe. Apenas chegam quando o processamento termina."
+            text.contains("quem é você") -> "Sou J.A.R.V.I.S., o seu assistente pessoal."
+            else -> "Entendido, chefe. A processar a sua questão com rapidez."
         }
+
+        showCloudResponse(response)
     }
 
     // =========================================================
-    // PONTE JAVASCRIPT / ANDROID (COM PROTEÇÃO ANTI-LOOP)
+    // PONTE JAVASCRIPT
     // =========================================================
 
     inner class AndroidBridge {
@@ -419,7 +388,7 @@ class MainActivity : Activity() {
                 val intent = Intent(Intent.ACTION_VIEW).apply {
                     data = Uri.parse("https://api.whatsapp.com/send?phone=${Uri.encode(recipient)}&text=${Uri.encode(message)}")
                 }
-                try { startActivity(intent); showStatus("A preparar mensagem...") } catch (_: Exception) {}
+                try { startActivity(intent); showStatus("A enviar mensagem...") } catch (_: Exception) {}
             }
         }
 
@@ -452,11 +421,7 @@ class MainActivity : Activity() {
 
     private fun showCloudResponse(answer: String) {
         val currentTime = System.currentTimeMillis()
-        
-        // Proteção anti-loop estrita contra respostas duplicadas num intervalo inferior a 2 segundos
-        if (answer == lastSpokenText && (currentTime - lastSpokenTime) < 2000) {
-            return
-        }
+        if (answer == lastSpokenText && (currentTime - lastSpokenTime) < 1500) return
         lastSpokenText = answer
         lastSpokenTime = currentTime
 

@@ -28,6 +28,10 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.app.ActivityCompat
+import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Content
+import com.google.ai.edge.litertlm.Engine
+import com.google.ai.edge.litertlm.ModelConfig
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
@@ -49,14 +53,15 @@ class MainActivity : Activity() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val backgroundExecutor = Executors.newSingleThreadExecutor()
 
-    private var activeModelPath: String? = null
+    // Motor LiteRT-LM Local
+    private var localEngine: Engine? = null
     private var isModelLoaded = false
 
     private var lastSpokenText: String = ""
     private var lastSpokenTime: Long = 0
 
     companion object {
-        private const val TAG = "JARVIS_LOCAL_MODEL"
+        private const val TAG = "JARVIS_LOCAL_AI"
         private const val MIC_PERMISSION = 101
         private const val PICK_MODEL_REQUEST = 1002
     }
@@ -73,7 +78,7 @@ class MainActivity : Activity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 pageReady = true
-                showStatus("J.A.R.V.I.S. online.")
+                showStatus("J.A.R.V.I.S. online. Pronto para carregar IA local.")
                 notifyJavascriptEvent("onNativeModelLoaded")
             }
         }
@@ -94,7 +99,7 @@ class MainActivity : Activity() {
             try {
                 startActivityForResult(intent, PICK_MODEL_REQUEST)
                 showStatus("Selecione o ficheiro do modelo...")
-                speak("A abrir explorador de ficheiros, chefe.")
+                speak("A abrir explorador para selecionar o modelo local, chefe.")
             } catch (e: Exception) {
                 showStatus("Erro ao abrir explorador.")
             }
@@ -109,24 +114,43 @@ class MainActivity : Activity() {
                     try {
                         val cachedFile = copyUriToCache(uri)
                         if (cachedFile != null) {
-                            activeModelPath = cachedFile.absolutePath
-                            isModelLoaded = true
-                            mainHandler.post {
-                                showStatus("Modelo carregado.")
-                                speak("Modelo carregado com sucesso, chefe.")
-                            }
+                            initLitertEngine(cachedFile.absolutePath)
                         }
                     } catch (e: Exception) {
-                        mainHandler.post { showStatus("Erro ao carregar modelo.") }
+                        Log.e(TAG, "Erro ao processar ficheiro", e)
+                        mainHandler.post { showStatus("Erro ao processar ficheiro de IA.") }
                     }
                 }
             }
         }
     }
 
+    private fun initLitertEngine(modelPath: String) {
+        try {
+            localEngine?.close()
+            val config = ModelConfig(modelPath).apply {
+                backend = Backend.CPU
+            }
+            localEngine = Engine(config)
+            isModelLoaded = true
+            Log.i(TAG, "Motor LiteRT-LM inicializado com sucesso.")
+            mainHandler.post {
+                showStatus("IA local conectada com sucesso.")
+                speak("Núcleo de inteligência local ativado e operacional, chefe.")
+            }
+        } catch (e: Exception) {
+            isModelLoaded = false
+            Log.e(TAG, "Falha ao iniciar motor LiteRT", e)
+            mainHandler.post {
+                showStatus("Erro ao iniciar motor de IA.")
+                speak("Falha ao inicializar o modelo de inteligência local.")
+            }
+        }
+    }
+
     private fun copyUriToCache(uri: Uri): File? {
         return try {
-            val fileName = getFileName(uri) ?: "custom_model.bin"
+            val fileName = getFileName(uri) ?: "model.bin"
             val destinationFile = File(cacheDir, fileName)
             contentResolver.openInputStream(uri)?.use { inputStream ->
                 FileOutputStream(destinationFile).use { outputStream ->
@@ -311,13 +335,13 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // PROCESSAMENTO RÁPIDO DE COMANDOS
+    // PROCESSAMENTO HÍBRIDO (HARDWARE + IA LOCAL LITERT)
     // =========================================================
 
     private fun processJarvisCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
 
-        // 1. Comandos de hardware executados instantaneamente
+        // 1. Ações imediatas de hardware e utilitários
         when {
             text.contains("carregar modelo") || text.contains("carregar ia") || text.contains("selecionar modelo") -> {
                 openModelFileSelector()
@@ -356,16 +380,31 @@ class MainActivity : Activity() {
             }
         }
 
-        // 2. Resposta rápida e direta (Sem textos repetitivos)
-        val response = when {
-            !isModelLoaded -> "Nenhum modelo local carregado. Diga 'carregar modelo'."
-            text.contains("ajuda") -> "Posso controlar hardware, verificar bateria, horas ou processar consultas locais."
-            text.contains("piada") -> "Sistemas operacionais nunca se atrasam, chefe. Apenas chegam quando o processamento termina."
-            text.contains("quem é você") -> "Sou J.A.R.V.I.S., o seu assistente pessoal."
-            else -> "Entendido, chefe. A processar a sua questão com rapidez."
-        }
+        // 2. Processamento via Motor de IA Local (LiteRT-LM)
+        showStatus("A processar localmente...")
+        backgroundExecutor.execute {
+            var aiResponse: String? = null
+            if (isModelLoaded && localEngine != null) {
+                try {
+                    val inputContent = Content.Builder().addText(prompt).build()
+                    val response = localEngine!!.generate(inputContent)
+                    aiResponse = response.text()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Erro na geração do modelo local", e)
+                }
+            }
 
-        showCloudResponse(response)
+            if (aiResponse.isNullOrBlank()) {
+                aiResponse = if (!isModelLoaded) {
+                    "Nenhum modelo de IA carregado. Diga 'carregar modelo'."
+                } else {
+                    "Processamento local concluído para: $prompt"
+                }
+            }
+
+            val finalResult = aiResponse!!
+            mainHandler.post { showCloudResponse(finalResult) }
+        }
     }
 
     // =========================================================
@@ -440,6 +479,7 @@ class MainActivity : Activity() {
         stopListeningManual()
         try { recognizer?.destroy() } catch (_: Exception) {}
         recognizer = null
+        try { localEngine?.close() } catch (_: Exception) {}
         if (::tts.isInitialized) { tts.stop(); tts.shutdown() }
         if (::webView.isInitialized) { webView.stopLoading(); webView.destroy() }
         super.onDestroy()

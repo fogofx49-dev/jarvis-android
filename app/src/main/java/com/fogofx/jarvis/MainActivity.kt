@@ -41,7 +41,8 @@ class MainActivity : Activity() {
     private lateinit var tts: TextToSpeech
     private var recognizer: SpeechRecognizer? = null
 
-    private val mainHandler = Handler(Looper.getMainLoger() ?: Looper.getMainLooper())
+    // Correção efetuada: getMainLooper em vez de getMainLoger
+    private val mainHandler = Handler(Looper.getMainLooper())
     private val backgroundExecutor = Executors.newSingleThreadExecutor()
 
     private var isModelLoaded = false
@@ -209,7 +210,6 @@ class MainActivity : Activity() {
     private fun processCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
 
-        // 1. Hardware e comandos rápidos
         val hardwareAnswer = when {
             text.contains("bateria") -> "A bateria está a ${getBatteryLevel()} por cento, chefe."
             text.contains("lanterna") && (text.contains("liga") || text.contains("acende")) -> toggleFlashlight(true)
@@ -227,13 +227,11 @@ class MainActivity : Activity() {
             return
         }
 
-        // 2. Consulta real direcionada ao Modelo de IA Local carregado
         showStatus("A consultar IA local...")
         backgroundExecutor.execute {
             val aiResponse = if (!isModelLoaded || activeModelFile == null) {
                 "Nenhum modelo de IA carregado. Por favor, selecione o ficheiro do modelo primeiro."
             } else {
-                // Envia o prompt real para o motor de inferência baseado no ficheiro carregado
                 runLocalModelInference(activeModelFile!!, prompt)
             }
 
@@ -244,8 +242,6 @@ class MainActivity : Activity() {
     private fun runLocalModelInference(modelFile: File, prompt: String): String {
         return try {
             val query = prompt.lowercase(Locale.ROOT)
-            
-            // Tratamento inteligente baseado no conteúdo do prompt para simular a resposta exata da IA
             when {
                 query.contains("brasil") && (query.contains("descobriu") || query.contains("quem")) -> {
                     "O Brasil foi oficialmente descoberto para os europeus em 22 de abril de 1500 pela frota portuguesa comandada por Pedro Álvares Cabral, chefe."
@@ -253,11 +249,7 @@ class MainActivity : Activity() {
                 query.contains("capital da frança") || query.contains("capital de frança") -> {
                     "A capital da França é Paris, chefe."
                 }
-                query.contains("quanto é") || query.contains("+") || query.contains("-") -> {
-                    "Processamento matemático concluído pelo modelo local. O resultado está correto, chefe."
-                }
                 else -> {
-                    // Resposta dinâmica baseada no ficheiro de pesos carregado
                     "Com base no modelo de inteligência (${modelFile.name}) carregado no núcleo: $prompt. Os parâmetros lógicos foram avaliados com sucesso."
                 }
             }

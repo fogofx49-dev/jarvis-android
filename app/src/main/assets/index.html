@@ -3,281 +3,96 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#050a12">
 <title>J.A.R.V.I.S. | Stark Technology</title>
 <style>
-:root{--cyan:#00d9ff;--blue:#087cff;--red:#ff1515;--bg:#050a12;--panel:rgba(7,17,30,.94);--text:#eaf6ff;--muted:#829bb4;--border:rgba(0,217,255,.35)}
+:root{--cyan:#00d9ff;--bg:#050a12;--panel:rgba(7,17,30,.94);--text:#eaf6ff;--muted:#829bb4;--border:rgba(0,217,255,.35)}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;color:var(--text);background:radial-gradient(ellipse at 50% 27%,#10304b,transparent 48%),linear-gradient(145deg,#02050a,#091626 55%,#02050a);font-family:Arial,Helvetica,sans-serif;overflow-x:hidden}
-body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.13;background-image:linear-gradient(#00d9ff19 1px,transparent 1px),linear-gradient(90deg,#00d9ff19 1px,transparent 1px);background-size:28px 28px;mask-image:linear-gradient(#000,transparent)}
-.app{position:relative;width:min(100%,650px);margin:auto;padding:14px}
-header{text-align:center;padding:9px 0}.brand{font-size:10px;letter-spacing:5px;color:var(--cyan);font-weight:bold}
-h1{font-size:clamp(36px,9vw,55px);letter-spacing:4px;margin:9px 0;color:#f0f8ff;text-shadow:0 0 12px #00aaff,0 0 35px #0066cc}
-.subtitle{font-size:9px;color:var(--muted);letter-spacing:1.5px;line-height:1.7}
-.statusbar{display:flex;align-items:center;justify-content:center;gap:9px;margin:15px 0;color:var(--muted);font-size:12px;text-align:center}
-.dot{width:8px;height:8px;flex-shrink:0;border-radius:50%;background:#777}.dot.online{background:#00ffad;box-shadow:0 0 12px #00ffad}.dot.busy{background:var(--cyan);box-shadow:0 0 12px var(--cyan);animation:blink .7s infinite alternate}
-@keyframes blink{to{opacity:.3}}
-
-.core{position:relative;width:min(100%,260px);height:260px;margin:15px auto;display:flex;justify-content:center;align-items:center;isolation:isolate}
-.holo-projector{position:relative;width:180px;height:180px;display:flex;justify-content:center;align-items:center;border-radius:50%;background:radial-gradient(circle,rgba(0,217,255,0.15) 0%,rgba(8,124,255,0.05) 60%,transparent 80%);box-shadow:0 0 40px rgba(0,217,255,0.2),inset 0 0 25px rgba(0,217,255,0.2);animation:floatHolo 4s ease-in-out infinite}
-@keyframes floatHolo{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-
-.holo-ring{position:absolute;border-radius:50%;border:2px dashed rgba(0,217,255,0.4);animation:rotateHolo 20s linear infinite}
-.holo-ring:nth-child(1){width:220px;height:220px;border-color:rgba(0,217,255,0.3);border-style:solid;border-top-color:transparent;border-bottom-color:transparent;animation-duration:12s}
-.holo-ring:nth-child(2){width:250px;height:250px;border-color:rgba(8,124,255,0.4);animation-duration:25s;animation-direction:reverse}
-.holo-ring:nth-child(3){width:150px;height:150px;border:1px solid rgba(0,217,255,0.6);animation-duration:8s}
-@keyframes rotateHolo{to{transform:rotate(360deg)}}
-
-.holo-core-inner{position:absolute;width:75px;height:75px;background:radial-gradient(circle,#fff 0%,#00d9ff 40%,#087cff 80%,transparent 100%);border-radius:50%;box-shadow:0 0 25px var(--cyan),0 0 50px var(--blue);animation:pulseHolo 2s ease-in-out infinite alternate}
-@keyframes pulseHolo{from{transform:scale(0.9);opacity:0.8}to{transform:scale(1.1);opacity:1}}
-
-.core.listening .holo-core-inner{background:radial-gradient(circle,#fff 0%,#00ffad 40%,#008855 80%,transparent 100%);box-shadow:0 0 30px #00ffad;}
-.core.talking .holo-core-inner{background:radial-gradient(circle,#fff 0%,#ffaa00 40%,#cc5500 80%,transparent 100%);box-shadow:0 0 30px #ffaa00;}
-
-.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 0 24px #008cff0d;overflow:hidden;margin-top:10px}
+body{margin:0;min-height:100vh;color:var(--text);background:radial-gradient(ellipse at 50% 27%,#10304b,transparent 48%),linear-gradient(145deg,#02050a,#091626 55%,#02050a);font-family:Arial,Helvetica,sans-serif;padding:14px}
+.app{width:min(100%,650px);margin:auto}
+header{text-align:center;padding:9px 0}
+.brand{font-size:10px;letter-spacing:5px;color:var(--cyan);font-weight:bold}
+h1{font-size:38px;letter-spacing:4px;margin:9px 0;color:#f0f8ff;text-shadow:0 0 12px #00aaff}
+.statusbar{display:flex;align-items:center;justify-content:center;gap:9px;margin:15px 0;color:var(--muted);font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;background:#00ffad;box-shadow:0 0 12px #00ffad}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-top:10px}
 .panel-title{padding:11px 14px;color:var(--cyan);font-size:10px;font-weight:bold;letter-spacing:2px;border-bottom:1px solid var(--border)}
-.response{min-height:75px;padding:13px;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
-.response-label{display:block;font-size:9px;color:var(--cyan);letter-spacing:2px;margin-bottom:5px}
-
-.input-bar{display:flex;align-items:center;background:rgba(10,22,38,0.95);border:1px solid var(--border);border-radius:28px;padding:6px 12px;margin:12px 0;gap:8px;box-shadow:0 0 15px rgba(0,217,255,0.15)}
-.input-bar button.icon-btn{background:transparent;border:none;color:var(--cyan);font-size:18px;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center}
-.input-bar button.icon-btn.active{color:#00ffad;text-shadow:0 0 10px #00ffad}
+.response{min-height:80px;padding:13px;font-size:13px;line-height:1.5;white-space:pre-wrap}
+.input-bar{display:flex;align-items:center;background:rgba(10,22,38,0.95);border:1px solid var(--border);border-radius:28px;padding:6px 12px;margin:12px 0;gap:8px}
 .input-bar input{flex:1;background:transparent;border:none;color:var(--text);font-size:14px;outline:none;padding:6px}
-.input-bar input::placeholder{color:var(--muted)}
-
-.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
-button{border:1px solid var(--border);color:var(--cyan);background:#007bff10;border-radius:10px;padding:11px 8px;font-size:11px;font-weight:bold;cursor:pointer;transition:background .2s,transform .2s}
-button:active{transform:scale(.97)}button:hover{background:#00d9ff1b}
-.ai-button{grid-column:1/-1;color:#effaff;min-height:44px;border-color:#00d9ff77}
-.hint{text-align:center;color:var(--muted);font-size:9px;line-height:1.6;margin:10px 5px}
-footer{text-align:center;font-size:8px;color:#577994;letter-spacing:2px;padding:8px 0 2px}
+.controls{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+button{border:1px solid var(--border);color:var(--cyan);background:#007bff10;border-radius:10px;padding:11px 8px;font-size:11px;font-weight:bold;cursor:pointer}
+button:hover{background:#00d9ff1b}
 </style>
 </head>
 <body>
 <div class="app">
-<header>
-  <div class="brand">STARK TECHNOLOGY</div>
-  <h1>J.A.R.V.I.S.</h1>
-  <div class="subtitle">AUTONOMOUS ASSISTANT & DEVICE CONTROL</div>
-</header>
-<div class="statusbar"><span id="dot" class="dot"></span><span id="status">A inicializar sistema nativo...</span></div>
+  <header>
+    <div class="brand">STARK TECHNOLOGY</div>
+    <h1>J.A.R.V.I.S.</h1>
+  </header>
+  <div class="statusbar"><span class="dot"></span><span id="status">Sistemas operacionais online.</span></div>
 
-<div class="core" id="coreContainer">
-  <div class="holo-ring"></div>
-  <div class="holo-ring"></div>
-  <div class="holo-ring"></div>
-  <div class="holo-projector" id="robot">
-    <div class="holo-core-inner"></div>
+  <section class="panel">
+    <div class="panel-title">▸ REGISTRO DE COMANDOS</div>
+    <div class="response" id="response">Aguardando diretivas, chefe.</div>
+  </section>
+
+  <div class="input-bar">
+    <input type="text" id="userInput" placeholder="Peça algo ao J.A.R.V.I.S..." onkeydown="handleKey(event)">
+    <button type="button" onclick="toggleMicrophone()">🎙️ Falar</button>
+  </div>
+
+  <div class="controls">
+    <button type="button" onclick="runGoodMorningRoutine()">☀️ Bom dia, Jarvis</button>
+    <button type="button" onclick="chooseModel()">📂 Carregar Modelo IA</button>
   </div>
 </div>
 
-<section class="panel">
-  <div class="panel-title">▸ REGISTRO DE COMANDOS</div>
-  <div class="response" id="response"><span class="response-label">J.A.R.V.I.S.</span>Aguardando comandos de voz ou interações.</div>
-</section>
-
-<div class="input-bar">
-  <button class="icon-btn" type="button" onclick="clearInput()" title="Limpar">+</button>
-  <input type="text" id="userInput" placeholder="Peça ao J.A.R.V.I.S..." onkeydown="handleKey(event)">
-  <button class="icon-btn" id="micBtn" type="button" onclick="toggleMicrophone()" title="Ativar/Desativar Microfone">🎙️</button>
-</div>
-
-<div class="controls">
-  <button id="voiceButton" type="button" onclick="toggleVoice()">🔊 Voz: ligada</button>
-  <button type="button" onclick="runGoodMorningRoutine()">☀️ Bom dia, Jarvis</button>
-  <button type="button" onclick="stopSpeaking()">🔇 Parar voz</button>
-  <button id="loadAIButton" class="ai-button" type="button" onclick="chooseJarvisModel()">📂 Estado da Nuvem</button>
-</div>
-<div class="hint">Assistente multitarefa • Comandos locais instantâneos • E-mail, WhatsApp & Agenda</div>
-<footer>J.A.R.V.I.S. • STARK TECHNOLOGY</footer>
-</div>
-
 <script>
-let voiceEnabled = true;
-let micActive = true;
-let waitingForModel = false;
-let speaking = false;
-
 const responseBox = document.getElementById("response");
 const statusBox = document.getElementById("status");
-const dot = document.getElementById("dot");
-const voiceButton = document.getElementById("voiceButton");
-const micBtn = document.getElementById("micBtn");
-const coreContainer = document.getElementById("coreContainer");
 const userInput = document.getElementById("userInput");
 
-function setStatus(message, state = "normal") {
-  statusBox.textContent = String(message || "");
-  dot.className = "dot";
-  if (state === "online") dot.classList.add("online");
-  if (state === "busy") dot.classList.add("busy");
-}
-
-function setVisualState(state) {
-  coreContainer.className = "core";
-  if (state === "listening") coreContainer.classList.add("listening");
-  if (state === "talking") coreContainer.classList.add("talking");
-}
-
-function showResponse(text) {
-  responseBox.replaceChildren();
-  const label = document.createElement("span");
-  label.className = "response-label";
-  label.textContent = "J.A.R.V.I.S.";
-  const content = document.createElement("div");
-  content.textContent = String(text || "");
-  responseBox.append(label, content);
-}
-
-function speak(text) {
-  const phrase = String(text || "").trim();
-  if (!voiceEnabled || !phrase) return;
-
-  speaking = true;
-  setVisualState("talking");
-  setStatus("JARVIS a falar...", "busy");
-
-  if (window.AndroidVoice && typeof window.AndroidVoice.speak === "function") {
-    try {
-      window.AndroidVoice.speak(phrase);
-      return;
-    } catch (e) { console.warn(e); }
-  }
-}
-
-function finishSpeech() {
-  speaking = false;
-  setVisualState("normal");
-  if (!waitingForModel) setStatus("Sistema pronto", "online");
-}
-window.onNativeSpeechFinished = finishSpeech;
-window.onSpeechFinished = finishSpeech;
-
-function stopSpeaking() {
-  speaking = false;
-  setVisualState("normal");
-  try {
-    if (window.AndroidVoice && typeof window.AndroidVoice.stopSpeaking === "function") {
-      window.AndroidVoice.stopSpeaking();
-    }
-  } catch (_e) {}
-  setStatus("Voz interrompida", "online");
-}
-
-function toggleVoice() {
-  voiceEnabled = !voiceEnabled;
-  voiceButton.textContent = voiceEnabled ? "🔊 Voz: ligada" : "🔇 Voz: desligada";
-  if (!voiceEnabled) stopSpeaking();
-  setStatus(voiceEnabled ? "Voz ativada" : "Voz desativada", "online");
-}
-
-function toggleMicrophone() {
-  micActive = !micActive;
-  micBtn.classList.toggle("active", micActive);
-  micBtn.style.opacity = micActive ? "1" : "0.5";
-  
-  if (window.AndroidVoice) {
-    try {
-      if (micActive && typeof window.AndroidVoice.startListening === "function") {
-        window.AndroidVoice.startListening();
-        setStatus("Microfone ativado", "online");
-      } else if (!micActive && typeof window.AndroidVoice.stopListening === "function") {
-        window.AndroidVoice.stopListening();
-        setStatus("Microfone silenciado", "normal");
-      }
-    } catch (_e) {}
-  }
-}
-
-function chooseJarvisModel() {
-  setStatus("Ligado ao núcleo nativo Android.", "online");
-  showResponse("Sistema conectado via ponte nativa Kotlin.");
-  speak("Sistemas em ponte nativa totalmente operacionais.");
-}
-
-function clearInput() {
-  userInput.value = "";
-  userInput.focus();
+function appendMessage(sender, text) {
+  responseBox.textContent = text;
 }
 
 function handleKey(event) {
-  if (event.key === "Enter") {
-    submitTypedText();
+  if (event.key === "Enter") submitText();
+}
+
+function submitText() {
+  const text = userInput.value.trim();
+  if (!text) return;
+  userInput.value = "";
+  if (window.AndroidVoice && window.AndroidVoice.askModel) {
+    window.AndroidVoice.askModel(text);
   }
 }
 
-function submitTypedText() {
-  const text = userInput.value;
-  if (!text.trim()) return;
-  userInput.value = "";
-  send(text);
+function toggleMicrophone() {
+  if (window.AndroidVoice && window.AndroidVoice.startListening) {
+    window.AndroidVoice.startListening();
+  }
+}
+
+function chooseModel() {
+  if (window.AndroidVoice && window.AndroidVoice.chooseModel) {
+    window.AndroidVoice.chooseModel();
+  }
 }
 
 function runGoodMorningRoutine() {
-  if (!window.AndroidVoice) return;
-  try {
-    const batteryInfo = window.AndroidVoice.getBattery ? window.AndroidVoice.getBattery() : "Bateria normal.";
-    const greeting = "Bom dia! Todos os sistemas operacionais encontram-se a 100 por cento. " + batteryInfo + " Como posso auxiliar nas suas tarefas hoje?";
-    showResponse(greeting);
-    speak(greeting);
-  } catch (_e) {
-    speak("Bom dia! Sistemas prontos para iniciar o dia.");
-  }
+  submitText("bom dia");
 }
 
-function send(text) {
-  if (waitingForModel || speaking) return;
-  const question = String(text || "").trim();
-  if (!question) return;
-
-  setVisualState("listening");
-  setStatus("A processar via nativo...", "busy");
-  waitingForModel = true;
-
-  try {
-    if (window.AndroidVoice && typeof window.AndroidVoice.askCloudAI === "function") {
-      // Envia diretamente para a função nativa em Kotlin fazer o pedido à nuvem
-      window.AndroidVoice.askCloudAI(question);
-    } else {
-      // Fallback caso a função nativa ainda não esteja ligada
-      waitingForModel = false;
-      showResponse("Ponte nativa Android não detetada.");
-      setStatus("Erro de ponte", "online");
-      setVisualState("normal");
-    }
-  } catch (e) {
-    waitingForModel = false;
-    console.error(e);
-    showResponse("Erro de comunicação com o sistema nativo.");
-    setStatus("Erro na IA", "online");
-    setVisualState("normal");
-  }
-}
-
-// Função chamada pelo Kotlin quando a resposta da nuvem estiver pronta
 window.onCloudAIResponse = function(answer) {
-  waitingForModel = false;
-  showResponse(answer);
-  speak(answer);
-  setStatus("Pronto", "online");
-  setVisualState("normal");
+  appendMessage('JARVIS', answer);
 };
 
-window.onNativeSpeechResult = function(text) {
-  if (!micActive) return;
-  const transcript = String(text || "").trim();
-  if (!transcript || waitingForModel || speaking) return;
-  send(transcript);
+window.onNativeStatus = function(msg) {
+  statusBox.textContent = msg;
 };
-
-window.onNativeStatus = function(message) {
-  setStatus(message, /pensar|processar|carregar|copiar/i.test(message) ? "busy" : "online");
-};
-
-window.addEventListener("load", () => {
-  setStatus("Sistemas holográficos online via nativo", "online");
-  micBtn.classList.add("active");
-});
 </script>
 </body>
 </html>

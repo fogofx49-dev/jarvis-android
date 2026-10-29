@@ -1,4 +1,3 @@
-
 package com.fogofx.jarvis
 
 import android.Manifest
@@ -21,6 +20,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
@@ -65,9 +65,22 @@ class MainActivity : Activity() {
     @Volatile
     private var isLoadingModel = false
 
+    // Modo mãos-livres
+    @Volatile
+    private var handsFreeEnabled = false
+
+    private var recognitionInProgress = false
+    private var waitingForResponse = false
+    private var isTtsSpeaking = false
+    private var pendingManualListen = false
+
+    private var restartListeningRunnable: Runnable? = null
+    private var responseTimeoutRunnable: Runnable? = null
+
     companion object {
         private const val MIC_PERMISSION = 101
         private const val PICK_MODEL_REQUEST = 1002
+        private const val RESPONSE_TIMEOUT_MS = 60000L
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -97,20 +110,73 @@ class MainActivity : Activity() {
     }
 
     // ---------------------------------------------------------
-    // TEXT-TO-SPEECH
-    // O HTML controla quando uma resposta deve ser falada.
+    // VOZ ANDROID
     // ---------------------------------------------------------
 
     private fun initializeTts() {
         tts = TextToSpeech(this) { status ->
             mainHandler.post {
                 if (status == TextToSpeech.SUCCESS) {
-                    val languageResult = tts.setLanguage(
-                        Locale("pt", "BR")
-                    )
+                    val languageResult =
+                        tts.setLanguage(Locale("pt", "BR"))
 
                     tts.setSpeechRate(0.96f)
                     tts.setPitch(0.92f)
+
+                    tts.setOnUtteranceProgressListener(
+                        object : UtteranceProgressListener() {
+
+                            override fun onStart(utteranceId: String?) {
+                                mainHandler.post {
+                                    if (utteranceId == "JARVIS_VOICE") {
+                                        isTtsSpeaking = true
+                                        stopRecognitionInternal()
+                                        showStatus("J.A.R.V.I.S. a falar...")
+                                    }
+                                }
+                            }
+
+                            override fun onDone(utteranceId: String?) {
+                                mainHandler.post {
+                                    if (utteranceId == "JARVIS_VOICE") {
+                                        isTtsSpeaking = false
+
+                                        if (handsFreeEnabled) {
+                                            scheduleListeningRestart(700)
+                                        }
+                                    }
+                                }
+                            }
+
+                            @Suppress("OVERRIDE_DEPRECATION")
+                            override fun onError(utteranceId: String?) {
+                                mainHandler.post {
+                                    if (utteranceId == "JARVIS_VOICE") {
+                                        isTtsSpeaking = false
+
+                                        if (handsFreeEnabled) {
+                                            scheduleListeningRestart(700)
+                                        }
+                                    }
+                                }
+                            }
+
+                            override fun onStop(
+                                utteranceId: String?,
+                                interrupted: Boolean
+                            ) {
+                                mainHandler.post {
+                                    if (utteranceId == "JARVIS_VOICE") {
+                                        isTtsSpeaking = false
+
+                                        if (handsFreeEnabled) {
+                                            scheduleListeningRestart(700)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    )
 
                     ttsReady =
                         languageResult != TextToSpeech.LANG_MISSING_DATA &&
@@ -120,7 +186,7 @@ class MainActivity : Activity() {
                         if (ttsReady) {
                             "Voz Android pronta."
                         } else {
-                            "Instala ou seleciona uma voz portuguesa nas definições do Android."
+                            "Seleciona uma voz portuguesa nas definições do Android."
                         }
                     )
 
@@ -139,7 +205,10 @@ class MainActivity : Activity() {
 
     private fun speakText(text: String) {
         val clean = text.trim()
-        if (clean.isBlank()) return
+        if (clean.isBlank()) {
+            finishResponseWithoutSpeech()
+            return
+        }
 
         mainHandler.post {
             if (!ttsReady) {
@@ -148,14 +217,30 @@ class MainActivity : Activity() {
             }
 
             try {
-                tts.speak(
+                isTtsSpeaking = true
+
+                val result = tts.speak(
                     clean,
                     TextToSpeech.QUEUE_FLUSH,
                     null,
                     "JARVIS_VOICE"
                 )
-            } catch (_: Exception) {
+
+                if (result == TextToSpeech.ERROR) {
+                    isTtsSpeaking = false
+                    showStatus("Não foi possível reproduzir a voz.")
+
+                    if (handsFreeEnabled) {
+                        scheduleListeningRestart(700)
+                    }
+                }
+            } catch (e: Exception) {
+                isTtsSpeaking = false
                 showStatus("Erro ao reproduzir a voz.")
+
+                if (handsFreeEnabled) {
+                    scheduleListeningRestart(700)
+                }
             }
         }
     }
@@ -166,9 +251,451 @@ class MainActivity : Activity() {
                 if (::tts.isInitialized) {
                     tts.stop()
                 }
+
                 pendingSpeech = ""
+                isTtsSpeaking = false
             } catch (_: Exception) {
             }
+        }
+    }
+
+    private fun finishResponseWithoutSpeech() {
+        mainHandler.post {
+            waitingForResponse = false
+            cancelResponseTimeout()
+
+            if (handsFreeEnabled) {
+                scheduleListeningRestart(700)
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
+    // MODO MÃOS-LIVRES
+    // ---------------------------------------------------------
+
+    private fun startHandsFree() {
+        mainHandler.post {
+            if (handsFreeEnabled) {
+                showStatus("O modo mãos-livres já está ativo.")
+                return@post
+            }
+
+            if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+                showStatus(
+                    "O reconhecimento de voz não está disponível neste dispositivo."
+                )
+                return@post
+            }
+
+            handsFreeEnabled = true
+            waitingForResponse = false
+
+            notifyHandsFreeState(
+                true,
+                "Modo mãos-livres ativado."
+            )
+
+            if (
+                ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.RECORD_AUDIO
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                showStatus("É necessária a permissão do microfone.")
+
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.RECORD_AUDIO),
+                    MIC_PERMISSION
+                )
+                return@post
+            }
+
+            showStatus("Modo mãos-livres ativado. A preparar o microfone...")
+            scheduleListeningRestart(250)
+        }
+    }
+
+    private fun stopHandsFree() {
+        mainHandler.post {
+            handsFreeEnabled = false
+            waitingForResponse = false
+            pendingManualListen = false
+
+            cancelResponseTimeout()
+            stopRecognitionInternal()
+
+            try {
+                tts.stop()
+            } catch (_: Exception) {
+            }
+
+            isTtsSpeaking = false
+            pendingSpeech = ""
+
+            notifyHandsFreeState(
+                false,
+                "Modo mãos-livres desligado."
+            )
+
+            showStatus("Modo mãos-livres desligado.")
+        }
+    }
+
+    private fun notifyHandsFreeState(
+        enabled: Boolean,
+        message: String
+    ) {
+        mainHandler.post {
+            if (!::webView.isInitialized) return@post
+
+            webView.evaluateJavascript(
+                "if (typeof onNativeHandsFreeState === 'function') " +
+                    "onNativeHandsFreeState($enabled, " +
+                    "${JSONObject.quote(message)});",
+                null
+            )
+        }
+    }
+
+    private fun scheduleListeningRestart(delayMs: Long) {
+        mainHandler.post {
+            restartListeningRunnable?.let {
+                mainHandler.removeCallbacks(it)
+            }
+
+            if (!handsFreeEnabled) return@post
+
+            val task = Runnable {
+                if (
+                    handsFreeEnabled &&
+                    !waitingForResponse &&
+                    !recognitionInProgress &&
+                    !isTtsSpeaking
+                ) {
+                    startRecognitionSession(true)
+                }
+            }
+
+            restartListeningRunnable = task
+            mainHandler.postDelayed(task, delayMs)
+        }
+    }
+
+    private fun cancelResponseTimeout() {
+        responseTimeoutRunnable?.let {
+            mainHandler.removeCallbacks(it)
+        }
+        responseTimeoutRunnable = null
+    }
+
+    private fun beginResponseWait() {
+        waitingForResponse = true
+        cancelResponseTimeout()
+
+        val task = Runnable {
+            if (handsFreeEnabled && waitingForResponse) {
+                waitingForResponse = false
+                showStatus(
+                    "A resposta demorou demasiado. Vou voltar a ouvir."
+                )
+                scheduleListeningRestart(900)
+            }
+        }
+
+        responseTimeoutRunnable = task
+        mainHandler.postDelayed(task, RESPONSE_TIMEOUT_MS)
+    }
+
+    private fun clearResponseWait() {
+        waitingForResponse = false
+        cancelResponseTimeout()
+    }
+
+    private fun stopRecognitionInternal() {
+        restartListeningRunnable?.let {
+            mainHandler.removeCallbacks(it)
+        }
+        restartListeningRunnable = null
+
+        try {
+            recognizer?.cancel()
+            recognizer?.destroy()
+        } catch (_: Exception) {
+        }
+
+        recognizer = null
+        recognitionInProgress = false
+    }
+
+    // ---------------------------------------------------------
+    // RECONHECIMENTO DE VOZ
+    // ---------------------------------------------------------
+
+    private fun startListeningManual() {
+        if (handsFreeEnabled) {
+            showStatus("O modo mãos-livres já controla o microfone.")
+            return
+        }
+
+        if (
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingManualListen = true
+
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                MIC_PERMISSION
+            )
+            return
+        }
+
+        startRecognitionSession(false)
+    }
+
+    private fun startRecognitionSession(handsFree: Boolean) {
+        mainHandler.post {
+            if (handsFree && !handsFreeEnabled) return@post
+
+            if (
+                handsFree &&
+                (waitingForResponse || isTtsSpeaking)
+            ) {
+                return@post
+            }
+
+            if (
+                ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.RECORD_AUDIO
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                if (handsFree) {
+                    showStatus("A permissão do microfone foi retirada.")
+                    stopHandsFree()
+                } else {
+                    startListeningManual()
+                }
+                return@post
+            }
+
+            if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+                if (handsFree) {
+                    showStatus("Reconhecimento de voz indisponível.")
+                    stopHandsFree()
+                } else {
+                    showSpeechError("Reconhecimento de voz indisponível.")
+                }
+                return@post
+            }
+
+            stopRecognitionInternal()
+
+            try {
+                recognizer =
+                    SpeechRecognizer.createSpeechRecognizer(this)
+
+                recognizer?.setRecognitionListener(
+                    object : RecognitionListener {
+
+                        override fun onReadyForSpeech(params: Bundle?) {
+                            recognitionInProgress = true
+                            showStatus(
+                                if (handsFreeEnabled) {
+                                    "Mãos-livres: estou a ouvir..."
+                                } else {
+                                    "A ouvir..."
+                                }
+                            )
+                        }
+
+                        override fun onBeginningOfSpeech() {}
+
+                        override fun onRmsChanged(rmsdB: Float) {}
+
+                        override fun onBufferReceived(buffer: ByteArray?) {}
+
+                        override fun onEndOfSpeech() {
+                            showStatus("A processar a voz...")
+                        }
+
+                        override fun onError(error: Int) {
+                            recognitionInProgress = false
+
+                            try {
+                                recognizer?.destroy()
+                            } catch (_: Exception) {
+                            }
+                            recognizer = null
+
+                            if (handsFreeEnabled) {
+                                if (
+                                    error == SpeechRecognizer.ERROR_NO_MATCH ||
+                                    error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
+                                ) {
+                                    showStatus(
+                                        "Não percebi. Vou voltar a ouvir..."
+                                    )
+                                } else {
+                                    showStatus(
+                                        "O reconhecimento foi interrompido. A tentar novamente..."
+                                    )
+                                }
+
+                                scheduleListeningRestart(
+                                    if (
+                                        error == SpeechRecognizer.ERROR_NO_MATCH ||
+                                        error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
+                                    ) 500 else 1200
+                                )
+                            } else {
+                                showSpeechError(
+                                    "Reconhecimento de voz terminado (código $error)."
+                                )
+                            }
+                        }
+
+                        override fun onResults(results: Bundle?) {
+                            recognitionInProgress = false
+
+                            val text = results
+                                ?.getStringArrayList(
+                                    SpeechRecognizer.RESULTS_RECOGNITION
+                                )
+                                ?.firstOrNull()
+                                ?.trim()
+
+                            try {
+                                recognizer?.destroy()
+                            } catch (_: Exception) {
+                            }
+                            recognizer = null
+
+                            if (!text.isNullOrBlank()) {
+                                if (handsFreeEnabled) {
+                                    beginResponseWait()
+                                }
+
+                                webView.evaluateJavascript(
+                                    "if (typeof onNativeSpeechResult === 'function') " +
+                                        "onNativeSpeechResult(" +
+                                        "${JSONObject.quote(text)}" +
+                                        ");",
+                                    null
+                                )
+                            } else {
+                                if (handsFreeEnabled) {
+                                    showStatus(
+                                        "Não reconheci a frase. Vou voltar a ouvir..."
+                                    )
+                                    scheduleListeningRestart(600)
+                                } else {
+                                    showSpeechError(
+                                        "Não foi reconhecida nenhuma frase."
+                                    )
+                                }
+                            }
+                        }
+
+                        override fun onPartialResults(
+                            partialResults: Bundle?
+                        ) {}
+
+                        override fun onEvent(
+                            eventType: Int,
+                            params: Bundle?
+                        ) {}
+                    }
+                )
+
+                val intent = Intent(
+                    RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+                ).apply {
+                    putExtra(
+                        RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                    )
+                    putExtra(
+                        RecognizerIntent.EXTRA_LANGUAGE,
+                        "pt-BR"
+                    )
+                    putExtra(
+                        RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
+                        "pt-BR"
+                    )
+                    putExtra(
+                        RecognizerIntent.EXTRA_MAX_RESULTS,
+                        1
+                    )
+                    putExtra(
+                        RecognizerIntent.EXTRA_PARTIAL_RESULTS,
+                        false
+                    )
+                }
+
+                recognitionInProgress = true
+                recognizer?.startListening(intent)
+
+            } catch (e: Exception) {
+                recognitionInProgress = false
+
+                try {
+                    recognizer?.destroy()
+                } catch (_: Exception) {
+                }
+                recognizer = null
+
+                if (handsFreeEnabled) {
+                    showStatus("Não consegui iniciar o microfone. A tentar novamente...")
+                    scheduleListeningRestart(1200)
+                } else {
+                    showSpeechError(
+                        "Não foi possível iniciar o reconhecimento: ${e.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(
+            requestCode,
+            permissions,
+            grantResults
+        )
+
+        if (requestCode != MIC_PERMISSION) return
+
+        val granted =
+            grantResults.isNotEmpty() &&
+            grantResults[0] == PackageManager.PERMISSION_GRANTED
+
+        if (!granted) {
+            pendingManualListen = false
+
+            if (handsFreeEnabled) {
+                stopHandsFree()
+            }
+
+            showStatus("Permissão do microfone recusada.")
+            return
+        }
+
+        if (handsFreeEnabled) {
+            showStatus("Permissão concedida. A iniciar a escuta...")
+            scheduleListeningRestart(250)
+        } else if (pendingManualListen) {
+            pendingManualListen = false
+            startListeningManual()
         }
     }
 
@@ -184,10 +711,7 @@ class MainActivity : Activity() {
             }
 
             try {
-                startActivityForResult(
-                    intent,
-                    PICK_MODEL_REQUEST
-                )
+                startActivityForResult(intent, PICK_MODEL_REQUEST)
                 showStatus("Seleciona o ficheiro .litertlm...")
             } catch (e: Exception) {
                 showModelError(
@@ -281,7 +805,7 @@ class MainActivity : Activity() {
     }
 
     // ---------------------------------------------------------
-    // INICIALIZAÇÃO DO LITERT-LM
+    // GEMMA LOCAL
     // ---------------------------------------------------------
 
     private fun initializeLocalModel(file: File) {
@@ -376,123 +900,6 @@ class MainActivity : Activity() {
     }
 
     // ---------------------------------------------------------
-    // RECONHECIMENTO DE VOZ ANDROID
-    // ---------------------------------------------------------
-
-    private fun startListeningManual() {
-        if (
-            ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.RECORD_AUDIO),
-                MIC_PERMISSION
-            )
-            return
-        }
-
-        mainHandler.post {
-            try {
-                recognizer?.cancel()
-                recognizer?.destroy()
-
-                if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-                    showSpeechError(
-                        "O reconhecimento de voz não está disponível neste dispositivo."
-                    )
-                    return@post
-                }
-
-                recognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
-                    setRecognitionListener(object : RecognitionListener {
-
-                        override fun onReadyForSpeech(params: Bundle?) {
-                            showStatus("A ouvir...")
-                        }
-
-                        override fun onBeginningOfSpeech() {}
-                        override fun onRmsChanged(rmsdB: Float) {}
-                        override fun onBufferReceived(buffer: ByteArray?) {}
-
-                        override fun onEndOfSpeech() {
-                            showStatus("A processar a voz...")
-                        }
-
-                        override fun onError(error: Int) {
-                            showSpeechError(
-                                "Reconhecimento de voz terminado (código $error)."
-                            )
-                        }
-
-                        override fun onResults(results: Bundle?) {
-                            val text = results
-                                ?.getStringArrayList(
-                                    SpeechRecognizer.RESULTS_RECOGNITION
-                                )
-                                ?.firstOrNull()
-
-                            if (!text.isNullOrBlank()) {
-                                mainHandler.post {
-                                    webView.evaluateJavascript(
-                                        "if (typeof onNativeSpeechResult === 'function') " +
-                                            "onNativeSpeechResult(" +
-                                            "${JSONObject.quote(text)}" +
-                                            ");",
-                                        null
-                                    )
-                                }
-                            } else {
-                                showSpeechError(
-                                    "Não foi reconhecida nenhuma frase."
-                                )
-                            }
-                        }
-
-                        override fun onPartialResults(
-                            partialResults: Bundle?
-                        ) {}
-
-                        override fun onEvent(
-                            eventType: Int,
-                            params: Bundle?
-                        ) {}
-                    })
-
-                    val intent = Intent(
-                        RecognizerIntent.ACTION_RECOGNIZE_SPEECH
-                    ).apply {
-                        putExtra(
-                            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-                        )
-                        putExtra(
-                            RecognizerIntent.EXTRA_LANGUAGE,
-                            "pt-BR"
-                        )
-                        putExtra(
-                            RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
-                            "pt-BR"
-                        )
-                        putExtra(
-                            RecognizerIntent.EXTRA_MAX_RESULTS,
-                            1
-                        )
-                    }
-
-                    startListening(intent)
-                }
-            } catch (e: Exception) {
-                showSpeechError(
-                    "Não foi possível iniciar o reconhecimento: ${e.message}"
-                )
-            }
-        }
-    }
-
-    // ---------------------------------------------------------
     // COMANDOS ANDROID
     // ---------------------------------------------------------
 
@@ -558,10 +965,7 @@ class MainActivity : Activity() {
                 ) ?: return "Não encontrei o aplicativo $appNameInput."
             }
 
-            startActivity(
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
-
+            startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             "A abrir $appName."
         } catch (_: Exception) {
             "Não foi possível abrir $appName."
@@ -571,7 +975,6 @@ class MainActivity : Activity() {
     private fun processCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
 
-        // Comandos executados diretamente no Android.
         val hardwareAnswer: String? = when {
             text.contains("bateria") -> {
                 val level = getBatteryLevel()
@@ -641,9 +1044,6 @@ class MainActivity : Activity() {
                     )
 
                 val result = conversation.sendMessage(prompt)
-
-                // CORREÇÃO: Message não possui a propriedade .text.
-                // toString() devolve o conteúdo da mensagem.
                 val response = result.toString().trim()
 
                 if (response.isBlank()) {
@@ -664,8 +1064,7 @@ class MainActivity : Activity() {
     }
 
     // ---------------------------------------------------------
-    // COMUNICAÇÃO COM O HTML
-    // O JavaScript apresenta a resposta e controla a voz.
+    // RESPOSTAS E ESTADOS
     // ---------------------------------------------------------
 
     private fun respond(text: String) {
@@ -678,11 +1077,14 @@ class MainActivity : Activity() {
             clean == lastSpokenText &&
             now - lastSpokenTime < 1500
         ) {
+            clearResponseWait()
             return
         }
 
         lastSpokenText = clean
         lastSpokenTime = now
+
+        clearResponseWait()
 
         mainHandler.post {
             webView.evaluateJavascript(
@@ -708,6 +1110,8 @@ class MainActivity : Activity() {
     }
 
     private fun showModelError(message: String) {
+        clearResponseWait()
+
         mainHandler.post {
             if (!::webView.isInitialized) return@post
 
@@ -716,6 +1120,10 @@ class MainActivity : Activity() {
                     "onNativeModelError(${JSONObject.quote(message)});",
                 null
             )
+
+            if (handsFreeEnabled) {
+                scheduleListeningRestart(900)
+            }
         }
     }
 
@@ -731,6 +1139,10 @@ class MainActivity : Activity() {
         }
     }
 
+    // ---------------------------------------------------------
+    // PONTE ANDROID / JAVASCRIPT
+    // ---------------------------------------------------------
+
     inner class AndroidBridge {
 
         @JavascriptInterface
@@ -744,13 +1156,31 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
+        fun startHandsFree() {
+            this@MainActivity.startHandsFree()
+        }
+
+        @JavascriptInterface
+        fun stopHandsFree() {
+            this@MainActivity.stopHandsFree()
+        }
+
+        @JavascriptInterface
+        fun responseFinished() {
+            finishResponseWithoutSpeech()
+        }
+
+        @JavascriptInterface
         fun chooseModel() {
             openModelFileSelector()
         }
 
         @JavascriptInterface
         fun speak(text: String) {
-            speakText(text)
+            mainHandler.post {
+                clearResponseWait()
+                speakText(text)
+            }
         }
 
         @JavascriptInterface
@@ -766,13 +1196,16 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        handsFreeEnabled = false
+        waitingForResponse = false
+
+        cancelResponseTimeout()
+        stopRecognitionInternal()
+
         try {
-            recognizer?.cancel()
-            recognizer?.destroy()
+            tts.stop()
         } catch (_: Exception) {
         }
-
-        stopSpeaking()
 
         backgroundExecutor.execute {
             try {

@@ -1,3 +1,4 @@
+
 package com.fogofx.jarvis
 
 import android.Manifest
@@ -8,12 +9,15 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
+import android.media.AudioManager
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.AlarmClock
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.provider.Settings
 import android.speech.RecognitionListener
@@ -110,7 +114,7 @@ class MainActivity : Activity() {
     }
 
     // ---------------------------------------------------------
-    // VOZ ANDROID
+    // VOZ ANDROID - TEXT TO SPEECH
     // ---------------------------------------------------------
 
     private fun initializeTts() {
@@ -205,6 +209,7 @@ class MainActivity : Activity() {
 
     private fun speakText(text: String) {
         val clean = text.trim()
+
         if (clean.isBlank()) {
             finishResponseWithoutSpeech()
             return
@@ -234,7 +239,7 @@ class MainActivity : Activity() {
                         scheduleListeningRestart(700)
                     }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 isTtsSpeaking = false
                 showStatus("Erro ao reproduzir a voz.")
 
@@ -291,10 +296,7 @@ class MainActivity : Activity() {
             handsFreeEnabled = true
             waitingForResponse = false
 
-            notifyHandsFreeState(
-                true,
-                "Modo mãos-livres ativado."
-            )
+            notifyHandsFreeState(true, "Modo mãos-livres ativado.")
 
             if (
                 ActivityCompat.checkSelfPermission(
@@ -334,11 +336,7 @@ class MainActivity : Activity() {
             isTtsSpeaking = false
             pendingSpeech = ""
 
-            notifyHandsFreeState(
-                false,
-                "Modo mãos-livres desligado."
-            )
-
+            notifyHandsFreeState(false, "Modo mãos-livres desligado.")
             showStatus("Modo mãos-livres desligado.")
         }
     }
@@ -387,6 +385,7 @@ class MainActivity : Activity() {
         responseTimeoutRunnable?.let {
             mainHandler.removeCallbacks(it)
         }
+
         responseTimeoutRunnable = null
     }
 
@@ -417,6 +416,7 @@ class MainActivity : Activity() {
         restartListeningRunnable?.let {
             mainHandler.removeCallbacks(it)
         }
+
         restartListeningRunnable = null
 
         try {
@@ -481,6 +481,7 @@ class MainActivity : Activity() {
                 } else {
                     startListeningManual()
                 }
+
                 return@post
             }
 
@@ -491,14 +492,14 @@ class MainActivity : Activity() {
                 } else {
                     showSpeechError("Reconhecimento de voz indisponível.")
                 }
+
                 return@post
             }
 
             stopRecognitionInternal()
 
             try {
-                recognizer =
-                    SpeechRecognizer.createSpeechRecognizer(this)
+                recognizer = SpeechRecognizer.createSpeechRecognizer(this)
 
                 recognizer?.setRecognitionListener(
                     object : RecognitionListener {
@@ -515,9 +516,7 @@ class MainActivity : Activity() {
                         }
 
                         override fun onBeginningOfSpeech() {}
-
                         override fun onRmsChanged(rmsdB: Float) {}
-
                         override fun onBufferReceived(buffer: ByteArray?) {}
 
                         override fun onEndOfSpeech() {
@@ -531,6 +530,7 @@ class MainActivity : Activity() {
                                 recognizer?.destroy()
                             } catch (_: Exception) {
                             }
+
                             recognizer = null
 
                             if (handsFreeEnabled) {
@@ -574,6 +574,7 @@ class MainActivity : Activity() {
                                 recognizer?.destroy()
                             } catch (_: Exception) {
                             }
+
                             recognizer = null
 
                             if (!text.isNullOrBlank()) {
@@ -648,10 +649,13 @@ class MainActivity : Activity() {
                     recognizer?.destroy()
                 } catch (_: Exception) {
                 }
+
                 recognizer = null
 
                 if (handsFreeEnabled) {
-                    showStatus("Não consegui iniciar o microfone. A tentar novamente...")
+                    showStatus(
+                        "Não consegui iniciar o microfone. A tentar novamente..."
+                    )
                     scheduleListeningRestart(1200)
                 } else {
                     showSpeechError(
@@ -736,6 +740,7 @@ class MainActivity : Activity() {
             if (requestCode == PICK_MODEL_REQUEST) {
                 showStatus("Seleção do modelo cancelada.")
             }
+
             return
         }
 
@@ -900,7 +905,7 @@ class MainActivity : Activity() {
     }
 
     // ---------------------------------------------------------
-    // COMANDOS ANDROID
+    // COMANDOS ANDROID EXISTENTES
     // ---------------------------------------------------------
 
     private fun getBatteryLevel(): Int {
@@ -965,15 +970,266 @@ class MainActivity : Activity() {
                 ) ?: return "Não encontrei o aplicativo $appNameInput."
             }
 
-            startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            startActivity(intent)
             "A abrir $appName."
         } catch (_: Exception) {
             "Não foi possível abrir $appName."
         }
     }
 
+    // ---------------------------------------------------------
+    // NOVOS COMANDOS ANDROID
+    // ---------------------------------------------------------
+
+    private fun handleExtraAndroidCommand(command: String): String? {
+        val cmd = command.lowercase(Locale.ROOT).trim()
+
+        // Consultar o estado do carregamento
+        if (
+            cmd.contains("está a carregar") ||
+            cmd.contains("esta a carregar") ||
+            cmd.contains("estado do carregamento") ||
+            cmd.contains("estado da carga")
+        ) {
+            val battery = registerReceiver(
+                null,
+                IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+            )
+
+            val status = battery?.getIntExtra(
+                BatteryManager.EXTRA_STATUS,
+                -1
+            ) ?: -1
+
+            return when (status) {
+                BatteryManager.BATTERY_STATUS_CHARGING ->
+                    "O telemóvel está a carregar."
+
+                BatteryManager.BATTERY_STATUS_FULL ->
+                    "A bateria está totalmente carregada."
+
+                BatteryManager.BATTERY_STATUS_DISCHARGING,
+                BatteryManager.BATTERY_STATUS_NOT_CHARGING ->
+                    "O telemóvel não está a carregar."
+
+                else ->
+                    "Não consegui verificar o estado do carregamento."
+            }
+        }
+
+        // Abrir câmara
+        if (cmd.contains("câmara") || cmd.contains("camera")) {
+            return launchAndroidIntent(
+                Intent(MediaStore.ACTION_IMAGE_CAPTURE),
+                "A abrir a câmara.",
+                "Não consegui abrir a câmara."
+            )
+        }
+
+        // Abrir calculadora
+        if (cmd.contains("calculadora")) {
+            val calculatorIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_APP_CALCULATOR)
+            }
+
+            try {
+                startActivity(calculatorIntent)
+                return "A abrir a calculadora."
+            } catch (_: Exception) {
+                // Tentar pacotes conhecidos.
+            }
+
+            val packages = listOf(
+                "com.google.android.calculator",
+                "com.android.calculator2",
+                "com.sec.android.app.popupcalculator"
+            )
+
+            for (packageName in packages) {
+                try {
+                    val appIntent =
+                        packageManager.getLaunchIntentForPackage(packageName)
+
+                    if (appIntent != null) {
+                        startActivity(appIntent)
+                        return "A abrir a calculadora."
+                    }
+                } catch (_: Exception) {
+                    // Continua a procurar.
+                }
+            }
+
+            return "Não encontrei uma calculadora compatível."
+        }
+
+        // Abrir mapas
+        if (
+            cmd.contains("mapas") ||
+            cmd.contains("google maps") ||
+            cmd.contains("navegação") ||
+            cmd.contains("navegacao")
+        ) {
+            return launchAndroidIntent(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("geo:0,0?q=destino")
+                ),
+                "A abrir os mapas.",
+                "Não consegui abrir uma aplicação de mapas."
+            )
+        }
+
+        // Abrir definições de Wi-Fi
+        if (cmd.contains("wi-fi") || cmd.contains("wifi")) {
+            return launchAndroidIntent(
+                Intent(Settings.ACTION_WIFI_SETTINGS),
+                "A abrir as definições de Wi-Fi.",
+                "Não consegui abrir as definições de Wi-Fi."
+            )
+        }
+
+        // Abrir definições de Bluetooth
+        if (cmd.contains("bluetooth")) {
+            return launchAndroidIntent(
+                Intent(Settings.ACTION_BLUETOOTH_SETTINGS),
+                "A abrir as definições de Bluetooth.",
+                "Não consegui abrir as definições de Bluetooth."
+            )
+        }
+
+        // Aumentar volume
+        if (
+            cmd.contains("aumenta o volume") ||
+            cmd.contains("aumentar o volume") ||
+            cmd.contains("volume mais alto")
+        ) {
+            changeMusicVolume(AudioManager.ADJUST_RAISE)
+            return "A aumentar o volume."
+        }
+
+        // Diminuir volume
+        if (
+            cmd.contains("diminui o volume") ||
+            cmd.contains("diminuir o volume") ||
+            cmd.contains("abaixa o volume") ||
+            cmd.contains("volume mais baixo")
+        ) {
+            changeMusicVolume(AudioManager.ADJUST_LOWER)
+            return "A diminuir o volume."
+        }
+
+        // Silenciar áudio multimédia
+        if (
+            cmd == "silenciar" ||
+            cmd.contains("silencia o som") ||
+            cmd.contains("silencia o volume") ||
+            cmd.contains("silencia a música") ||
+            cmd.contains("silencia a musica")
+        ) {
+            changeMusicVolume(AudioManager.ADJUST_MUTE)
+            return "Comando de silêncio executado."
+        }
+
+        // Reativar áudio multimédia
+        if (
+            cmd.contains("reativa o som") ||
+            cmd.contains("ativa o som") ||
+            cmd.contains("tira o silêncio") ||
+            cmd.contains("tira o silencio")
+        ) {
+            changeMusicVolume(AudioManager.ADJUST_UNMUTE)
+            return "A reativar o som multimédia."
+        }
+
+        // Criar alarme com hora: 07:30 ou 07h30
+        val alarmTime = Regex(
+            """\b([01]?\d|2[0-3])[:h]([0-5]\d)\b"""
+        ).find(cmd)
+
+        if (cmd.contains("alarme") && alarmTime != null) {
+            val hour = alarmTime.groupValues[1].toInt()
+            val minute = alarmTime.groupValues[2].toInt()
+
+            val alarmIntent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+                putExtra(AlarmClock.EXTRA_HOUR, hour)
+                putExtra(AlarmClock.EXTRA_MINUTES, minute)
+                putExtra(
+                    AlarmClock.EXTRA_MESSAGE,
+                    "Alarme do JARVIS"
+                )
+                putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+            }
+
+            return launchAndroidIntent(
+                alarmIntent,
+                "A preparar um alarme para %02d:%02d.".format(
+                    Locale.ROOT,
+                    hour,
+                    minute
+                ),
+                "Não consegui abrir a criação de alarmes."
+            )
+        }
+
+        // Mostrar alarmes existentes
+        if (
+            cmd.contains("alarme") ||
+            cmd.contains("despertador") ||
+            cmd.contains("abre o relógio") ||
+            cmd.contains("abre o relogio")
+        ) {
+            return launchAndroidIntent(
+                Intent(AlarmClock.ACTION_SHOW_ALARMS),
+                "A abrir os alarmes.",
+                "Não consegui abrir os alarmes."
+            )
+        }
+
+        return null
+    }
+
+    private fun launchAndroidIntent(
+        intent: Intent,
+        successMessage: String,
+        errorMessage: String
+    ): String {
+        return try {
+            startActivity(intent)
+            successMessage
+        } catch (_: Exception) {
+            errorMessage
+        }
+    }
+
+    private fun changeMusicVolume(direction: Int) {
+        try {
+            val audioManager =
+                getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
+            audioManager.adjustStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                direction,
+                AudioManager.FLAG_SHOW_UI
+            )
+        } catch (_: Exception) {
+            showStatus("Não consegui alterar o volume.")
+        }
+    }
+
+    // ---------------------------------------------------------
+    // PROCESSAMENTO DE COMANDOS + GEMMA
+    // ---------------------------------------------------------
+
     private fun processCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
+
+        // Executar os novos comandos antes de consultar o Gemma
+        val extraAnswer = handleExtraAndroidCommand(text)
+
+        if (extraAnswer != null) {
+            respond(extraAnswer)
+            return
+        }
 
         val hardwareAnswer: String? = when {
             text.contains("bateria") -> {
@@ -1207,20 +1463,18 @@ class MainActivity : Activity() {
         } catch (_: Exception) {
         }
 
-        backgroundExecutor.execute {
-            try {
-                modelConversation?.close()
-            } catch (_: Exception) {
-            }
-
-            try {
-                modelEngine?.close()
-            } catch (_: Exception) {
-            }
-
-            modelConversation = null
-            modelEngine = null
+        try {
+            modelConversation?.close()
+        } catch (_: Exception) {
         }
+
+        try {
+            modelEngine?.close()
+        } catch (_: Exception) {
+        }
+
+        modelConversation = null
+        modelEngine = null
 
         backgroundExecutor.shutdown()
 

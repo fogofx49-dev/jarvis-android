@@ -61,6 +61,8 @@ class MainActivity : Activity() {
 
     private var lastSpokenText = ""
     private var lastSpokenTime = 0L
+
+    @Volatile
     private var isLoadingModel = false
 
     companion object {
@@ -77,11 +79,16 @@ class MainActivity : Activity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             webChromeClient = WebChromeClient()
+
             webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView?, url: String?) {
+                override fun onPageFinished(
+                    view: WebView?,
+                    url: String?
+                ) {
                     showStatus("Interface pronta. Carrega o modelo de IA.")
                 }
             }
+
             addJavascriptInterface(AndroidBridge(), "AndroidVoice")
         }
 
@@ -92,14 +99,16 @@ class MainActivity : Activity() {
     // ---------------------------------------------------------
     // TEXT-TO-SPEECH
     // O HTML controla quando uma resposta deve ser falada.
-    // Assim evitamos falar duas vezes a mesma resposta.
     // ---------------------------------------------------------
 
     private fun initializeTts() {
         tts = TextToSpeech(this) { status ->
             mainHandler.post {
                 if (status == TextToSpeech.SUCCESS) {
-                    val languageResult = tts.setLanguage(Locale("pt", "BR"))
+                    val languageResult = tts.setLanguage(
+                        Locale("pt", "BR")
+                    )
+
                     tts.setSpeechRate(0.96f)
                     tts.setPitch(0.92f)
 
@@ -108,8 +117,11 @@ class MainActivity : Activity() {
                         languageResult != TextToSpeech.LANG_NOT_SUPPORTED
 
                     showStatus(
-                        if (ttsReady) "Voz Android pronta."
-                        else "Instala ou seleciona uma voz portuguesa nas definições do Android."
+                        if (ttsReady) {
+                            "Voz Android pronta."
+                        } else {
+                            "Instala ou seleciona uma voz portuguesa nas definições do Android."
+                        }
                     )
 
                     if (ttsReady && pendingSpeech.isNotBlank()) {
@@ -172,10 +184,15 @@ class MainActivity : Activity() {
             }
 
             try {
-                startActivityForResult(intent, PICK_MODEL_REQUEST)
+                startActivityForResult(
+                    intent,
+                    PICK_MODEL_REQUEST
+                )
                 showStatus("Seleciona o ficheiro .litertlm...")
             } catch (e: Exception) {
-                showModelError("Não foi possível abrir o seletor: ${e.message}")
+                showModelError(
+                    "Não foi possível abrir o seletor: ${e.message}"
+                )
             }
         }
     }
@@ -188,7 +205,10 @@ class MainActivity : Activity() {
     ) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        if (requestCode != PICK_MODEL_REQUEST || resultCode != RESULT_OK) {
+        if (
+            requestCode != PICK_MODEL_REQUEST ||
+            resultCode != RESULT_OK
+        ) {
             if (requestCode == PICK_MODEL_REQUEST) {
                 showStatus("Seleção do modelo cancelada.")
             }
@@ -202,7 +222,9 @@ class MainActivity : Activity() {
                 val originalName = getDisplayName(uri)
 
                 if (!originalName.endsWith(".litertlm", ignoreCase = true)) {
-                    showModelError("Seleciona um ficheiro com extensão .litertlm.")
+                    showModelError(
+                        "Seleciona um ficheiro com extensão .litertlm."
+                    )
                     return@execute
                 }
 
@@ -210,7 +232,9 @@ class MainActivity : Activity() {
 
                 contentResolver.openInputStream(uri).use { input ->
                     if (input == null) {
-                        throw IllegalStateException("Não foi possível ler o ficheiro.")
+                        throw IllegalStateException(
+                            "Não foi possível ler o ficheiro."
+                        )
                     }
 
                     FileOutputStream(destination).use { output ->
@@ -219,7 +243,9 @@ class MainActivity : Activity() {
                 }
 
                 if (!destination.exists() || destination.length() == 0L) {
-                    throw IllegalStateException("O ficheiro copiado está vazio.")
+                    throw IllegalStateException(
+                        "O ficheiro copiado está vazio."
+                    )
                 }
 
                 activeModelName = originalName
@@ -227,7 +253,8 @@ class MainActivity : Activity() {
 
             } catch (e: Exception) {
                 showModelError(
-                    "Falha ao copiar ou carregar o modelo: ${e.message ?: "erro desconhecido"}"
+                    "Falha ao copiar ou carregar o modelo: " +
+                        (e.message ?: "erro desconhecido")
                 )
             }
         }
@@ -241,7 +268,9 @@ class MainActivity : Activity() {
             null,
             null
         )?.use { cursor ->
-            val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            val index = cursor.getColumnIndex(
+                OpenableColumns.DISPLAY_NAME
+            )
 
             if (cursor.moveToFirst() && index >= 0) {
                 cursor.getString(index)
@@ -252,7 +281,7 @@ class MainActivity : Activity() {
     }
 
     // ---------------------------------------------------------
-    // INICIALIZAÇÃO REAL DO LITERT-LM
+    // INICIALIZAÇÃO DO LITERT-LM
     // ---------------------------------------------------------
 
     private fun initializeLocalModel(file: File) {
@@ -293,11 +322,13 @@ class MainActivity : Activity() {
                 ConversationConfig(
                     systemInstruction = Contents.of(
                         """
-                        Tu és J.A.R.V.I.S., um assistente útil, educado e conciso.
-                        Responde em português natural, preferencialmente português
-                        do Brasil. Responde diretamente à pergunta do utilizador.
-                        Não afirmes que executaste ações no dispositivo se elas
-                        não tiverem sido realmente executadas.
+                        Tu és J.A.R.V.I.S., um assistente útil,
+                        educado e conciso.
+                        Responde em português natural,
+                        preferencialmente português do Brasil.
+                        Responde diretamente à pergunta do utilizador.
+                        Não afirmes que executaste ações no dispositivo
+                        se elas não tiverem sido realmente executadas.
                         """.trimIndent()
                     )
                 )
@@ -311,7 +342,9 @@ class MainActivity : Activity() {
             mainHandler.post {
                 webView.evaluateJavascript(
                     "if (typeof onNativeModelLoaded === 'function') " +
-                        "onNativeModelLoaded(${JSONObject.quote("Gemma local pronto: $activeModelName")});",
+                        "onNativeModelLoaded(" +
+                        "${JSONObject.quote("Gemma local pronto: $activeModelName")}" +
+                        ");",
                     null
                 )
 
@@ -336,7 +369,8 @@ class MainActivity : Activity() {
             modelEngine = null
 
             showModelError(
-                "Não foi possível inicializar o Gemma: ${e.message ?: "erro desconhecido"}"
+                "Não foi possível inicializar o Gemma: " +
+                    (e.message ?: "erro desconhecido")
             )
         }
     }
@@ -366,7 +400,9 @@ class MainActivity : Activity() {
                 recognizer?.destroy()
 
                 if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-                    showSpeechError("O reconhecimento de voz não está disponível neste dispositivo.")
+                    showSpeechError(
+                        "O reconhecimento de voz não está disponível neste dispositivo."
+                    )
                     return@post
                 }
 
@@ -386,7 +422,9 @@ class MainActivity : Activity() {
                         }
 
                         override fun onError(error: Int) {
-                            showSpeechError("Reconhecimento de voz terminado (código $error).")
+                            showSpeechError(
+                                "Reconhecimento de voz terminado (código $error)."
+                            )
                         }
 
                         override fun onResults(results: Bundle?) {
@@ -400,17 +438,27 @@ class MainActivity : Activity() {
                                 mainHandler.post {
                                     webView.evaluateJavascript(
                                         "if (typeof onNativeSpeechResult === 'function') " +
-                                            "onNativeSpeechResult(${JSONObject.quote(text)});",
+                                            "onNativeSpeechResult(" +
+                                            "${JSONObject.quote(text)}" +
+                                            ");",
                                         null
                                     )
                                 }
                             } else {
-                                showSpeechError("Não foi reconhecida nenhuma frase.")
+                                showSpeechError(
+                                    "Não foi reconhecida nenhuma frase."
+                                )
                             }
                         }
 
-                        override fun onPartialResults(partialResults: Bundle?) {}
-                        override fun onEvent(eventType: Int, params: Bundle?) {}
+                        override fun onPartialResults(
+                            partialResults: Bundle?
+                        ) {}
+
+                        override fun onEvent(
+                            eventType: Int,
+                            params: Bundle?
+                        ) {}
                     })
 
                     val intent = Intent(
@@ -420,9 +468,18 @@ class MainActivity : Activity() {
                             RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                             RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
                         )
-                        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
-                        putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
-                        putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                        putExtra(
+                            RecognizerIntent.EXTRA_LANGUAGE,
+                            "pt-BR"
+                        )
+                        putExtra(
+                            RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
+                            "pt-BR"
+                        )
+                        putExtra(
+                            RecognizerIntent.EXTRA_MAX_RESULTS,
+                            1
+                        )
                     }
 
                     startListening(intent)
@@ -445,7 +502,10 @@ class MainActivity : Activity() {
             IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         )
 
-        return battery?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        return battery?.getIntExtra(
+            BatteryManager.EXTRA_LEVEL,
+            -1
+        ) ?: -1
     }
 
     private fun toggleFlashlight(enable: Boolean): String {
@@ -464,7 +524,11 @@ class MainActivity : Activity() {
 
             cameraManager.setTorchMode(cameraId, enable)
 
-            if (enable) "Lanterna ligada." else "Lanterna desligada."
+            if (enable) {
+                "Lanterna ligada."
+            } else {
+                "Lanterna desligada."
+            }
         } catch (e: Exception) {
             "Não foi possível controlar a lanterna: ${e.message}"
         }
@@ -485,14 +549,19 @@ class MainActivity : Activity() {
                     Uri.parse("https://www.google.com")
                 )
 
-                "settings", "configurações", "configuracoes" ->
-                    Intent(Settings.ACTION_SETTINGS)
+                "settings",
+                "configurações",
+                "configuracoes" -> Intent(Settings.ACTION_SETTINGS)
 
-                else -> packageManager.getLaunchIntentForPackage(appNameInput)
-                    ?: return "Não encontrei o aplicativo $appNameInput."
+                else -> packageManager.getLaunchIntentForPackage(
+                    appNameInput
+                ) ?: return "Não encontrei o aplicativo $appNameInput."
             }
 
-            startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            startActivity(
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+
             "A abrir $appName."
         } catch (_: Exception) {
             "Não foi possível abrir $appName."
@@ -502,12 +571,16 @@ class MainActivity : Activity() {
     private fun processCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
 
-        // Os comandos explícitos são executados diretamente no Android.
+        // Comandos executados diretamente no Android.
         val hardwareAnswer: String? = when {
             text.contains("bateria") -> {
                 val level = getBatteryLevel()
-                if (level >= 0) "A bateria está a $level por cento."
-                else "Não consegui consultar a bateria."
+
+                if (level >= 0) {
+                    "A bateria está a $level por cento."
+                } else {
+                    "Não consegui consultar a bateria."
+                }
             }
 
             text.contains("lanterna") &&
@@ -520,8 +593,10 @@ class MainActivity : Activity() {
 
             text.contains("horas") -> {
                 "Agora são ${
-                    SimpleDateFormat("HH:mm", Locale("pt", "BR"))
-                        .format(Date())
+                    SimpleDateFormat(
+                        "HH:mm",
+                        Locale("pt", "BR")
+                    ).format(Date())
                 }."
             }
 
@@ -561,20 +636,28 @@ class MainActivity : Activity() {
         backgroundExecutor.execute {
             try {
                 val conversation = modelConversation
-                    ?: throw IllegalStateException("A conversa do modelo não está disponível.")
+                    ?: throw IllegalStateException(
+                        "A conversa do modelo não está disponível."
+                    )
 
                 val result = conversation.sendMessage(prompt)
-                val response = result.text.trim()
+
+                // CORREÇÃO: Message não possui a propriedade .text.
+                // toString() devolve o conteúdo da mensagem.
+                val response = result.toString().trim()
 
                 if (response.isBlank()) {
-                    throw IllegalStateException("O modelo devolveu uma resposta vazia.")
+                    throw IllegalStateException(
+                        "O modelo devolveu uma resposta vazia."
+                    )
                 }
 
                 respond(response)
 
             } catch (e: Exception) {
                 showModelError(
-                    "Erro ao gerar resposta: ${e.message ?: "erro desconhecido"}"
+                    "Erro ao gerar resposta: " +
+                        (e.message ?: "erro desconhecido")
                 )
             }
         }
@@ -591,7 +674,10 @@ class MainActivity : Activity() {
 
         val now = System.currentTimeMillis()
 
-        if (clean == lastSpokenText && now - lastSpokenTime < 1500) {
+        if (
+            clean == lastSpokenText &&
+            now - lastSpokenTime < 1500
+        ) {
             return
         }
 
@@ -635,6 +721,8 @@ class MainActivity : Activity() {
 
     private fun showSpeechError(message: String) {
         mainHandler.post {
+            if (!::webView.isInitialized) return@post
+
             webView.evaluateJavascript(
                 "if (typeof onNativeSpeechError === 'function') " +
                     "onNativeSpeechError(${JSONObject.quote(message)});",

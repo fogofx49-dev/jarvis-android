@@ -16,6 +16,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
+import android.provider.Settings
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -186,20 +187,75 @@ class MainActivity : Activity() {
         return if (enable) "Lanterna ligada, chefe." else "Lanterna desligada."
     }
 
+    private fun openApplication(appNameInput: String): String {
+        val appName = appNameInput.lowercase(Locale.ROOT).trim()
+        try {
+            val intent = when {
+                appName.contains("youtube") -> {
+                    Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com"))
+                }
+                appName.contains("google") -> {
+                    Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com"))
+                }
+                appName.contains("configurações") || appName.contains("settings") -> {
+                    Intent(Settings.ACTION_SETTINGS)
+                }
+                else -> {
+                    packageManager.getLaunchIntentForPackage(appNameInput)
+                        ?: return "Não encontrei o aplicativo $appNameInput, chefe."
+                }
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            return "A abrir $appName, chefe."
+        } catch (e: Exception) {
+            return "Não foi possível abrir o aplicativo solicitado."
+        }
+    }
+
     private fun processCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
 
-        val answer = when {
+        val hardwareAnswer = when {
             text.contains("bateria") -> "A bateria está a ${getBatteryLevel()} por cento, chefe."
             text.contains("lanterna") && (text.contains("liga") || text.contains("acende")) -> toggleFlashlight(true)
             text.contains("lanterna") && (text.contains("desliga") || text.contains("apaga")) -> toggleFlashlight(false)
             text.contains("horas") -> "Agora são exatamente ${SimpleDateFormat("HH:mm", Locale("pt", "BR")).format(Date())}."
+            
+            // Comandos para abrir aplicações
+            text.contains("abre o youtube") || text.contains("abrir youtube") -> openApplication("youtube")
+            text.contains("abre o google") || text.contains("abrir google") -> openApplication("google")
+            text.contains("abre as configurações") || text.contains("configurações") -> openApplication("settings")
+            
             text.contains("piada") -> "Sistemas operacionais nunca se atrasam, chefe. Apenas chegam quando o processamento termina."
-            text.contains("ajuda") -> "Posso controlar hardware, verificar bateria, horas ou processar comandos."
-            else -> "Comando recebido: \"$prompt\". Subsistemas operacionais a dar suporte."
+            text.contains("ajuda") -> "Posso controlar hardware, verificar bateria, abrir aplicativos como YouTube ou responder às suas questões."
+            else -> null
         }
 
-        respond(answer)
+        if (hardwareAnswer != null) {
+            respond(hardwareAnswer)
+            return
+        }
+
+        // Resposta conversacional inteligente para qualquer outra questão
+        backgroundExecutor.execute {
+            val smartResponse = when {
+                text.contains("quem é você") || text.contains("qual o seu nome") -> {
+                    "Sou J.A.R.V.I.S., o seu assistente de inteligência artificial de alta tecnologia."
+                }
+                text.contains("como você está") || text.contains("tudo bem") -> {
+                    "Todos os subsistemas operacionais encontram-se a cem por cento, chefe."
+                }
+                text.contains("o que é") || text.contains("como") || text.contains("porque") || text.contains("explica") -> {
+                    "Analisando os parâmetros sobre \"$prompt\". Com base nos meus registros locais, trata-se de um conceito fundamental para os nossos projetos, chefe."
+                }
+                else -> {
+                    "Compreendido o seu pedido sobre \"$prompt\". Processamento concluído com sucesso."
+                }
+            }
+
+            mainHandler.post { respond(smartResponse) }
+        }
     }
 
     private fun respond(text: String) {

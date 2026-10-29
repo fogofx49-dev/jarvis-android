@@ -52,6 +52,10 @@ class MainActivity : Activity() {
     private var activeModelPath: String? = null
     private var isModelLoaded = false
 
+    // Variáveis para prevenir eco e repetição de voz
+    private var lastSpokenText: String = ""
+    private var lastSpokenTime: Long = 0
+
     companion object {
         private const val TAG = "JARVIS_LOCAL_MODEL"
         private const val MIC_PERMISSION = 101
@@ -70,7 +74,7 @@ class MainActivity : Activity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 pageReady = true
-                showStatus("J.A.R.V.I.S. online. Núcleo autónomo operacional.")
+                showStatus("J.A.R.V.I.S. online. Sistemas operacionais ativos.")
                 notifyJavascriptEvent("onNativeModelLoaded")
             }
         }
@@ -115,7 +119,7 @@ class MainActivity : Activity() {
                             Log.i(TAG, "Modelo guardado em cache: $activeModelPath")
                             mainHandler.post {
                                 showStatus("Modelo de IA configurado com sucesso.")
-                                speak("Ficheiro de modelo carregado com sucesso, chefe. Pronto para processamento local.")
+                                speak("Ficheiro de modelo carregado com sucesso, chefe.")
                             }
                         }
                     } catch (e: Exception) {
@@ -326,7 +330,7 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // PROCESSAMENTO INTELIGENTE E RESPOSTAS DO J.A.R.V.I.S.
+    // PROCESSAMENTO DE COMANDOS INTELIGENTE
     // =========================================================
 
     private fun processJarvisCommand(prompt: String) {
@@ -371,23 +375,23 @@ class MainActivity : Activity() {
             }
         }
 
-        // 2. Resposta conversacional inteligente (Tony Stark / J.A.R.V.I.S.)
+        // 2. Resposta conversacional inteligente local
         backgroundExecutor.execute {
             val response = when {
                 !isModelLoaded -> {
-                    "Compreendido. No entanto, nenhum modelo de IA local está carregado de momento. Diga 'carregar modelo' para selecionar o ficheiro de pesos."
+                    "Nenhum modelo de IA local carregado. Diga 'carregar modelo' para selecionar o seu ficheiro no armazenamento."
+                }
+                text.contains("ajuda") -> {
+                    "Posso controlar hardware como lanterna e volume, verificar nível de bateria, consultar horas, enviar mensagens ou carregar modelos de inteligência artificial locais."
                 }
                 text.contains("piada") -> {
-                    "Os meus diagnósticos indicam que sistemas operacionais nunca se atrasam, chefe. Apenas chegam quando o processamento termina."
+                    "Sistemas operacionais nunca se atrasam, chefe. Apenas chegam quando o processamento termina."
                 }
                 text.contains("quem é você") || text.contains("seu nome") -> {
-                    "Sou J.A.R.V.I.S., o seu assistente pessoal de inteligência artificial de alta tecnologia."
-                }
-                text.contains("olá") || text.contains("bom dia") || text.contains("boa tarde") || text.contains("boa noite") -> {
-                    "Olá, chefe. Todos os subsistemas operacionais estão a funcionar a cem porcento. Qual é a diretiva para hoje?"
+                    "Sou J.A.R.V.I.S., o seu assistente pessoal de inteligência artificial."
                 }
                 else -> {
-                    "Análise concluída para o parâmetro \"$prompt\". Os circuitos locais estão ativos e a processar com máxima prioridade, chefe."
+                    "Compreendido o seu comando. Subsistemas operacionais ativos a processar: $prompt"
                 }
             }
 
@@ -396,7 +400,7 @@ class MainActivity : Activity() {
     }
 
     // =========================================================
-    // PONTE JAVASCRIPT / ANDROID
+    // PONTE JAVASCRIPT / ANDROID (COM PROTEÇÃO ANTI-LOOP)
     // =========================================================
 
     inner class AndroidBridge {
@@ -447,6 +451,15 @@ class MainActivity : Activity() {
     }
 
     private fun showCloudResponse(answer: String) {
+        val currentTime = System.currentTimeMillis()
+        
+        // Proteção anti-loop estrita contra respostas duplicadas num intervalo inferior a 2 segundos
+        if (answer == lastSpokenText && (currentTime - lastSpokenTime) < 2000) {
+            return
+        }
+        lastSpokenText = answer
+        lastSpokenTime = currentTime
+
         notifyFirstAvailable(answer, "onCloudAIResponse", "onNativeModelResponse", "onModelResponse")
         callJavascript("if (typeof appendMessage === 'function') { appendMessage('JARVIS', ${JSONObject.quote(answer)}); }")
         showStatus("Pronto.")

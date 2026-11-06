@@ -45,8 +45,6 @@ body {
   padding: 0 20px;
 }
 
-/* CABEÇALHO */
-
 header {
   width: 100%;
   text-align: center;
@@ -58,6 +56,8 @@ header {
   font-weight: 500;
   letter-spacing: 2px;
   color: #292333;
+  cursor: pointer;
+  user-select: none;
 }
 
 .subtitle {
@@ -65,9 +65,8 @@ header {
   font-size: 10px;
   letter-spacing: 2px;
   color: #82778d;
+  pointer-events: none;
 }
-
-/* ESFERA */
 
 .orb-area {
   flex: 1;
@@ -143,27 +142,15 @@ header {
   z-index: 2;
 }
 
-/* ANIMAÇÃO DA ESFERA */
-
 @keyframes orbFloat {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.025);
-  }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.025); }
 }
 
 @keyframes colorFlow {
-  from {
-    transform: translate(-8%, -5%) scale(1);
-  }
-  to {
-    transform: translate(9%, 7%) scale(1.2);
-  }
+  from { transform: translate(-8%, -5%) scale(1); }
+  to { transform: translate(9%, 7%) scale(1.2); }
 }
-
-/* ESTADOS */
 
 .orb.listening {
   animation: listening 1.5s ease-in-out infinite;
@@ -196,8 +183,6 @@ header {
   50% { transform: scale(1.02); }
   75% { transform: scale(1.07); }
 }
-
-/* ÁREA INFERIOR */
 
 .bottom-area {
   width: 100%;
@@ -256,8 +241,6 @@ header {
   font-weight: 400;
 }
 
-/* BOTÕES */
-
 .buttons {
   width: 100%;
   display: flex;
@@ -313,8 +296,6 @@ header {
   opacity: .5;
 }
 
-/* ECRÃS PEQUENOS */
-
 @media(max-height: 650px) {
   .orb {
     width: min(48vw, 230px);
@@ -340,7 +321,7 @@ header {
 <body>
 <div class="app">
 
-  <header>
+  <header onclick="chooseModel()" title="Toque para selecionar o modelo">
     <div class="brand">J.A.R.V.I.S.</div>
     <div class="subtitle">STARK TECHNOLOGY</div>
   </header>
@@ -359,6 +340,7 @@ header {
         <span></span>
         <span></span>
       </div>
+
       <div id="status" role="status" aria-live="polite">
         Toque no microfone para falar
       </div>
@@ -366,7 +348,6 @@ header {
 
     <div class="buttons">
 
-      <!-- MICROFONE -->
       <button
         id="micButton"
         class="action-button mic-button"
@@ -383,7 +364,6 @@ header {
         </svg>
       </button>
 
-      <!-- PARAR -->
       <button
         id="stopButton"
         class="action-button stop-button"
@@ -400,7 +380,6 @@ header {
   </section>
 </div>
 
-<!-- CAMPO INTERNO: NÃO APARECE NA INTERFACE -->
 <input id="userInput" type="hidden">
 
 <script>
@@ -464,15 +443,14 @@ function notifyNativeResponseFinished() {
   }
 }
 
-// --------------------------------------------------
 // VOZ
-// --------------------------------------------------
 
 function speak(text) {
   const clean = String(text || "").trim();
 
   if (!clean || !voiceEnabled || suppressNextSpeech) {
     suppressNextSpeech = false;
+    setState("idle", "Toque no microfone para falar");
     notifyNativeResponseFinished();
     return;
   }
@@ -497,12 +475,12 @@ function speak(text) {
       utterance.lang = "pt-BR";
 
       utterance.onend = function() {
-        setState("idle", "Toque no microfone para falar");
+        onNativeSpeechFinished();
         notifyNativeResponseFinished();
       };
 
       utterance.onerror = function() {
-        setState("idle", "Toque no microfone para falar");
+        onNativeSpeechFinished();
         notifyNativeResponseFinished();
       };
 
@@ -513,12 +491,18 @@ function speak(text) {
     }
   }
 
-  setState("idle", "Toque no microfone para falar");
+  onNativeSpeechFinished();
   notifyNativeResponseFinished();
 }
 
 function stopEverything() {
   suppressNextSpeech = true;
+
+  waitingForModel = false;
+  recognitionActive = false;
+  handsFreeEnabled = false;
+
+  micButton.disabled = false;
 
   try {
     if (browserRecognition) {
@@ -531,18 +515,21 @@ function stopEverything() {
 
   try {
     if (window.AndroidVoice &&
-        typeof window.AndroidVoice.stopListening === "function") {
-      window.AndroidVoice.stopListening();
-    }
+        typeof window.AndroidVoice.stopEverything === "function") {
+      window.AndroidVoice.stopEverything();
+    } else if (window.AndroidVoice &&
+               typeof window.AndroidVoice.cancelPendingRequest === "function") {
+      window.AndroidVoice.cancelPendingRequest();
+    } else {
+      if (window.AndroidVoice &&
+          typeof window.AndroidVoice.stopListening === "function") {
+        window.AndroidVoice.stopListening();
+      }
 
-    if (window.AndroidVoice &&
-        typeof window.AndroidVoice.stopHandsFree === "function") {
-      window.AndroidVoice.stopHandsFree();
-    }
-
-    if (window.AndroidVoice &&
-        typeof window.AndroidVoice.stopSpeaking === "function") {
-      window.AndroidVoice.stopSpeaking();
+      if (window.AndroidVoice &&
+          typeof window.AndroidVoice.stopSpeaking === "function") {
+        window.AndroidVoice.stopSpeaking();
+      }
     }
   } catch (error) {
     console.warn(error);
@@ -552,21 +539,30 @@ function stopEverything() {
     window.speechSynthesis.cancel();
   }
 
-  recognitionActive = false;
-  handsFreeEnabled = false;
-  micButton.disabled = false;
-
   setState("idle", "Interrompido");
-  notifyNativeResponseFinished();
 }
 
 function updateHandsFreeState(enabled) {
   handsFreeEnabled = Boolean(enabled);
 }
 
-// --------------------------------------------------
+// CARREGAR MODELO
+
+function chooseModel() {
+  try {
+    if (window.AndroidVoice &&
+        typeof window.AndroidVoice.chooseModel === "function") {
+      window.AndroidVoice.chooseModel();
+    } else {
+      setState("idle", "Seletor de modelo indisponível.");
+    }
+  } catch (error) {
+    console.warn(error);
+    setState("idle", "Não foi possível abrir o seletor.");
+  }
+}
+
 // RESPOSTAS LOCAIS
-// --------------------------------------------------
 
 function normalizeText(text) {
   return String(text || "")
@@ -606,9 +602,7 @@ function answer(raw) {
   return null;
 }
 
-// --------------------------------------------------
 // COMANDOS ANDROID
-// --------------------------------------------------
 
 function handleExplicitCommand(text) {
   const msg = normalizeText(text);
@@ -629,23 +623,22 @@ function handleExplicitCommand(text) {
   try {
     if (window.AndroidVoice &&
         typeof window.AndroidVoice.openApp === "function") {
+      setWaiting(true);
       setState("thinking", "A executar comando...");
       window.AndroidVoice.openApp(app);
-      setState("idle", "Comando executado");
     } else {
       speak("A função de abrir aplicações não está disponível.");
     }
   } catch (error) {
     console.warn(error);
+    setWaiting(false);
     speak("Não consegui executar esse comando.");
   }
 
   return true;
 }
 
-// --------------------------------------------------
 // ENVIO PARA O GEMMA
-// --------------------------------------------------
 
 function send(text) {
   text = String(text || "").trim();
@@ -689,9 +682,7 @@ function send(text) {
   }
 }
 
-// --------------------------------------------------
 // MICROFONE
-// --------------------------------------------------
 
 function startMic() {
   if (recognitionActive || waitingForModel) return;
@@ -740,8 +731,8 @@ function startMic() {
 
       recognitionActive = false;
       micButton.disabled = false;
-
       browserRecognition = null;
+
       send(transcript);
     };
 
@@ -775,9 +766,7 @@ function startMic() {
   }
 }
 
-// --------------------------------------------------
-// RESPOSTAS DO MAINACTIVITY.KT
-// --------------------------------------------------
+// RESPOSTAS NATIVAS
 
 function onNativeModelResponse(text) {
   const response = String(text || "").trim();
@@ -801,6 +790,7 @@ function onNativeModelError(message) {
   if (!waitingForModel) return;
 
   setWaiting(false);
+
   speak("Ocorreu um erro no modelo: " +
     String(message || "erro desconhecido"));
 }
@@ -827,6 +817,17 @@ function onNativeSpeechError(message) {
   setState("idle", message || "Erro no reconhecimento de voz");
 }
 
+function onNativeSpeechFinished() {
+  recognitionActive = false;
+  micButton.disabled = false;
+
+  if (!waitingForModel) {
+    setState("idle", "Toque no microfone para falar");
+  }
+}
+
+window.onNativeSpeechFinished = onNativeSpeechFinished;
+
 function onNativeHandsFreeState(enabled, message) {
   updateHandsFreeState(enabled);
 
@@ -840,10 +841,14 @@ function onNativeStatus(message) {
 
   if (/ouvindo|a ouvir|escutando/i.test(value)) {
     setState("listening", value);
-  } else if (/pensando|processando|carregando|a processar/i.test(value)) {
+  } else if (/pensando|processando|carregando|a processar|a preparar|a inicializar/i.test(value)) {
     setState("thinking", value);
   } else if (/falando|a falar/i.test(value)) {
     setState("speaking", value);
+  } else if (/interrompido|toque no microfone|voz android pronta|interface pronta/i.test(value)) {
+    if (!waitingForModel) {
+      setState("idle", value);
+    }
   }
 }
 
@@ -851,12 +856,10 @@ function onNativeModelLoaded(message) {
   setState("idle", message || "Gemma local pronto");
 }
 
-// --------------------------------------------------
 // ARRANQUE
-// --------------------------------------------------
 
 window.addEventListener("load", function() {
-  setState("idle", "Toque no microfone para falar");
+  setState("idle", "A preparar o J.A.R.V.I.S...");
 });
 </script>
 </body>

@@ -1,6 +1,8 @@
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -30,10 +32,17 @@ kotlin {
 }
 
 dependencies {
+    // Reconhecimento de voz
     implementation("ai.picovoice:porcupine-android:2.1.0")
+
+    // Gemma local
     implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+
+    // AndroidX
     implementation("androidx.core:core-ktx:1.15.0")
-    
-    // SDK OFICIAL DO GEMINI PARA A SUA CHAVE
-    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+
+    // Firebase e Gemini
+    implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
+    implementation("com.google.firebase:firebase-ai")
+    implementation("com.google.firebase:firebase-appcheck-debug")
 }

@@ -3,225 +3,455 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#020b12">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#f5dce9">
 <title>J.A.R.V.I.S. | Stark Technology</title>
 
 <style>
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
 :root {
-  --cyan:#00eaff;
-  --blue:#008cff;
-  --bg:#020b12;
-  --panel:rgba(3,23,35,.92);
-  --text:#d8faff;
-  --muted:#77aab7;
-  --border:rgba(0,234,255,.28);
+  --state-color: #a88be8;
 }
-*{box-sizing:border-box}
-body{
-  margin:0;min-height:100vh;
-  background:radial-gradient(ellipse at top,#073047 0%,transparent 55%),
-  linear-gradient(150deg,#01060b,#041521 60%,#02080d);
-  color:var(--text);
-  font-family:Arial,Helvetica,sans-serif;
-  overflow-x:hidden;
+
+html, body {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
 }
-body::before{
-  content:"";position:fixed;inset:0;pointer-events:none;
-  opacity:.14;
-  background-image:linear-gradient(rgba(0,234,255,.12) 1px,transparent 1px),
-  linear-gradient(90deg,rgba(0,234,255,.12) 1px,transparent 1px);
-  background-size:35px 35px;
-  mask-image:linear-gradient(to bottom,black,transparent);
+
+body {
+  min-height: 100dvh;
+  color: #292333;
+  background:
+    radial-gradient(ellipse at 5% 10%, #f8d5e5 0%, transparent 48%),
+    radial-gradient(ellipse at 95% 35%, #ccecff 0%, transparent 48%),
+    linear-gradient(145deg, #f9e5ed, #e5e7fa 55%, #f5e5ed);
 }
-.app{position:relative;width:min(100%,850px);margin:auto;padding:18px 14px 25px}
-header{text-align:center;padding:14px 0 18px}
-.brand{color:var(--cyan);font-size:12px;font-weight:bold;letter-spacing:5px;text-shadow:0 0 12px var(--cyan)}
-h1{font-size:clamp(38px,9vw,65px);letter-spacing:7px;margin:12px 0 5px;color:#e8fdff;text-shadow:0 0 10px #00dfff,0 0 35px #007ca8}
-.subtitle{color:var(--muted);font-size:10px;letter-spacing:2px;line-height:1.7}
-.radar-wrap{display:flex;justify-content:center;padding:14px 0 20px}
-.radar{
-  width:150px;height:150px;position:relative;border:1px solid var(--cyan);
-  border-radius:50%;overflow:hidden;
-  background:radial-gradient(circle,transparent 22%,rgba(0,234,255,.12) 23%,transparent 24%),
-  repeating-radial-gradient(circle,transparent 0 22px,rgba(0,234,255,.24) 23px 24px);
-  box-shadow:0 0 20px rgba(0,234,255,.18),inset 0 0 20px rgba(0,234,255,.12);
+
+.app {
+  width: 100%;
+  height: 100dvh;
+  min-height: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 0 20px;
 }
-.radar::before,.radar::after{content:"";position:absolute;background:rgba(0,234,255,.32)}
-.radar::before{width:1px;height:100%;left:50%}
-.radar::after{height:1px;width:100%;top:50%}
-.radar-sweep{
-  position:absolute;inset:0;border-radius:50%;
-  background:conic-gradient(from 0deg,transparent 0deg,transparent 280deg,rgba(0,234,255,.38) 350deg,transparent 360deg);
-  animation:sweep 4s linear infinite;
+
+/* CABEÇALHO */
+
+header {
+  width: 100%;
+  text-align: center;
+  padding-top: max(28px, env(safe-area-inset-top));
 }
-.radar-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:white;box-shadow:0 0 12px var(--cyan);top:32%;left:65%}
-@keyframes sweep{to{transform:rotate(360deg)}}
-.statusbar{display:flex;align-items:center;justify-content:center;gap:9px;color:var(--muted);font-size:12px;margin:0 0 16px;text-align:center}
-.dot{width:8px;height:8px;border-radius:50%;background:#777;box-shadow:0 0 8px currentColor;flex-shrink:0}
-.dot.online{background:#00ff9d;color:#00ff9d}
-.dot.busy{background:#ffbf00;color:#ffbf00;animation:blink .7s infinite alternate}
-@keyframes blink{to{opacity:.3}}
-.panel{background:var(--panel);border:1px solid var(--border);border-radius:15px;box-shadow:0 0 24px rgba(0,166,255,.08);overflow:hidden}
-.panel-title{padding:14px 15px;color:var(--cyan);font-size:12px;font-weight:bold;letter-spacing:2px;border-bottom:1px solid var(--border)}
-#chat{min-height:210px;max-height:43vh;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth}
-.message{max-width:90%;padding:12px 14px;border-radius:12px;font-size:14px;line-height:1.55;overflow-wrap:anywhere;white-space:pre-wrap}
-.message.bot{align-self:flex-start;background:rgba(0,160,205,.11);border:1px solid rgba(0,234,255,.24)}
-.message.user{align-self:flex-end;background:rgba(0,115,255,.17);border:1px solid rgba(0,140,255,.35)}
-.message .who{display:block;font-size:10px;color:var(--cyan);letter-spacing:1px;margin-bottom:5px}
-.composer{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border)}
-#userInput{flex:1;min-width:0;padding:13px;border:1px solid var(--border);border-radius:10px;outline:none;color:white;background:rgba(0,0,0,.35);font-size:14px}
-#userInput:focus{border-color:var(--cyan);box-shadow:0 0 10px rgba(0,234,255,.12)}
-button{border:1px solid var(--border);color:var(--cyan);background:rgba(0,170,220,.10);border-radius:10px;padding:11px 13px;font-weight:bold;cursor:pointer;transition:.2s}
-button:active{transform:scale(.97)}
-button:hover{background:rgba(0,234,255,.17)}
-button:disabled{opacity:.45;cursor:not-allowed}
-.send-button{background:rgba(0,190,255,.17)}
-.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:13px}
-.controls button{min-height:45px;font-size:12px}
-.ai-button,.handsfree-button{grid-column:1/-1}
-.ai-button{border-color:rgba(0,255,160,.38);color:#6bffc7}
-.handsfree-button{border-color:rgba(0,234,255,.65);color:var(--cyan);background:rgba(0,234,255,.12);box-shadow:0 0 14px rgba(0,234,255,.08)}
-.handsfree-button.active{color:#ffb5b5;border-color:rgba(255,70,70,.7);background:rgba(255,35,35,.12)}
-.hint{text-align:center;color:var(--muted);font-size:11px;line-height:1.6;margin:14px 6px}
-footer{text-align:center;font-size:10px;color:#467785;letter-spacing:2px;padding:12px 0 5px}
-@media(max-width:400px){
-  .app{padding:12px 9px 20px}
-  .composer{padding:8px;gap:5px}
-  .composer button{padding:10px}
-  #userInput{padding:11px 9px}
+
+.brand {
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  color: #292333;
+}
+
+.subtitle {
+  margin-top: 7px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #82778d;
+}
+
+/* ESFERA */
+
+.orb-area {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.orb {
+  width: min(58vw, 310px);
+  height: min(58vw, 310px);
+  max-width: 310px;
+  max-height: 310px;
+  min-width: 190px;
+  min-height: 190px;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+
+  background:
+    radial-gradient(ellipse at 28% 35%,
+      rgba(255, 172, 225, .95), transparent 48%),
+    radial-gradient(ellipse at 75% 32%,
+      rgba(166, 192, 255, .95), transparent 50%),
+    radial-gradient(ellipse at 65% 78%,
+      rgba(255, 239, 222, .95), transparent 48%),
+    linear-gradient(135deg, #dba9ed, #c8b7f2 55%, #f2d6e8);
+
+  box-shadow:
+    inset -15px -20px 50px rgba(255,255,255,.35),
+    inset 12px 10px 35px rgba(255,255,255,.42),
+    0 15px 55px rgba(157,116,200,.13);
+
+  animation: orbFloat 6s ease-in-out infinite;
+  transition: filter .5s, transform .5s;
+}
+
+.orb::before,
+.orb::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  border-radius: 50%;
+  filter: blur(24px);
+  opacity: .55;
+  animation: colorFlow 9s ease-in-out infinite alternate;
+}
+
+.orb::before {
+  background:
+    radial-gradient(circle at 35% 40%,
+      #ff8fd1, transparent 42%);
+}
+
+.orb::after {
+  background:
+    radial-gradient(circle at 70% 55%,
+      #9bcaff, transparent 45%);
+  animation-delay: -4s;
+}
+
+.orb-inner {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 45%,
+    transparent 35%,
+    rgba(255,255,255,.15) 100%
+  );
+  z-index: 2;
+}
+
+/* ANIMAÇÃO DA ESFERA */
+
+@keyframes orbFloat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.025);
+  }
+}
+
+@keyframes colorFlow {
+  from {
+    transform: translate(-8%, -5%) scale(1);
+  }
+  to {
+    transform: translate(9%, 7%) scale(1.2);
+  }
+}
+
+/* ESTADOS */
+
+.orb.listening {
+  animation: listening 1.5s ease-in-out infinite;
+  filter: saturate(1.25);
+}
+
+.orb.thinking {
+  animation: thinking 1.1s ease-in-out infinite;
+  filter: hue-rotate(30deg) saturate(1.3);
+}
+
+.orb.speaking {
+  animation: speaking .75s ease-in-out infinite;
+  filter: saturate(1.4) brightness(1.04);
+}
+
+@keyframes listening {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.07); }
+}
+
+@keyframes thinking {
+  0%, 100% { transform: scale(.97) rotate(0deg); }
+  50% { transform: scale(1.055) rotate(5deg); }
+}
+
+@keyframes speaking {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.055); }
+  50% { transform: scale(1.02); }
+  75% { transform: scale(1.07); }
+}
+
+/* ÁREA INFERIOR */
+
+.bottom-area {
+  width: 100%;
+  padding-bottom: max(45px, calc(env(safe-area-inset-bottom) + 25px));
+}
+
+.indicator {
+  height: 65px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  margin-bottom: 28px;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  height: 12px;
+}
+
+.dots span {
+  width: 11px;
+  height: 11px;
+  background: #817a8a;
+  border-radius: 50%;
+  opacity: .8;
+  animation: dotPulse 1.2s infinite ease-in-out;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: .18s;
+}
+
+.dots span:nth-child(3) {
+  animation-delay: .36s;
+}
+
+@keyframes dotPulse {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: .45;
+  }
+  30% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+
+#status {
+  color: #81798b;
+  font-size: 19px;
+  text-align: center;
+  font-weight: 400;
+}
+
+/* BOTÕES */
+
+.buttons {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 5px;
+}
+
+.action-button {
+  width: 100px;
+  height: 100px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: transform .2s, background .2s;
+}
+
+.action-button:active {
+  transform: scale(.91);
+}
+
+.mic-button {
+  background: rgba(255,255,255,.88);
+  color: #080808;
+  box-shadow: 0 5px 25px rgba(120,100,140,.07);
+}
+
+.stop-button {
+  background: rgba(180,170,195,.17);
+  color: #f04444;
+}
+
+.action-button svg {
+  width: 43px;
+  height: 43px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.stop-button svg {
+  width: 48px;
+  height: 48px;
+  stroke-width: 3.5;
+}
+
+.action-button:disabled {
+  opacity: .5;
+}
+
+/* ECRÃS PEQUENOS */
+
+@media(max-height: 650px) {
+  .orb {
+    width: min(48vw, 230px);
+    height: min(48vw, 230px);
+  }
+
+  .action-button {
+    width: 78px;
+    height: 78px;
+  }
+
+  .indicator {
+    margin-bottom: 15px;
+  }
+
+  #status {
+    font-size: 16px;
+  }
 }
 </style>
 </head>
 
 <body>
 <div class="app">
-<header>
-  <div class="brand">STARK TECHNOLOGY</div>
-  <h1>J.A.R.V.I.S.</h1>
-  <div class="subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
-</header>
 
-<div class="radar-wrap">
-  <div class="radar" aria-label="Radar holográfico">
-    <div class="radar-sweep"></div>
-    <div class="radar-dot"></div>
-  </div>
-</div>
+  <header>
+    <div class="brand">J.A.R.V.I.S.</div>
+    <div class="subtitle">STARK TECHNOLOGY</div>
+  </header>
 
-<div class="statusbar">
-  <span class="dot" id="dot"></span>
-  <span id="status" role="status">Sistema inicializado</span>
-</div>
-
-<section class="panel">
-  <div class="panel-title">▸ TERMINAL DE CONVERSAÇÃO</div>
-
-  <div id="chat" aria-live="polite">
-    <div class="message bot">
-      <span class="who">J.A.R.V.I.S.</span>
-      Olá! Sistema iniciado. Carrega o teu modelo de IA e faz uma pergunta para começarmos.
+  <main class="orb-area">
+    <div class="orb" id="orb">
+      <div class="orb-inner"></div>
     </div>
-  </div>
+  </main>
 
-  <div class="composer">
-    <input id="userInput" type="text" placeholder="Escreve a tua mensagem..." autocomplete="off" aria-label="Mensagem">
-    <button id="micButton" type="button" onclick="startMic()" title="Falar">🎙️</button>
-    <button id="sendButton" class="send-button" type="button" onclick="send()">➤</button>
-  </div>
-</section>
+  <section class="bottom-area">
 
-<div class="controls">
-  <button id="handsFreeButton" class="handsfree-button" type="button" onclick="toggleHandsFree()">🎧 Iniciar mãos-livres</button>
-  <button id="voiceButton" type="button" onclick="toggleVoice()">🔊 Voz: ligada</button>
-  <button type="button" onclick="showHelp()">❔ Ajuda</button>
-  <button type="button" onclick="clearChat()">🗑️ Limpar conversa</button>
-  <button type="button" onclick="stopSpeaking()">🔇 Parar voz</button>
-  <button id="loadAIButton" class="ai-button" type="button" onclick="chooseJarvisModel()">📂 Carregar arquivo de IA</button>
+    <div class="indicator">
+      <div class="dots" id="dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <div id="status" role="status" aria-live="polite">
+        Toque no microfone para falar
+      </div>
+    </div>
+
+    <div class="buttons">
+
+      <!-- MICROFONE -->
+      <button
+        id="micButton"
+        class="action-button mic-button"
+        type="button"
+        onclick="startMic()"
+        aria-label="Começar a falar">
+
+        <svg viewBox="0 0 48 48">
+          <rect x="17" y="4" width="14" height="27" rx="7"
+                fill="currentColor" stroke="none"/>
+          <path d="M10 23v2a14 14 0 0 0 28 0v-2"/>
+          <path d="M24 39v6"/>
+          <path d="M17 45h14"/>
+        </svg>
+      </button>
+
+      <!-- PARAR -->
+      <button
+        id="stopButton"
+        class="action-button stop-button"
+        type="button"
+        onclick="stopEverything()"
+        aria-label="Interromper">
+
+        <svg viewBox="0 0 48 48">
+          <path d="M10 10L38 38M38 10L10 38"/>
+        </svg>
+      </button>
+
+    </div>
+  </section>
 </div>
 
-<div class="hint">
-  O modo mãos-livres ouve apenas depois de ser ativado.
-  As perguntas gerais são processadas pelo modelo Gemma local.
-</div>
-
-<footer>J.A.R.V.I.S. • STARK TECHNOLOGY</footer>
-</div>
+<!-- CAMPO INTERNO: NÃO APARECE NA INTERFACE -->
+<input id="userInput" type="hidden">
 
 <script>
 "use strict";
 
 let waitingForModel = false;
-let voiceEnabled = true;
 let recognitionActive = false;
 let handsFreeEnabled = false;
+let voiceEnabled = true;
 let browserRecognition = null;
-let modelSelectionRequested = false;
-
-// Controlo de respostas duplicadas e pedidos.
-let requestId = 0;
-let activeRequestId = 0;
-let lastResponseText = "";
-let lastResponseTime = 0;
+let suppressNextSpeech = false;
 let lastSubmittedText = "";
 let lastSubmittedTime = 0;
 
-const chat = document.getElementById("chat");
 const userInput = document.getElementById("userInput");
-const sendButton = document.getElementById("sendButton");
 const micButton = document.getElementById("micButton");
-const voiceButton = document.getElementById("voiceButton");
-const handsFreeButton = document.getElementById("handsFreeButton");
-const loadAIButton = document.getElementById("loadAIButton");
+const stopButton = document.getElementById("stopButton");
+const statusElement = document.getElementById("status");
+const orb = document.getElementById("orb");
+const dots = document.getElementById("dots");
 
-function normalizeText(text) {
-  return String(text || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+function setState(state, message) {
+  orb.classList.remove("listening", "thinking", "speaking");
 
-function setStatus(message, state = "normal") {
-  document.getElementById("status").textContent = String(message || "");
-  const dot = document.getElementById("dot");
-  dot.className = "dot";
-  if (state === "online") dot.classList.add("online");
-  if (state === "busy") dot.classList.add("busy");
-}
+  if (state === "listening") {
+    orb.classList.add("listening");
+    dots.style.visibility = "hidden";
+  } else if (state === "thinking") {
+    orb.classList.add("thinking");
+    dots.style.visibility = "visible";
+  } else if (state === "speaking") {
+    orb.classList.add("speaking");
+    dots.style.visibility = "hidden";
+  } else {
+    dots.style.visibility = "visible";
+  }
 
-function addMessage(text, sender = "bot") {
-  const message = document.createElement("div");
-  message.className = "message " + (sender === "user" ? "user" : "bot");
-
-  const who = document.createElement("span");
-  who.className = "who";
-  who.textContent = sender === "user" ? "TU" : "J.A.R.V.I.S.";
-
-  const content = document.createElement("span");
-  content.textContent = String(text || "");
-
-  message.appendChild(who);
-  message.appendChild(content);
-  chat.appendChild(message);
-  chat.scrollTop = chat.scrollHeight;
+  if (message) {
+    statusElement.textContent = message;
+  }
 }
 
 function setWaiting(value) {
   waitingForModel = Boolean(value);
-  sendButton.disabled = waitingForModel;
-  userInput.disabled = waitingForModel;
 
-  setStatus(
-    waitingForModel ? "A processar a pergunta..." : "Pronto",
-    waitingForModel ? "busy" : "online"
-  );
+  if (waitingForModel) {
+    setState("thinking", "A pensar...");
+  } else {
+    setState("idle", "Toque no microfone para falar");
+  }
 }
-
-// ---------------------------------------------------------
-// VOZ
-// ---------------------------------------------------------
 
 function notifyNativeResponseFinished() {
   try {
@@ -234,13 +464,20 @@ function notifyNativeResponseFinished() {
   }
 }
 
+// --------------------------------------------------
+// VOZ
+// --------------------------------------------------
+
 function speak(text) {
   const clean = String(text || "").trim();
 
-  if (!voiceEnabled || !clean) {
+  if (!clean || !voiceEnabled || suppressNextSpeech) {
+    suppressNextSpeech = false;
     notifyNativeResponseFinished();
     return;
   }
+
+  setState("speaking", "A falar...");
 
   try {
     if (window.AndroidVoice &&
@@ -249,16 +486,26 @@ function speak(text) {
       return;
     }
   } catch (error) {
-    console.warn("Voz Android indisponível:", error);
+    console.warn("Erro na voz Android:", error);
   }
 
   if ("speechSynthesis" in window) {
     try {
       window.speechSynthesis.cancel();
+
       const utterance = new SpeechSynthesisUtterance(clean);
       utterance.lang = "pt-BR";
-      utterance.onend = notifyNativeResponseFinished;
-      utterance.onerror = notifyNativeResponseFinished;
+
+      utterance.onend = function() {
+        setState("idle", "Toque no microfone para falar");
+        notifyNativeResponseFinished();
+      };
+
+      utterance.onerror = function() {
+        setState("idle", "Toque no microfone para falar");
+        notifyNativeResponseFinished();
+      };
+
       window.speechSynthesis.speak(utterance);
       return;
     } catch (error) {
@@ -266,11 +513,33 @@ function speak(text) {
     }
   }
 
+  setState("idle", "Toque no microfone para falar");
   notifyNativeResponseFinished();
 }
 
-function stopSpeaking() {
+function stopEverything() {
+  suppressNextSpeech = true;
+
   try {
+    if (browserRecognition) {
+      browserRecognition.abort();
+      browserRecognition = null;
+    }
+  } catch (error) {
+    console.warn(error);
+  }
+
+  try {
+    if (window.AndroidVoice &&
+        typeof window.AndroidVoice.stopListening === "function") {
+      window.AndroidVoice.stopListening();
+    }
+
+    if (window.AndroidVoice &&
+        typeof window.AndroidVoice.stopHandsFree === "function") {
+      window.AndroidVoice.stopHandsFree();
+    }
+
     if (window.AndroidVoice &&
         typeof window.AndroidVoice.stopSpeaking === "function") {
       window.AndroidVoice.stopSpeaking();
@@ -283,105 +552,30 @@ function stopSpeaking() {
     window.speechSynthesis.cancel();
   }
 
-  if (handsFreeEnabled) notifyNativeResponseFinished();
-  setStatus("Voz interrompida", "online");
+  recognitionActive = false;
+  handsFreeEnabled = false;
+  micButton.disabled = false;
+
+  setState("idle", "Interrompido");
+  notifyNativeResponseFinished();
 }
 
-function toggleVoice() {
-  voiceEnabled = !voiceEnabled;
-  voiceButton.textContent = voiceEnabled ? "🔊 Voz: ligada" : "🔇 Voz: desligada";
-
-  if (!voiceEnabled) stopSpeaking();
-  setStatus(voiceEnabled ? "Voz ativada" : "Voz desativada", "online");
-}
-
-// ---------------------------------------------------------
-// MÃOS-LIVRES
-// ---------------------------------------------------------
-
-function toggleHandsFree() {
-  if (handsFreeEnabled) stopHandsFree();
-  else startHandsFree();
-}
-
-function startHandsFree() {
-  if (!window.AndroidVoice ||
-      typeof window.AndroidVoice.startHandsFree !== "function") {
-    addMessage("O modo mãos-livres requer a versão atualizada do MainActivity.kt.");
-    setStatus("Integração Android indisponível");
-    return;
-  }
-
-  try {
-    window.AndroidVoice.startHandsFree();
-  } catch (error) {
-    addMessage("Não consegui iniciar o modo mãos-livres: " + error.message);
-    setStatus("Erro ao iniciar mãos-livres");
-  }
-}
-
-function stopHandsFree() {
-  try {
-    if (window.AndroidVoice &&
-        typeof window.AndroidVoice.stopHandsFree === "function") {
-      window.AndroidVoice.stopHandsFree();
-    } else {
-      handsFreeEnabled = false;
-      updateHandsFreeButton();
-    }
-  } catch (error) {
-    console.warn(error);
-  }
-}
-
-function updateHandsFreeButton() {
-  handsFreeButton.classList.toggle("active", handsFreeEnabled);
-  handsFreeButton.textContent = handsFreeEnabled
-    ? "⏹ Parar mãos-livres"
-    : "🎧 Iniciar mãos-livres";
-
-  micButton.disabled = handsFreeEnabled || recognitionActive;
-
-  if (handsFreeEnabled) setStatus("Mãos-livres ativo", "online");
-}
-
-function onNativeHandsFreeState(enabled, message) {
+function updateHandsFreeState(enabled) {
   handsFreeEnabled = Boolean(enabled);
-  updateHandsFreeButton();
-
-  if (message) {
-    setStatus(message, handsFreeEnabled ? "online" : "normal");
-  }
 }
 
-// ---------------------------------------------------------
-// MODELO
-// ---------------------------------------------------------
-
-function chooseJarvisModel() {
-  if (!window.AndroidVoice ||
-      typeof window.AndroidVoice.chooseModel !== "function") {
-    addMessage("Não consigo abrir o seletor de ficheiros. Confirma a integração Android.");
-    setStatus("Integração Android indisponível");
-    return;
-  }
-
-  try {
-    modelSelectionRequested = true;
-    loadAIButton.disabled = true;
-    setStatus("Seleciona o ficheiro do modelo...", "busy");
-    window.AndroidVoice.chooseModel();
-  } catch (error) {
-    modelSelectionRequested = false;
-    loadAIButton.disabled = false;
-    setStatus("Não foi possível abrir o seletor");
-    addMessage("Erro ao selecionar o modelo: " + error.message);
-  }
-}
-
-// ---------------------------------------------------------
+// --------------------------------------------------
 // RESPOSTAS LOCAIS
-// ---------------------------------------------------------
+// --------------------------------------------------
+
+function normalizeText(text) {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 function answer(raw) {
   const msg = normalizeText(raw);
@@ -392,9 +586,6 @@ function answer(raw) {
   if (/^(qual e o teu nome|como te chamas|quem es|o que es)[?!.]*$/.test(msg))
     return "Sou o JARVIS, o teu assistente de inteligência artificial.";
 
-  if (/^(ajuda|ajuda-me|quais sao os comandos|como te posso usar)[?!.]*$/.test(msg))
-    return "Podes fazer perguntas por texto ou voz, pedir uma piada, solicitar uma frase de motivação e dar comandos explícitos para abrir aplicações. As perguntas gerais são enviadas para o modelo de IA.";
-
   if (/^(conta|diz|quero) uma piada[!.?]*$/.test(msg))
     return "Porque é que o computador foi ao médico? Porque tinha um vírus!";
 
@@ -403,7 +594,10 @@ function answer(raw) {
 
   if (/^(que horas sao|diz-me as horas|qual e a hora agora)[?!.]*$/.test(msg))
     return "A hora indicada pelo dispositivo é " +
-      new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) + ".";
+      new Date().toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit"
+      }) + ".";
 
   if (/^(que dia e hoje|qual e a data de hoje|diz-me a data)[?!.]*$/.test(msg))
     return "A data indicada pelo dispositivo é " +
@@ -412,117 +606,106 @@ function answer(raw) {
   return null;
 }
 
-// ---------------------------------------------------------
+// --------------------------------------------------
 // COMANDOS ANDROID
-// ---------------------------------------------------------
+// --------------------------------------------------
 
-function openNativeApp(appName, statusText) {
-  if (!window.AndroidVoice ||
-      typeof window.AndroidVoice.openApp !== "function") {
-    addMessage("A função de abrir aplicações não está disponível no Android.");
-    setStatus("Comando Android indisponível");
-    return true;
-  }
+function handleExplicitCommand(text) {
+  const msg = normalizeText(text);
+
+  let app = null;
+
+  if (/^(abre|abrir|inicia|iniciar|vai para) o? ?youtube$/.test(msg))
+    app = "youtube";
+
+  else if (/^(abre|abrir|inicia|iniciar|vai para) o? ?google$/.test(msg))
+    app = "google";
+
+  else if (/^(abre|abrir|vai para) (as )?(definicoes|configuracoes)$/.test(msg))
+    app = "settings";
+
+  if (!app) return false;
 
   try {
-    window.AndroidVoice.openApp(appName);
-    setStatus(statusText, "online");
+    if (window.AndroidVoice &&
+        typeof window.AndroidVoice.openApp === "function") {
+      setState("thinking", "A executar comando...");
+      window.AndroidVoice.openApp(app);
+      setState("idle", "Comando executado");
+    } else {
+      speak("A função de abrir aplicações não está disponível.");
+    }
   } catch (error) {
-    addMessage("Não foi possível executar o comando: " + error.message);
-    setStatus("Erro ao abrir aplicação");
+    console.warn(error);
+    speak("Não consegui executar esse comando.");
   }
 
   return true;
 }
 
-function handleExplicitCommand(text) {
-  const msg = normalizeText(text);
+// --------------------------------------------------
+// ENVIO PARA O GEMMA
+// --------------------------------------------------
 
-  if (/^(abre|abrir|inicia|iniciar|vai para) o? ?youtube$/.test(msg) ||
-      /^abre o site do youtube$/.test(msg)) {
-    return openNativeApp("youtube", "A abrir o YouTube...");
-  }
+function send(text) {
+  text = String(text || "").trim();
 
-  if (/^(abre|abrir|inicia|iniciar|vai para) o? ?google$/.test(msg) ||
-      /^abre o site do google$/.test(msg)) {
-    return openNativeApp("google", "A abrir o Google...");
-  }
+  if (!text || waitingForModel) return;
 
-  if (/^(abre|abrir|vai para) (as )?(definicoes|configuracoes)$/.test(msg)) {
-    return openNativeApp("settings", "A abrir as definições...");
-  }
-
-  return false;
-}
-
-// ---------------------------------------------------------
-// ENVIO
-// ---------------------------------------------------------
-
-function send() {
-  if (waitingForModel) return;
-
-  const text = userInput.value.trim();
-  if (!text) return;
-
-  // Evita envio repetido da mesma transcrição em poucos instantes.
   const now = Date.now();
-  if (text === lastSubmittedText && now - lastSubmittedTime < 1200) {
-    userInput.value = "";
+
+  if (text === lastSubmittedText &&
+      now - lastSubmittedTime < 1200) {
     return;
   }
 
   lastSubmittedText = text;
   lastSubmittedTime = now;
 
-  userInput.value = "";
-  addMessage(text, "user");
+  suppressNextSpeech = false;
 
   if (handleExplicitCommand(text)) return;
 
   const localAnswer = answer(text);
 
   if (localAnswer !== null) {
-    addMessage(localAnswer, "bot");
     speak(localAnswer);
-    setStatus("Resposta pronta", "online");
     return;
   }
 
   if (!window.AndroidVoice ||
       typeof window.AndroidVoice.askModel !== "function") {
-    const message = "O modelo de IA não está ligado. Carrega o ficheiro .litertlm e confirma a integração do MainActivity.kt.";
-    addMessage(message, "bot");
-    setStatus("Modelo de IA indisponível");
-    speak(message);
+    speak("O modelo de inteligência artificial não está disponível. Verifica a integração com o Gemma local.");
     return;
   }
 
   try {
-    activeRequestId = ++requestId;
     setWaiting(true);
     window.AndroidVoice.askModel(text);
   } catch (error) {
     setWaiting(false);
-    addMessage("Não consegui enviar a pergunta ao modelo: " + error.message);
-    setStatus("Erro ao consultar o modelo");
-    speak("Não consegui enviar a pergunta ao modelo.");
+    speak("Não consegui consultar o modelo de inteligência artificial.");
+    console.warn(error);
   }
 }
 
-// ---------------------------------------------------------
+// --------------------------------------------------
 // MICROFONE
-// ---------------------------------------------------------
+// --------------------------------------------------
 
 function startMic() {
-  if (recognitionActive || handsFreeEnabled || waitingForModel) return;
+  if (recognitionActive || waitingForModel) return;
+
+  suppressNextSpeech = false;
 
   if (window.AndroidVoice &&
       typeof window.AndroidVoice.startListening === "function") {
     try {
       recognitionActive = true;
       micButton.disabled = true;
-      setStatus("A ouvir...", "busy");
+
+      setState("listening", "Estou a ouvir...");
+
       window.AndroidVoice.startListening();
       return;
     } catch (error) {
@@ -532,11 +715,12 @@ function startMic() {
     }
   }
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const SpeechRecognition =
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    addMessage("O reconhecimento de voz não está disponível. Verifica as permissões do microfone.");
-    setStatus("Microfone indisponível");
+    setState("idle", "Microfone indisponível");
     return;
   }
 
@@ -548,171 +732,131 @@ function startMic() {
 
     recognitionActive = true;
     micButton.disabled = true;
-    setStatus("A ouvir...", "busy");
+
+    setState("listening", "Estou a ouvir...");
 
     browserRecognition.onresult = function(event) {
       const transcript = event.results[0][0].transcript;
+
       recognitionActive = false;
       micButton.disabled = false;
-      userInput.value = transcript;
-      send();
+
+      browserRecognition = null;
+      send(transcript);
     };
 
     browserRecognition.onerror = function(event) {
       recognitionActive = false;
       micButton.disabled = false;
-      setStatus("Erro de voz: " + (event.error || "desconhecido"));
+      browserRecognition = null;
+
+      setState("idle", "Não consegui ouvir. Tenta novamente.");
+      console.warn("Erro de reconhecimento:", event.error);
     };
 
     browserRecognition.onend = function() {
       recognitionActive = false;
-      micButton.disabled = handsFreeEnabled;
-      if (!waitingForModel) setStatus("Pronto", "online");
+      micButton.disabled = false;
+      browserRecognition = null;
+
+      if (!waitingForModel &&
+          !orb.classList.contains("speaking")) {
+        setState("idle", "Toque no microfone para falar");
+      }
     };
 
     browserRecognition.start();
+
   } catch (error) {
     recognitionActive = false;
     micButton.disabled = false;
-    setStatus("Não foi possível iniciar o microfone");
-    addMessage("Erro no microfone: " + error.message);
+    setState("idle", "Erro ao iniciar o microfone");
+    console.warn(error);
   }
 }
 
-// ---------------------------------------------------------
-// CONVERSA
-// ---------------------------------------------------------
-
-function clearChat() {
-  if (waitingForModel) {
-    addMessage("Aguarda a resposta atual antes de limpar a conversa.");
-    return;
-  }
-
-  chat.replaceChildren();
-  addMessage("Conversa limpa. Estou pronto para uma nova pergunta.", "bot");
-  setStatus("Conversa limpa", "online");
-}
-
-function showHelp() {
-  const help =
-    "Comandos disponíveis:\n" +
-    "• Olá\n" +
-    "• Que horas são?\n" +
-    "• Que dia é hoje?\n" +
-    "• Conta uma piada\n" +
-    "• Dá-me uma frase de motivação\n" +
-    "• Abre o YouTube\n" +
-    "• Abre o Google\n" +
-    "• Abre as definições\n\n" +
-    "Ativa o modo mãos-livres para conversar sem carregar no microfone a cada frase.";
-
-  addMessage(help);
-  speak("Estou pronto. Podes fazer perguntas ou usar os comandos disponíveis.");
-}
-
-// ---------------------------------------------------------
-// RESPOSTA DA GEMMA
-// ---------------------------------------------------------
+// --------------------------------------------------
+// RESPOSTAS DO MAINACTIVITY.KT
+// --------------------------------------------------
 
 function onNativeModelResponse(text) {
   const response = String(text || "").trim();
 
-  if (!waitingForModel) {
-    // Ignora callbacks repetidos ou atrasados.
-    return;
-  }
+  if (!waitingForModel) return;
+
+  setWaiting(false);
 
   if (!response) {
-    setWaiting(false);
-    addMessage("O modelo não devolveu uma resposta. Verifica o modelo de IA.");
-    setStatus("Resposta vazia", "online");
     speak("O modelo não devolveu uma resposta.");
     return;
   }
 
-  const now = Date.now();
+  speak(response);
+}
 
-  // Proteção adicional caso o Kotlin envie o mesmo callback mais de uma vez.
-  if (response === lastResponseText && now - lastResponseTime < 5000) {
-    setWaiting(false);
-    return;
-  }
+window.onNativeModelResponse = onNativeModelResponse;
+window.onModelResponse = onNativeModelResponse;
 
-  lastResponseText = response;
-  lastResponseTime = now;
+function onNativeModelError(message) {
+  if (!waitingForModel) return;
 
   setWaiting(false);
-  addMessage(response, "bot");
-  speak(response);
-  setStatus("Resposta recebida", "online");
+  speak("Ocorreu um erro no modelo: " +
+    String(message || "erro desconhecido"));
 }
 
-window.onModelResponse = onNativeModelResponse;
-window.onNativeModelResponse = onNativeModelResponse;
-
-function onNativeStatus(message) {
-  const text = String(message || "Estado atualizado");
-  const busy = /pensar|processar|carregar|copiar/i.test(text);
-  setStatus(text, busy ? "busy" : "online");
-
-  if (/modelo pronto|modelo carregado|gemma local pronto/i.test(text)) {
-    modelSelectionRequested = false;
-    loadAIButton.disabled = false;
-  }
-}
+window.onNativeModelError = onNativeModelError;
+window.onModelError = onNativeModelError;
 
 function onNativeSpeechResult(text) {
   recognitionActive = false;
-  micButton.disabled = handsFreeEnabled;
+  micButton.disabled = false;
 
   if (text) {
-    userInput.value = text;
-    send();
+    send(text);
   } else {
-    setStatus("Não foi reconhecida nenhuma frase");
+    setState("idle", "Não reconheci a frase. Tenta novamente.");
     notifyNativeResponseFinished();
   }
 }
 
 function onNativeSpeechError(message) {
   recognitionActive = false;
-  micButton.disabled = handsFreeEnabled;
-  setStatus(message || "Erro no reconhecimento de voz");
+  micButton.disabled = false;
+
+  setState("idle", message || "Erro no reconhecimento de voz");
 }
 
-function onNativeModelError(message) {
-  if (!waitingForModel) return;
+function onNativeHandsFreeState(enabled, message) {
+  updateHandsFreeState(enabled);
 
-  setWaiting(false);
-  const errorMessage = "Erro do modelo: " + (message || "erro desconhecido");
-  addMessage(errorMessage, "bot");
-  setStatus("Falha ao consultar o modelo", "online");
+  if (message) {
+    setState(enabled ? "listening" : "idle", message);
+  }
 }
 
-window.onModelError = onNativeModelError;
-window.onNativeModelError = onNativeModelError;
+function onNativeStatus(message) {
+  const value = String(message || "");
+
+  if (/ouvindo|a ouvir|escutando/i.test(value)) {
+    setState("listening", value);
+  } else if (/pensando|processando|carregando|a processar/i.test(value)) {
+    setState("thinking", value);
+  } else if (/falando|a falar/i.test(value)) {
+    setState("speaking", value);
+  }
+}
 
 function onNativeModelLoaded(message) {
-  modelSelectionRequested = false;
-  loadAIButton.disabled = false;
-  setStatus(message || "Modelo carregado", "online");
+  setState("idle", message || "Gemma local pronto");
 }
 
-// ---------------------------------------------------------
-// TECLADO E ARRANQUE
-// ---------------------------------------------------------
-
-userInput.addEventListener("keydown", function(event) {
-  if (event.key === "Enter" && !event.shiftKey) {
-    event.preventDefault();
-    send();
-  }
-});
+// --------------------------------------------------
+// ARRANQUE
+// --------------------------------------------------
 
 window.addEventListener("load", function() {
-  setStatus("Interface pronta. Carrega o modelo de IA.", "online");
-  updateHandsFreeButton();
+  setState("idle", "Toque no microfone para falar");
 });
 </script>
 </body>

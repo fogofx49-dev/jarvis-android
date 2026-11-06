@@ -1,4 +1,3 @@
-
 package com.fogofx.jarvis
 
 import android.Manifest
@@ -60,20 +59,21 @@ class MainActivity : Activity() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val backgroundExecutor = Executors.newSingleThreadExecutor()
 
+    private val requestLock = Any()
+
+    @Volatile
+    private var requestInProgress = false
+
     @Volatile
     private var isModelLoaded = false
+
+    @Volatile
+    private var isLoadingModel = false
 
     private var modelEngine: Engine? = null
     private var modelConversation: Conversation? = null
     private var activeModelName = "Nenhum"
 
-    private var lastSpokenText = ""
-    private var lastSpokenTime = 0L
-
-    @Volatile
-    private var isLoadingModel = false
-
-    // Modo mãos-livres
     @Volatile
     private var handsFreeEnabled = false
 
@@ -81,8 +81,6 @@ class MainActivity : Activity() {
     private var waitingForResponse = false
     private var isTtsSpeaking = false
     private var pendingManualListen = false
-
-    // NOVO: aguarda o comando depois da palavra JARVIS
     private var awaitingWakeCommand = false
 
     private var restartListeningRunnable: Runnable? = null
@@ -105,10 +103,7 @@ class MainActivity : Activity() {
             webChromeClient = WebChromeClient()
 
             webViewClient = object : WebViewClient() {
-                override fun onPageFinished(
-                    view: WebView?,
-                    url: String?
-                ) {
+                override fun onPageFinished(view: WebView?, url: String?) {
                     showStatus("Interface pronta. Carrega o modelo de IA.")
                 }
             }
@@ -272,8 +267,7 @@ class MainActivity : Activity() {
 
     private fun finishResponseWithoutSpeech() {
         mainHandler.post {
-            waitingForResponse = false
-            cancelResponseTimeout()
+            clearResponseWait()
 
             if (handsFreeEnabled) {
                 scheduleListeningRestart(700)
@@ -293,9 +287,7 @@ class MainActivity : Activity() {
             }
 
             if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-                showStatus(
-                    "O reconhecimento de voz não está disponível neste dispositivo."
-                )
+                showStatus("O reconhecimento de voz não está disponível.")
                 return@post
             }
 
@@ -404,10 +396,13 @@ class MainActivity : Activity() {
         val task = Runnable {
             if (handsFreeEnabled && waitingForResponse) {
                 waitingForResponse = false
+
                 showStatus(
-                    "A resposta demorou demasiado. Vou voltar a ouvir."
+                    "A resposta está a demorar. Continuo a aguardar."
                 )
-                scheduleListeningRestart(900)
+
+                // Não libertar requestInProgress aqui:
+                // o Gemma pode ainda estar a processar o pedido.
             }
         }
 
@@ -511,6 +506,7 @@ class MainActivity : Activity() {
 
                         override fun onReadyForSpeech(params: Bundle?) {
                             recognitionInProgress = true
+
                             showStatus(
                                 if (handsFreeEnabled) {
                                     "Mãos-livres: a aguardar JARVIS..."
@@ -543,9 +539,7 @@ class MainActivity : Activity() {
                                     error == SpeechRecognizer.ERROR_NO_MATCH ||
                                     error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
                                 ) {
-                                    showStatus(
-                                        "Não percebi. Vou voltar a ouvir..."
-                                    )
+                                    showStatus("Não percebi. Vou voltar a ouvir...")
                                 } else {
                                     showStatus(
                                         "O reconhecimento foi interrompido. A tentar novamente..."
@@ -564,10 +558,6 @@ class MainActivity : Activity() {
                                 )
                             }
                         }
-
-                        // -------------------------------------------------
-                        // NOVO: DETEÇÃO DA PALAVRA JARVIS
-                        // -------------------------------------------------
 
                         override fun onResults(results: Bundle?) {
                             recognitionInProgress = false
@@ -598,7 +588,6 @@ class MainActivity : Activity() {
                             }
 
                             if (handsFreeEnabled) {
-
                                 val normalized = text
                                     .lowercase(Locale.ROOT)
                                     .replace("jávis", "jarvis")
@@ -608,32 +597,20 @@ class MainActivity : Activity() {
                                     """\bjarvis\b"""
                                 ).find(normalized)
 
-                                // Já ouviu JARVIS: receber o próximo comando
                                 if (awaitingWakeCommand) {
                                     awaitingWakeCommand = false
                                     beginResponseWait()
 
-                                    webView.evaluateJavascript(
-                                        "if (typeof onNativeSpeechResult === 'function') " +
-                                            "onNativeSpeechResult(" +
-                                            "${JSONObject.quote(text)});",
-                                        null
-                                    )
+                                    sendSpeechToInterface(text)
                                     return
                                 }
 
-                                // Palavra de ativação encontrada
                                 if (wakeMatch != null) {
-
-                                    // Extrair o que foi dito depois de JARVIS
                                     val command = text
-                                        .substring(
-                                            wakeMatch.range.last + 1
-                                        )
+                                        .substring(wakeMatch.range.last + 1)
                                         .trim()
                                         .trim(',', '.', '!', '?')
 
-                                    // Apenas "JARVIS"
                                     if (command.isBlank()) {
                                         awaitingWakeCommand = true
 
@@ -643,39 +620,20 @@ class MainActivity : Activity() {
                                         return
                                     }
 
-                                    // "JARVIS, abre o YouTube"
                                     beginResponseWait()
-
-                                    webView.evaluateJavascript(
-                                        "if (typeof onNativeSpeechResult === 'function') " +
-                                            "onNativeSpeechResult(" +
-                                            "${JSONObject.quote(command)});",
-                                        null
-                                    )
+                                    sendSpeechToInterface(command)
                                     return
                                 }
 
-                                // Não executar frases sem a palavra JARVIS
-                                showStatus(
-                                    "A aguardar a palavra JARVIS..."
-                                )
+                                showStatus("A aguardar a palavra JARVIS...")
                                 scheduleListeningRestart(500)
                                 return
                             }
 
-                            // Reconhecimento manual normal
-                            webView.evaluateJavascript(
-                                "if (typeof onNativeSpeechResult === 'function') " +
-                                    "onNativeSpeechResult(" +
-                                    "${JSONObject.quote(text)});",
-                                null
-                            )
+                            sendSpeechToInterface(text)
                         }
 
-                        override fun onPartialResults(
-                            partialResults: Bundle?
-                        ) {
-                        }
+                        override fun onPartialResults(partialResults: Bundle?) {}
 
                         override fun onEvent(
                             eventType: Int,
@@ -692,22 +650,10 @@ class MainActivity : Activity() {
                         RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                         RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
                     )
-                    putExtra(
-                        RecognizerIntent.EXTRA_LANGUAGE,
-                        "pt-BR"
-                    )
-                    putExtra(
-                        RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
-                        "pt-BR"
-                    )
-                    putExtra(
-                        RecognizerIntent.EXTRA_MAX_RESULTS,
-                        1
-                    )
-                    putExtra(
-                        RecognizerIntent.EXTRA_PARTIAL_RESULTS,
-                        false
-                    )
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
                 }
 
                 recognitionInProgress = true
@@ -734,6 +680,18 @@ class MainActivity : Activity() {
                     )
                 }
             }
+        }
+    }
+
+    private fun sendSpeechToInterface(text: String) {
+        mainHandler.post {
+            if (!::webView.isInitialized) return@post
+
+            webView.evaluateJavascript(
+                "if (typeof onNativeSpeechResult === 'function') " +
+                    "onNativeSpeechResult(${JSONObject.quote(text)});",
+                null
+            )
         }
     }
 
@@ -811,7 +769,6 @@ class MainActivity : Activity() {
             if (requestCode == PICK_MODEL_REQUEST) {
                 showStatus("Seleção do modelo cancelada.")
             }
-
             return
         }
 
@@ -868,9 +825,7 @@ class MainActivity : Activity() {
             null,
             null
         )?.use { cursor ->
-            val index = cursor.getColumnIndex(
-                OpenableColumns.DISPLAY_NAME
-            )
+            val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
 
             if (cursor.moveToFirst() && index >= 0) {
                 cursor.getString(index)
@@ -922,13 +877,24 @@ class MainActivity : Activity() {
                 ConversationConfig(
                     systemInstruction = Contents.of(
                         """
-                        Tu és J.A.R.V.I.S., um assistente útil,
-                        educado e conciso.
+                        Tu és J.A.R.V.I.S., um assistente virtual útil,
+                        educado, inteligente e conciso.
+
                         Responde em português natural,
                         preferencialmente português do Brasil.
-                        Responde diretamente à pergunta do utilizador.
+
+                        Responde diretamente ao que o utilizador pergunta.
+                        Organiza respostas longas em tópicos quando necessário.
+
+                        Dá prioridade a informações corretas.
+                        Se não souberes alguma coisa, admite isso.
+                        Não inventes notícias, horários, factos ou capacidades.
+
                         Não afirmes que executaste ações no dispositivo
                         se elas não tiverem sido realmente executadas.
+
+                        Evita repetir a mesma informação sem necessidade.
+                        Não comeces todas as respostas com a mesma frase.
                         """.trimIndent()
                     )
                 )
@@ -1007,11 +973,7 @@ class MainActivity : Activity() {
 
             cameraManager.setTorchMode(cameraId, enable)
 
-            if (enable) {
-                "Lanterna ligada."
-            } else {
-                "Lanterna desligada."
-            }
+            if (enable) "Lanterna ligada." else "Lanterna desligada."
         } catch (e: Exception) {
             "Não foi possível controlar a lanterna: ${e.message}"
         }
@@ -1069,9 +1031,7 @@ class MainActivity : Activity() {
                     return "A abrir o YouTube."
                 }
 
-                "settings",
-                "configurações",
-                "configuracoes" -> {
+                "settings", "configurações", "configuracoes" -> {
                     startActivity(Intent(Settings.ACTION_SETTINGS))
                     return "A abrir as definições."
                 }
@@ -1104,7 +1064,7 @@ class MainActivity : Activity() {
     }
 
     // ---------------------------------------------------------
-    // LEMBRETES - INTEGRADO NO CALENDÁRIO ANDROID
+    // LEMBRETES - CALENDÁRIO ANDROID
     // ---------------------------------------------------------
 
     private fun handleReminderCommand(command: String): String? {
@@ -1159,7 +1119,10 @@ class MainActivity : Activity() {
 
         title = title
             .replace(
-                Regex("""\bamanhã\b|\bamanha\b|\bhoje\b""", RegexOption.IGNORE_CASE),
+                Regex(
+                    """\bamanhã\b|\bamanha\b|\bhoje\b""",
+                    RegexOption.IGNORE_CASE
+                ),
                 " "
             )
             .replace(
@@ -1469,9 +1432,7 @@ class MainActivity : Activity() {
                 "google"
             )
 
-            val requestedApp = apps.firstOrNull {
-                cmd.contains(it)
-            }
+            val requestedApp = apps.firstOrNull { cmd.contains(it) }
 
             if (requestedApp != null) {
                 return openApplication(requestedApp)
@@ -1610,114 +1571,143 @@ class MainActivity : Activity() {
     // ---------------------------------------------------------
 
     private fun processCommand(prompt: String) {
+        val cleanPrompt = prompt.trim()
+
+        if (cleanPrompt.isBlank()) return
+
+        // Impede que dois pedidos sejam enviados ao mesmo tempo.
+        synchronized(requestLock) {
+            if (requestInProgress) {
+                showStatus("Ainda estou a processar o pedido anterior.")
+                return
+            }
+
+            requestInProgress = true
+        }
+
+        // Os comandos Android são executados na thread principal.
+        mainHandler.post {
+            processCommandOnMainThread(cleanPrompt)
+        }
+    }
+
+    private fun processCommandOnMainThread(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
 
-        val extraAnswer = handleExtraAndroidCommand(prompt)
+        try {
+            val extraAnswer = handleExtraAndroidCommand(prompt)
 
-        if (extraAnswer != null) {
-            respond(extraAnswer)
-            return
-        }
-
-        val hardwareAnswer: String? = when {
-            text.contains("bateria") -> {
-                val level = getBatteryLevel()
-
-                if (level >= 0) {
-                    "A bateria está a $level por cento."
-                } else {
-                    "Não consegui consultar a bateria."
-                }
+            if (extraAnswer != null) {
+                respond(extraAnswer)
+                return
             }
 
-            text.contains("lanterna") &&
-                (text.contains("liga") || text.contains("acende")) ->
-                toggleFlashlight(true)
+            val hardwareAnswer: String? = when {
+                text.contains("bateria") -> {
+                    val level = getBatteryLevel()
 
-            text.contains("lanterna") &&
-                (text.contains("desliga") || text.contains("apaga")) ->
-                toggleFlashlight(false)
-
-            text.contains("horas") -> {
-                "Agora são ${
-                    SimpleDateFormat(
-                        "HH:mm",
-                        Locale("pt", "BR")
-                    ).format(Date())
-                }."
-            }
-
-            text.contains("data de hoje") ||
-                text == "que dia é hoje" ||
-                text == "qual é a data" ||
-                text == "qual e a data" ||
-                text == "diz-me a data" ||
-                text == "diz a data" -> {
-                "Hoje é ${
-                    SimpleDateFormat(
-                        "dd 'de' MMMM 'de' yyyy",
-                        Locale("pt", "BR")
-                    ).format(Date())
-                }."
-            }
-
-            text == "abre youtube" ||
-                text == "abre o youtube" ->
-                openApplication("youtube")
-
-            text == "abre google" ||
-                text == "abre o google" ->
-                openApplication("google")
-
-            text == "abre as configurações" ||
-                text == "abre as configuracoes" ->
-                openApplication("settings")
-
-            text.contains("piada") ->
-                "Porque é que o computador foi ao médico? Porque tinha um vírus!"
-
-            else -> null
-        }
-
-        if (hardwareAnswer != null) {
-            respond(hardwareAnswer)
-            return
-        }
-
-        if (!isModelLoaded || modelConversation == null) {
-            respond(
-                "O modelo de IA ainda não está pronto. " +
-                    "Carrega um ficheiro .litertlm válido e aguarda a inicialização."
-            )
-            return
-        }
-
-        showStatus("A processar no Gemma local...")
-
-        backgroundExecutor.execute {
-            try {
-                val conversation = modelConversation
-                    ?: throw IllegalStateException(
-                        "A conversa do modelo não está disponível."
-                    )
-
-                val result = conversation.sendMessage(prompt)
-                val response = result.toString().trim()
-
-                if (response.isBlank()) {
-                    throw IllegalStateException(
-                        "O modelo devolveu uma resposta vazia."
-                    )
+                    if (level >= 0) {
+                        "A bateria está a $level por cento."
+                    } else {
+                        "Não consegui consultar a bateria."
+                    }
                 }
 
-                respond(response)
+                text.contains("lanterna") &&
+                    (text.contains("liga") || text.contains("acende")) ->
+                    toggleFlashlight(true)
 
-            } catch (e: Exception) {
-                showModelError(
-                    "Erro ao gerar resposta: " +
-                        (e.message ?: "erro desconhecido")
+                text.contains("lanterna") &&
+                    (text.contains("desliga") || text.contains("apaga")) ->
+                    toggleFlashlight(false)
+
+                text.contains("horas") -> {
+                    "Agora são ${
+                        SimpleDateFormat(
+                            "HH:mm",
+                            Locale("pt", "BR")
+                        ).format(Date())
+                    }."
+                }
+
+                text.contains("data de hoje") ||
+                    text == "que dia é hoje" ||
+                    text == "qual é a data" ||
+                    text == "qual e a data" ||
+                    text == "diz-me a data" ||
+                    text == "diz a data" -> {
+                    "Hoje é ${
+                        SimpleDateFormat(
+                            "dd 'de' MMMM 'de' yyyy",
+                            Locale("pt", "BR")
+                        ).format(Date())
+                    }."
+                }
+
+                text == "abre youtube" ||
+                    text == "abre o youtube" ->
+                    openApplication("youtube")
+
+                text == "abre google" ||
+                    text == "abre o google" ->
+                    openApplication("google")
+
+                text == "abre as configurações" ||
+                    text == "abre as configuracoes" ->
+                    openApplication("settings")
+
+                text.contains("piada") ->
+                    "Porque é que o computador foi ao médico? Porque tinha um vírus!"
+
+                else -> null
+            }
+
+            if (hardwareAnswer != null) {
+                respond(hardwareAnswer)
+                return
+            }
+
+            if (!isModelLoaded || modelConversation == null) {
+                respond(
+                    "O modelo de IA ainda não está pronto. " +
+                        "Carrega um ficheiro .litertlm válido e aguarda a inicialização."
                 )
+                return
             }
+
+            showStatus("A processar no Gemma local...")
+
+            backgroundExecutor.execute {
+                try {
+                    val conversation = modelConversation
+                        ?: throw IllegalStateException(
+                            "A conversa do modelo não está disponível."
+                        )
+
+                    val result = conversation.sendMessage(prompt)
+                    val response = result.toString().trim()
+
+                    if (response.isBlank()) {
+                        throw IllegalStateException(
+                            "O modelo devolveu uma resposta vazia."
+                        )
+                    }
+
+                    respond(response)
+
+                } catch (e: Exception) {
+                    showModelError(
+                        "Erro ao gerar resposta: " +
+                            (e.message ?: "erro desconhecido")
+                    )
+                }
+            }
+
+        } catch (e: Exception) {
+            showModelError(
+                "Erro ao processar o comando: " +
+                    (e.message ?: "erro desconhecido")
+            )
         }
     }
 
@@ -1727,24 +1717,19 @@ class MainActivity : Activity() {
 
     private fun respond(text: String) {
         val clean = text.trim()
-        if (clean.isBlank()) return
 
-        val now = System.currentTimeMillis()
-
-        if (
-            clean == lastSpokenText &&
-            now - lastSpokenTime < 1500
-        ) {
-            clearResponseWait()
+        if (clean.isBlank()) {
+            releaseRequest()
             return
         }
 
-        lastSpokenText = clean
-        lastSpokenTime = now
-
-        clearResponseWait()
+        // Não existe filtro por texto repetido:
+        // a mesma pergunta pode receber a mesma resposta novamente.
+        releaseRequest()
 
         mainHandler.post {
+            if (!::webView.isInitialized) return@post
+
             webView.evaluateJavascript(
                 "if (typeof onNativeModelResponse === 'function') " +
                     "onNativeModelResponse(${JSONObject.quote(clean)});",
@@ -1753,6 +1738,14 @@ class MainActivity : Activity() {
 
             showStatus("Resposta pronta.")
         }
+    }
+
+    private fun releaseRequest() {
+        synchronized(requestLock) {
+            requestInProgress = false
+        }
+
+        clearResponseWait()
     }
 
     private fun showStatus(message: String) {
@@ -1768,7 +1761,7 @@ class MainActivity : Activity() {
     }
 
     private fun showModelError(message: String) {
-        clearResponseWait()
+        releaseRequest()
 
         mainHandler.post {
             if (!::webView.isInitialized) return@post
@@ -1848,10 +1841,16 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun openApp(appName: String) {
-            val result = openApplication(appName)
-            respond(result)
+            mainHandler.post {
+                val result = openApplication(appName)
+                respond(result)
+            }
         }
     }
+
+    // ---------------------------------------------------------
+    // DESTRUIR ATIVIDADE
+    // ---------------------------------------------------------
 
     override fun onDestroy() {
         handsFreeEnabled = false
@@ -1882,7 +1881,7 @@ class MainActivity : Activity() {
         modelConversation = null
         modelEngine = null
 
-        backgroundExecutor.shutdown()
+        backgroundExecutor.shutdownNow()
 
         if (::webView.isInitialized) {
             webView.removeJavascriptInterface("AndroidVoice")

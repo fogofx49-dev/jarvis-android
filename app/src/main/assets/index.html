@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -8,400 +9,143 @@
 
 <style>
 :root {
-  --cyan: #00eaff;
-  --blue: #008cff;
-  --bg: #020b12;
-  --panel: rgba(3, 23, 35, .92);
-  --text: #d8faff;
-  --muted: #77aab7;
-  --border: rgba(0, 234, 255, .28);
+  --cyan:#00eaff;
+  --blue:#008cff;
+  --bg:#020b12;
+  --panel:rgba(3,23,35,.92);
+  --text:#d8faff;
+  --muted:#77aab7;
+  --border:rgba(0,234,255,.28);
 }
-
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  background:
-    radial-gradient(ellipse at top, #073047 0%, transparent 55%),
-    linear-gradient(150deg, #01060b, #041521 60%, #02080d);
-  color: var(--text);
-  font-family: Arial, Helvetica, sans-serif;
-  overflow-x: hidden;
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;
+  background:radial-gradient(ellipse at top,#073047 0%,transparent 55%),
+  linear-gradient(150deg,#01060b,#041521 60%,#02080d);
+  color:var(--text);
+  font-family:Arial,Helvetica,sans-serif;
+  overflow-x:hidden;
 }
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  opacity: .14;
-  background-image:
-    linear-gradient(rgba(0,234,255,.12) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,234,255,.12) 1px, transparent 1px);
-  background-size: 35px 35px;
-  mask-image: linear-gradient(to bottom, black, transparent);
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;
+  opacity:.14;
+  background-image:linear-gradient(rgba(0,234,255,.12) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,234,255,.12) 1px,transparent 1px);
+  background-size:35px 35px;
+  mask-image:linear-gradient(to bottom,black,transparent);
 }
-
-.app {
-  position: relative;
-  width: min(100%, 850px);
-  margin: auto;
-  padding: 18px 14px 25px;
+.app{position:relative;width:min(100%,850px);margin:auto;padding:18px 14px 25px}
+header{text-align:center;padding:14px 0 18px}
+.brand{color:var(--cyan);font-size:12px;font-weight:bold;letter-spacing:5px;text-shadow:0 0 12px var(--cyan)}
+h1{font-size:clamp(38px,9vw,65px);letter-spacing:7px;margin:12px 0 5px;color:#e8fdff;text-shadow:0 0 10px #00dfff,0 0 35px #007ca8}
+.subtitle{color:var(--muted);font-size:10px;letter-spacing:2px;line-height:1.7}
+.radar-wrap{display:flex;justify-content:center;padding:14px 0 20px}
+.radar{
+  width:150px;height:150px;position:relative;border:1px solid var(--cyan);
+  border-radius:50%;overflow:hidden;
+  background:radial-gradient(circle,transparent 22%,rgba(0,234,255,.12) 23%,transparent 24%),
+  repeating-radial-gradient(circle,transparent 0 22px,rgba(0,234,255,.24) 23px 24px);
+  box-shadow:0 0 20px rgba(0,234,255,.18),inset 0 0 20px rgba(0,234,255,.12);
 }
-
-header {
-  text-align: center;
-  padding: 14px 0 18px;
+.radar::before,.radar::after{content:"";position:absolute;background:rgba(0,234,255,.32)}
+.radar::before{width:1px;height:100%;left:50%}
+.radar::after{height:1px;width:100%;top:50%}
+.radar-sweep{
+  position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0deg,transparent 280deg,rgba(0,234,255,.38) 350deg,transparent 360deg);
+  animation:sweep 4s linear infinite;
 }
-
-.brand {
-  color: var(--cyan);
-  font-size: 12px;
-  font-weight: bold;
-  letter-spacing: 5px;
-  text-shadow: 0 0 12px var(--cyan);
-}
-
-h1 {
-  font-size: clamp(38px, 9vw, 65px);
-  letter-spacing: 7px;
-  margin: 12px 0 5px;
-  color: #e8fdff;
-  text-shadow: 0 0 10px #00dfff, 0 0 35px #007ca8;
-}
-
-.subtitle {
-  color: var(--muted);
-  font-size: 10px;
-  letter-spacing: 2px;
-  line-height: 1.7;
-}
-
-.radar-wrap {
-  display: flex;
-  justify-content: center;
-  padding: 14px 0 20px;
-}
-
-.radar {
-  width: 150px;
-  height: 150px;
-  position: relative;
-  border: 1px solid var(--cyan);
-  border-radius: 50%;
-  overflow: hidden;
-  background:
-    radial-gradient(circle, transparent 22%, rgba(0,234,255,.12) 23%, transparent 24%),
-    repeating-radial-gradient(circle, transparent 0 22px, rgba(0,234,255,.24) 23px 24px);
-  box-shadow: 0 0 20px rgba(0,234,255,.18), inset 0 0 20px rgba(0,234,255,.12);
-}
-
-.radar::before,
-.radar::after {
-  content: "";
-  position: absolute;
-  background: rgba(0,234,255,.32);
-}
-
-.radar::before {
-  width: 1px;
-  height: 100%;
-  left: 50%;
-}
-
-.radar::after {
-  height: 1px;
-  width: 100%;
-  top: 50%;
-}
-
-.radar-sweep {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: conic-gradient(from 0deg, transparent 0deg, transparent 280deg, rgba(0,234,255,.38) 350deg, transparent 360deg);
-  animation: sweep 4s linear infinite;
-}
-
-.radar-dot {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: white;
-  box-shadow: 0 0 12px var(--cyan);
-  top: 32%;
-  left: 65%;
-}
-
-@keyframes sweep {
-  to { transform: rotate(360deg); }
-}
-
-.statusbar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 9px;
-  color: var(--muted);
-  font-size: 12px;
-  margin: 0 0 16px;
-  text-align: center;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #777;
-  box-shadow: 0 0 8px currentColor;
-  flex-shrink: 0;
-}
-
-.dot.online {
-  background: #00ff9d;
-  color: #00ff9d;
-}
-
-.dot.busy {
-  background: #ffbf00;
-  color: #ffbf00;
-  animation: blink .7s infinite alternate;
-}
-
-@keyframes blink {
-  to { opacity: .3; }
-}
-
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 15px;
-  box-shadow: 0 0 24px rgba(0, 166, 255, .08);
-  overflow: hidden;
-}
-
-.panel-title {
-  padding: 14px 15px;
-  color: var(--cyan);
-  font-size: 12px;
-  font-weight: bold;
-  letter-spacing: 2px;
-  border-bottom: 1px solid var(--border);
-}
-
-#chat {
-  min-height: 210px;
-  max-height: 43vh;
-  overflow-y: auto;
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  scroll-behavior: smooth;
-}
-
-.message {
-  max-width: 90%;
-  padding: 12px 14px;
-  border-radius: 12px;
-  font-size: 14px;
-  line-height: 1.55;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
-}
-
-.message.bot {
-  align-self: flex-start;
-  background: rgba(0, 160, 205, .11);
-  border: 1px solid rgba(0,234,255,.24);
-}
-
-.message.user {
-  align-self: flex-end;
-  background: rgba(0, 115, 255, .17);
-  border: 1px solid rgba(0,140,255,.35);
-}
-
-.message .who {
-  display: block;
-  font-size: 10px;
-  color: var(--cyan);
-  letter-spacing: 1px;
-  margin-bottom: 5px;
-}
-
-.composer {
-  display: flex;
-  gap: 8px;
-  padding: 12px;
-  border-top: 1px solid var(--border);
-}
-
-#userInput {
-  flex: 1;
-  min-width: 0;
-  padding: 13px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  outline: none;
-  color: white;
-  background: rgba(0,0,0,.35);
-  font-size: 14px;
-}
-
-#userInput:focus {
-  border-color: var(--cyan);
-  box-shadow: 0 0 10px rgba(0,234,255,.12);
-}
-
-button {
-  border: 1px solid var(--border);
-  color: var(--cyan);
-  background: rgba(0, 170, 220, .10);
-  border-radius: 10px;
-  padding: 11px 13px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: .2s;
-}
-
-button:active { transform: scale(.97); }
-
-button:hover { background: rgba(0,234,255,.17); }
-
-button:disabled {
-  opacity: .45;
-  cursor: not-allowed;
-}
-
-.send-button {
-  background: rgba(0, 190, 255, .17);
-}
-
-.controls {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-  margin-top: 13px;
-}
-
-.controls button {
-  min-height: 45px;
-  font-size: 12px;
-}
-
-.ai-button {
-  grid-column: 1 / -1;
-  border-color: rgba(0,255,160,.38);
-  color: #6bffc7;
-}
-
-.handsfree-button {
-  grid-column: 1 / -1;
-  border-color: rgba(0,234,255,.65);
-  color: var(--cyan);
-  background: rgba(0,234,255,.12);
-  box-shadow: 0 0 14px rgba(0,234,255,.08);
-}
-
-.handsfree-button.active {
-  color: #ffb5b5;
-  border-color: rgba(255,70,70,.7);
-  background: rgba(255,35,35,.12);
-}
-
-.hint {
-  text-align: center;
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.6;
-  margin: 14px 6px;
-}
-
-footer {
-  text-align: center;
-  font-size: 10px;
-  color: #467785;
-  letter-spacing: 2px;
-  padding: 12px 0 5px;
-}
-
-@media (max-width: 400px) {
-  .app { padding: 12px 9px 20px; }
-  .composer { padding: 8px; gap: 5px; }
-  .composer button { padding: 10px; }
-  #userInput { padding: 11px 9px; }
+.radar-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:white;box-shadow:0 0 12px var(--cyan);top:32%;left:65%}
+@keyframes sweep{to{transform:rotate(360deg)}}
+.statusbar{display:flex;align-items:center;justify-content:center;gap:9px;color:var(--muted);font-size:12px;margin:0 0 16px;text-align:center}
+.dot{width:8px;height:8px;border-radius:50%;background:#777;box-shadow:0 0 8px currentColor;flex-shrink:0}
+.dot.online{background:#00ff9d;color:#00ff9d}
+.dot.busy{background:#ffbf00;color:#ffbf00;animation:blink .7s infinite alternate}
+@keyframes blink{to{opacity:.3}}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:15px;box-shadow:0 0 24px rgba(0,166,255,.08);overflow:hidden}
+.panel-title{padding:14px 15px;color:var(--cyan);font-size:12px;font-weight:bold;letter-spacing:2px;border-bottom:1px solid var(--border)}
+#chat{min-height:210px;max-height:43vh;overflow-y:auto;padding:15px;display:flex;flex-direction:column;gap:12px;scroll-behavior:smooth}
+.message{max-width:90%;padding:12px 14px;border-radius:12px;font-size:14px;line-height:1.55;overflow-wrap:anywhere;white-space:pre-wrap}
+.message.bot{align-self:flex-start;background:rgba(0,160,205,.11);border:1px solid rgba(0,234,255,.24)}
+.message.user{align-self:flex-end;background:rgba(0,115,255,.17);border:1px solid rgba(0,140,255,.35)}
+.message .who{display:block;font-size:10px;color:var(--cyan);letter-spacing:1px;margin-bottom:5px}
+.composer{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border)}
+#userInput{flex:1;min-width:0;padding:13px;border:1px solid var(--border);border-radius:10px;outline:none;color:white;background:rgba(0,0,0,.35);font-size:14px}
+#userInput:focus{border-color:var(--cyan);box-shadow:0 0 10px rgba(0,234,255,.12)}
+button{border:1px solid var(--border);color:var(--cyan);background:rgba(0,170,220,.10);border-radius:10px;padding:11px 13px;font-weight:bold;cursor:pointer;transition:.2s}
+button:active{transform:scale(.97)}
+button:hover{background:rgba(0,234,255,.17)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.send-button{background:rgba(0,190,255,.17)}
+.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:13px}
+.controls button{min-height:45px;font-size:12px}
+.ai-button,.handsfree-button{grid-column:1/-1}
+.ai-button{border-color:rgba(0,255,160,.38);color:#6bffc7}
+.handsfree-button{border-color:rgba(0,234,255,.65);color:var(--cyan);background:rgba(0,234,255,.12);box-shadow:0 0 14px rgba(0,234,255,.08)}
+.handsfree-button.active{color:#ffb5b5;border-color:rgba(255,70,70,.7);background:rgba(255,35,35,.12)}
+.hint{text-align:center;color:var(--muted);font-size:11px;line-height:1.6;margin:14px 6px}
+footer{text-align:center;font-size:10px;color:#467785;letter-spacing:2px;padding:12px 0 5px}
+@media(max-width:400px){
+  .app{padding:12px 9px 20px}
+  .composer{padding:8px;gap:5px}
+  .composer button{padding:10px}
+  #userInput{padding:11px 9px}
 }
 </style>
 </head>
 
 <body>
 <div class="app">
+<header>
+  <div class="brand">STARK TECHNOLOGY</div>
+  <h1>J.A.R.V.I.S.</h1>
+  <div class="subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+</header>
 
-  <header>
-    <div class="brand">STARK TECHNOLOGY</div>
-    <h1>J.A.R.V.I.S.</h1>
-    <div class="subtitle">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
-  </header>
+<div class="radar-wrap">
+  <div class="radar" aria-label="Radar holográfico">
+    <div class="radar-sweep"></div>
+    <div class="radar-dot"></div>
+  </div>
+</div>
 
-  <div class="radar-wrap">
-    <div class="radar" aria-label="Radar holográfico">
-      <div class="radar-sweep"></div>
-      <div class="radar-dot"></div>
+<div class="statusbar">
+  <span class="dot" id="dot"></span>
+  <span id="status" role="status">Sistema inicializado</span>
+</div>
+
+<section class="panel">
+  <div class="panel-title">▸ TERMINAL DE CONVERSAÇÃO</div>
+
+  <div id="chat" aria-live="polite">
+    <div class="message bot">
+      <span class="who">J.A.R.V.I.S.</span>
+      Olá! Sistema iniciado. Carrega o teu modelo de IA e faz uma pergunta para começarmos.
     </div>
   </div>
 
-  <div class="statusbar">
-    <span class="dot" id="dot"></span>
-    <span id="status" role="status">Sistema inicializado</span>
+  <div class="composer">
+    <input id="userInput" type="text" placeholder="Escreve a tua mensagem..." autocomplete="off" aria-label="Mensagem">
+    <button id="micButton" type="button" onclick="startMic()" title="Falar">🎙️</button>
+    <button id="sendButton" class="send-button" type="button" onclick="send()">➤</button>
   </div>
+</section>
 
-  <section class="panel">
-    <div class="panel-title">▸ TERMINAL DE CONVERSAÇÃO</div>
+<div class="controls">
+  <button id="handsFreeButton" class="handsfree-button" type="button" onclick="toggleHandsFree()">🎧 Iniciar mãos-livres</button>
+  <button id="voiceButton" type="button" onclick="toggleVoice()">🔊 Voz: ligada</button>
+  <button type="button" onclick="showHelp()">❔ Ajuda</button>
+  <button type="button" onclick="clearChat()">🗑️ Limpar conversa</button>
+  <button type="button" onclick="stopSpeaking()">🔇 Parar voz</button>
+  <button id="loadAIButton" class="ai-button" type="button" onclick="chooseJarvisModel()">📂 Carregar arquivo de IA</button>
+</div>
 
-    <div id="chat" aria-live="polite">
-      <div class="message bot">
-        <span class="who">J.A.R.V.I.S.</span>
-        Olá! Sistema iniciado. Carrega o teu modelo de IA e faz uma pergunta para começarmos.
-      </div>
-    </div>
+<div class="hint">
+  O modo mãos-livres ouve apenas depois de ser ativado.
+  As perguntas gerais são processadas pelo modelo Gemma local.
+</div>
 
-    <div class="composer">
-      <input
-        id="userInput"
-        type="text"
-        placeholder="Escreve a tua mensagem..."
-        autocomplete="off"
-        aria-label="Mensagem"
-      >
-      <button id="micButton" type="button" onclick="startMic()" title="Falar">🎙️</button>
-      <button id="sendButton" class="send-button" type="button" onclick="send()">➤</button>
-    </div>
-  </section>
-
-  <div class="controls">
-    <button
-      id="handsFreeButton"
-      class="handsfree-button"
-      type="button"
-      onclick="toggleHandsFree()"
-    >🎧 Iniciar mãos-livres</button>
-
-    <button id="voiceButton" type="button" onclick="toggleVoice()">🔊 Voz: ligada</button>
-    <button type="button" onclick="showHelp()">❔ Ajuda</button>
-    <button type="button" onclick="clearChat()">🗑️ Limpar conversa</button>
-    <button type="button" onclick="stopSpeaking()">🔇 Parar voz</button>
-    <button id="loadAIButton" class="ai-button" type="button" onclick="chooseJarvisModel()">📂 Carregar arquivo de IA</button>
-  </div>
-
-  <div class="hint">
-    O modo mãos-livres ouve apenas depois de ser ativado.
-    As perguntas gerais são processadas pelo modelo Gemma local.
-  </div>
-
-  <footer>J.A.R.V.I.S. • STARK TECHNOLOGY</footer>
+<footer>J.A.R.V.I.S. • STARK TECHNOLOGY</footer>
 </div>
 
 <script>
@@ -412,8 +156,15 @@ let voiceEnabled = true;
 let recognitionActive = false;
 let handsFreeEnabled = false;
 let browserRecognition = null;
-let lastQuestion = "";
 let modelSelectionRequested = false;
+
+// Controlo de respostas duplicadas e pedidos.
+let requestId = 0;
+let activeRequestId = 0;
+let lastResponseText = "";
+let lastResponseTime = 0;
+let lastSubmittedText = "";
+let lastSubmittedTime = 0;
 
 const chat = document.getElementById("chat");
 const userInput = document.getElementById("userInput");
@@ -433,20 +184,16 @@ function normalizeText(text) {
 }
 
 function setStatus(message, state = "normal") {
-  document.getElementById("status").textContent =
-    String(message || "");
-
+  document.getElementById("status").textContent = String(message || "");
   const dot = document.getElementById("dot");
   dot.className = "dot";
-
   if (state === "online") dot.classList.add("online");
   if (state === "busy") dot.classList.add("busy");
 }
 
 function addMessage(text, sender = "bot") {
   const message = document.createElement("div");
-  message.className =
-    "message " + (sender === "user" ? "user" : "bot");
+  message.className = "message " + (sender === "user" ? "user" : "bot");
 
   const who = document.createElement("span");
   who.className = "who";
@@ -473,7 +220,7 @@ function setWaiting(value) {
 }
 
 // ---------------------------------------------------------
-// VOZ E SINCRONIZAÇÃO COM O ANDROID
+// VOZ
 // ---------------------------------------------------------
 
 function notifyNativeResponseFinished() {
@@ -483,7 +230,7 @@ function notifyNativeResponseFinished() {
       window.AndroidVoice.responseFinished();
     }
   } catch (error) {
-    console.warn("Não foi possível concluir a resposta:", error);
+    console.warn(error);
   }
 }
 
@@ -495,7 +242,6 @@ function speak(text) {
     return;
   }
 
-  // No Android, a conclusão da fala é detetada pelo Kotlin.
   try {
     if (window.AndroidVoice &&
         typeof window.AndroidVoice.speak === "function") {
@@ -506,21 +252,17 @@ function speak(text) {
     console.warn("Voz Android indisponível:", error);
   }
 
-  // Alternativa para ambientes com Web Speech API.
   if ("speechSynthesis" in window) {
     try {
       window.speechSynthesis.cancel();
-
       const utterance = new SpeechSynthesisUtterance(clean);
       utterance.lang = "pt-BR";
-
       utterance.onend = notifyNativeResponseFinished;
       utterance.onerror = notifyNativeResponseFinished;
-
       window.speechSynthesis.speak(utterance);
       return;
     } catch (error) {
-      console.warn("Síntese de voz indisponível:", error);
+      console.warn(error);
     }
   }
 
@@ -541,48 +283,31 @@ function stopSpeaking() {
     window.speechSynthesis.cancel();
   }
 
-  if (handsFreeEnabled) {
-    notifyNativeResponseFinished();
-  }
-
+  if (handsFreeEnabled) notifyNativeResponseFinished();
   setStatus("Voz interrompida", "online");
 }
 
 function toggleVoice() {
   voiceEnabled = !voiceEnabled;
+  voiceButton.textContent = voiceEnabled ? "🔊 Voz: ligada" : "🔇 Voz: desligada";
 
-  voiceButton.textContent = voiceEnabled
-    ? "🔊 Voz: ligada"
-    : "🔇 Voz: desligada";
-
-  if (!voiceEnabled) {
-    stopSpeaking();
-  }
-
-  setStatus(
-    voiceEnabled ? "Voz ativada" : "Voz desativada",
-    "online"
-  );
+  if (!voiceEnabled) stopSpeaking();
+  setStatus(voiceEnabled ? "Voz ativada" : "Voz desativada", "online");
 }
 
 // ---------------------------------------------------------
-// MODO MÃOS-LIVRES
+// MÃOS-LIVRES
 // ---------------------------------------------------------
 
 function toggleHandsFree() {
-  if (handsFreeEnabled) {
-    stopHandsFree();
-  } else {
-    startHandsFree();
-  }
+  if (handsFreeEnabled) stopHandsFree();
+  else startHandsFree();
 }
 
 function startHandsFree() {
   if (!window.AndroidVoice ||
       typeof window.AndroidVoice.startHandsFree !== "function") {
-    addMessage(
-      "O modo mãos-livres requer a versão atualizada do MainActivity.kt."
-    );
+    addMessage("O modo mãos-livres requer a versão atualizada do MainActivity.kt.");
     setStatus("Integração Android indisponível");
     return;
   }
@@ -591,7 +316,7 @@ function startHandsFree() {
     window.AndroidVoice.startHandsFree();
   } catch (error) {
     addMessage("Não consegui iniciar o modo mãos-livres: " + error.message);
-    setStatus("Erro ao iniciar o modo mãos-livres");
+    setStatus("Erro ao iniciar mãos-livres");
   }
 }
 
@@ -611,16 +336,13 @@ function stopHandsFree() {
 
 function updateHandsFreeButton() {
   handsFreeButton.classList.toggle("active", handsFreeEnabled);
-
   handsFreeButton.textContent = handsFreeEnabled
     ? "⏹ Parar mãos-livres"
     : "🎧 Iniciar mãos-livres";
 
   micButton.disabled = handsFreeEnabled || recognitionActive;
 
-  if (handsFreeEnabled) {
-    setStatus("Mãos-livres ativo", "online");
-  }
+  if (handsFreeEnabled) setStatus("Mãos-livres ativo", "online");
 }
 
 function onNativeHandsFreeState(enabled, message) {
@@ -628,23 +350,18 @@ function onNativeHandsFreeState(enabled, message) {
   updateHandsFreeButton();
 
   if (message) {
-    setStatus(
-      message,
-      handsFreeEnabled ? "online" : "normal"
-    );
+    setStatus(message, handsFreeEnabled ? "online" : "normal");
   }
 }
 
 // ---------------------------------------------------------
-// SELEÇÃO DO MODELO
+// MODELO
 // ---------------------------------------------------------
 
 function chooseJarvisModel() {
   if (!window.AndroidVoice ||
       typeof window.AndroidVoice.chooseModel !== "function") {
-    addMessage(
-      "Não consigo abrir o seletor de ficheiros. Confirma a integração Android."
-    );
+    addMessage("Não consigo abrir o seletor de ficheiros. Confirma a integração Android.");
     setStatus("Integração Android indisponível");
     return;
   }
@@ -666,45 +383,31 @@ function chooseJarvisModel() {
 // RESPOSTAS LOCAIS
 // ---------------------------------------------------------
 
-function isExactCommand(text, patterns) {
-  return patterns.some(pattern => pattern.test(text));
-}
-
 function answer(raw) {
   const msg = normalizeText(raw);
 
-  if (/^(ola|oi|bom dia|boa tarde|boa noite|e ai|tudo bem)[!.?]*$/.test(msg)) {
+  if (/^(ola|oi|bom dia|boa tarde|boa noite|e ai|tudo bem)[!.?]*$/.test(msg))
     return "Olá! Sou o JARVIS. Como posso ajudar-te?";
-  }
 
-  if (/^(qual e o teu nome|como te chamas|quem es|o que es)[?!.]*$/.test(msg)) {
+  if (/^(qual e o teu nome|como te chamas|quem es|o que es)[?!.]*$/.test(msg))
     return "Sou o JARVIS, o teu assistente de inteligência artificial.";
-  }
 
-  if (/^(ajuda|ajuda-me|quais sao os comandos|como te posso usar)[?!.]*$/.test(msg)) {
+  if (/^(ajuda|ajuda-me|quais sao os comandos|como te posso usar)[?!.]*$/.test(msg))
     return "Podes fazer perguntas por texto ou voz, pedir uma piada, solicitar uma frase de motivação e dar comandos explícitos para abrir aplicações. As perguntas gerais são enviadas para o modelo de IA.";
-  }
 
-  if (/^(conta|diz|quero) uma piada[!.?]*$/.test(msg)) {
+  if (/^(conta|diz|quero) uma piada[!.?]*$/.test(msg))
     return "Porque é que o computador foi ao médico? Porque tinha um vírus!";
-  }
 
-  if (/^(da-me|manda-me|quero uma) frase de motivacao[!.?]*$/.test(msg)) {
+  if (/^(da-me|manda-me|quero uma) frase de motivacao[!.?]*$/.test(msg))
     return "Continua a aprender e a melhorar. Cada pequeno passo aproxima-te do teu objetivo!";
-  }
 
-  if (/^(que horas sao|diz-me as horas|qual e a hora agora)[?!.]*$/.test(msg)) {
+  if (/^(que horas sao|diz-me as horas|qual e a hora agora)[?!.]*$/.test(msg))
     return "A hora indicada pelo dispositivo é " +
-      new Date().toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit"
-      }) + ".";
-  }
+      new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}) + ".";
 
-  if (/^(que dia e hoje|qual e a data de hoje|diz-me a data)[?!.]*$/.test(msg)) {
+  if (/^(que dia e hoje|qual e a data de hoje|diz-me a data)[?!.]*$/.test(msg))
     return "A data indicada pelo dispositivo é " +
       new Date().toLocaleDateString("pt-BR") + ".";
-  }
 
   return null;
 }
@@ -735,28 +438,17 @@ function openNativeApp(appName, statusText) {
 function handleExplicitCommand(text) {
   const msg = normalizeText(text);
 
-  if (isExactCommand(msg, [
-    /^(abre|abrir|inicia|iniciar|vai para) o youtube$/,
-    /^(abre|abrir|inicia|iniciar|vai para) youtube$/,
-    /^abre o site do youtube$/
-  ])) {
+  if (/^(abre|abrir|inicia|iniciar|vai para) o? ?youtube$/.test(msg) ||
+      /^abre o site do youtube$/.test(msg)) {
     return openNativeApp("youtube", "A abrir o YouTube...");
   }
 
-  if (isExactCommand(msg, [
-    /^(abre|abrir|inicia|iniciar|vai para) o google$/,
-    /^(abre|abrir|inicia|iniciar|vai para) google$/,
-    /^abre o site do google$/
-  ])) {
+  if (/^(abre|abrir|inicia|iniciar|vai para) o? ?google$/.test(msg) ||
+      /^abre o site do google$/.test(msg)) {
     return openNativeApp("google", "A abrir o Google...");
   }
 
-  if (isExactCommand(msg, [
-    /^(abre|abrir|vai para) as definicoes$/,
-    /^(abre|abrir|vai para) as configuracoes$/,
-    /^(abre|abrir|vai para) definicoes$/,
-    /^(abre|abrir|vai para) configuracoes$/
-  ])) {
+  if (/^(abre|abrir|vai para) (as )?(definicoes|configuracoes)$/.test(msg)) {
     return openNativeApp("settings", "A abrir as definições...");
   }
 
@@ -764,7 +456,7 @@ function handleExplicitCommand(text) {
 }
 
 // ---------------------------------------------------------
-// ENVIO DE PERGUNTAS
+// ENVIO
 // ---------------------------------------------------------
 
 function send() {
@@ -773,7 +465,16 @@ function send() {
   const text = userInput.value.trim();
   if (!text) return;
 
-  lastQuestion = text;
+  // Evita envio repetido da mesma transcrição em poucos instantes.
+  const now = Date.now();
+  if (text === lastSubmittedText && now - lastSubmittedTime < 1200) {
+    userInput.value = "";
+    return;
+  }
+
+  lastSubmittedText = text;
+  lastSubmittedTime = now;
+
   userInput.value = "";
   addMessage(text, "user");
 
@@ -790,9 +491,7 @@ function send() {
 
   if (!window.AndroidVoice ||
       typeof window.AndroidVoice.askModel !== "function") {
-    const message =
-      "O modelo de IA não está ligado. Carrega o ficheiro .litertlm e confirma a integração do MainActivity.kt.";
-
+    const message = "O modelo de IA não está ligado. Carrega o ficheiro .litertlm e confirma a integração do MainActivity.kt.";
     addMessage(message, "bot");
     setStatus("Modelo de IA indisponível");
     speak(message);
@@ -800,6 +499,7 @@ function send() {
   }
 
   try {
+    activeRequestId = ++requestId;
     setWaiting(true);
     window.AndroidVoice.askModel(text);
   } catch (error) {
@@ -811,11 +511,11 @@ function send() {
 }
 
 // ---------------------------------------------------------
-// MICROFONE MANUAL
+// MICROFONE
 // ---------------------------------------------------------
 
 function startMic() {
-  if (recognitionActive || handsFreeEnabled) return;
+  if (recognitionActive || handsFreeEnabled || waitingForModel) return;
 
   if (window.AndroidVoice &&
       typeof window.AndroidVoice.startListening === "function") {
@@ -828,12 +528,11 @@ function startMic() {
     } catch (error) {
       recognitionActive = false;
       micButton.disabled = false;
-      console.warn("Microfone Android indisponível:", error);
+      console.warn(error);
     }
   }
 
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
     addMessage("O reconhecimento de voz não está disponível. Verifica as permissões do microfone.");
@@ -853,9 +552,9 @@ function startMic() {
 
     browserRecognition.onresult = function(event) {
       const transcript = event.results[0][0].transcript;
-      userInput.value = transcript;
       recognitionActive = false;
       micButton.disabled = false;
+      userInput.value = transcript;
       send();
     };
 
@@ -881,10 +580,15 @@ function startMic() {
 }
 
 // ---------------------------------------------------------
-// CONVERSA E CALLBACKS NATIVOS
+// CONVERSA
 // ---------------------------------------------------------
 
 function clearChat() {
+  if (waitingForModel) {
+    addMessage("Aguarda a resposta atual antes de limpar a conversa.");
+    return;
+  }
+
   chat.replaceChildren();
   addMessage("Conversa limpa. Estou pronto para uma nova pergunta.", "bot");
   setStatus("Conversa limpa", "online");
@@ -903,33 +607,53 @@ function showHelp() {
     "• Abre as definições\n\n" +
     "Ativa o modo mãos-livres para conversar sem carregar no microfone a cada frase.";
 
-  addMessage(help, "bot");
+  addMessage(help);
   speak("Estou pronto. Podes fazer perguntas ou usar os comandos disponíveis.");
 }
 
-function onNativeModelResponse(text) {
-  setWaiting(false);
+// ---------------------------------------------------------
+// RESPOSTA DA GEMMA
+// ---------------------------------------------------------
 
+function onNativeModelResponse(text) {
   const response = String(text || "").trim();
 
+  if (!waitingForModel) {
+    // Ignora callbacks repetidos ou atrasados.
+    return;
+  }
+
   if (!response) {
+    setWaiting(false);
     addMessage("O modelo não devolveu uma resposta. Verifica o modelo de IA.");
     setStatus("Resposta vazia", "online");
     speak("O modelo não devolveu uma resposta.");
     return;
   }
 
+  const now = Date.now();
+
+  // Proteção adicional caso o Kotlin envie o mesmo callback mais de uma vez.
+  if (response === lastResponseText && now - lastResponseTime < 5000) {
+    setWaiting(false);
+    return;
+  }
+
+  lastResponseText = response;
+  lastResponseTime = now;
+
+  setWaiting(false);
   addMessage(response, "bot");
   speak(response);
   setStatus("Resposta recebida", "online");
 }
 
 window.onModelResponse = onNativeModelResponse;
+window.onNativeModelResponse = onNativeModelResponse;
 
 function onNativeStatus(message) {
   const text = String(message || "Estado atualizado");
   const busy = /pensar|processar|carregar|copiar/i.test(text);
-
   setStatus(text, busy ? "busy" : "online");
 
   if (/modelo pronto|modelo carregado|gemma local pronto/i.test(text)) {
@@ -954,23 +678,20 @@ function onNativeSpeechResult(text) {
 function onNativeSpeechError(message) {
   recognitionActive = false;
   micButton.disabled = handsFreeEnabled;
-
   setStatus(message || "Erro no reconhecimento de voz");
 }
 
 function onNativeModelError(message) {
+  if (!waitingForModel) return;
+
   setWaiting(false);
-
-  const errorMessage =
-    "Erro do modelo: " + (message || "erro desconhecido");
-
+  const errorMessage = "Erro do modelo: " + (message || "erro desconhecido");
   addMessage(errorMessage, "bot");
   setStatus("Falha ao consultar o modelo", "online");
-
-  // O Kotlin também liberta a espera e tenta retomar a escuta.
 }
 
 window.onModelError = onNativeModelError;
+window.onNativeModelError = onNativeModelError;
 
 function onNativeModelLoaded(message) {
   modelSelectionRequested = false;

@@ -1,4 +1,3 @@
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -45,4 +44,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
     implementation("com.google.firebase:firebase-ai")
     implementation("com.google.firebase:firebase-appcheck-debug")
+
+    // Coroutines para chamadas do Gemini
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 }

@@ -82,6 +82,9 @@ class MainActivity : Activity() {
     private var isTtsSpeaking = false
     private var pendingManualListen = false
 
+    // NOVO: aguarda o comando depois da palavra JARVIS
+    private var awaitingWakeCommand = false
+
     private var restartListeningRunnable: Runnable? = null
     private var responseTimeoutRunnable: Runnable? = null
 
@@ -298,6 +301,7 @@ class MainActivity : Activity() {
 
             handsFreeEnabled = true
             waitingForResponse = false
+            awaitingWakeCommand = false
 
             notifyHandsFreeState(true, "Modo mãos-livres ativado.")
 
@@ -327,6 +331,7 @@ class MainActivity : Activity() {
             handsFreeEnabled = false
             waitingForResponse = false
             pendingManualListen = false
+            awaitingWakeCommand = false
 
             cancelResponseTimeout()
             stopRecognitionInternal()
@@ -508,7 +513,7 @@ class MainActivity : Activity() {
                             recognitionInProgress = true
                             showStatus(
                                 if (handsFreeEnabled) {
-                                    "Mãos-livres: estou a ouvir..."
+                                    "Mãos-livres: a aguardar JARVIS..."
                                 } else {
                                     "A ouvir..."
                                 }
@@ -560,6 +565,10 @@ class MainActivity : Activity() {
                             }
                         }
 
+                        // -------------------------------------------------
+                        // NOVO: DETEÇÃO DA PALAVRA JARVIS
+                        // -------------------------------------------------
+
                         override fun onResults(results: Bundle?) {
                             recognitionInProgress = false
 
@@ -577,30 +586,90 @@ class MainActivity : Activity() {
 
                             recognizer = null
 
-                            if (!text.isNullOrBlank()) {
+                            if (text.isNullOrBlank()) {
                                 if (handsFreeEnabled) {
-                                    beginResponseWait()
-                                }
-
-                                webView.evaluateJavascript(
-                                    "if (typeof onNativeSpeechResult === 'function') " +
-                                        "onNativeSpeechResult(" +
-                                        "${JSONObject.quote(text)}" +
-                                        ");",
-                                    null
-                                )
-                            } else {
-                                if (handsFreeEnabled) {
-                                    showStatus(
-                                        "Não reconheci a frase. Vou voltar a ouvir..."
-                                    )
                                     scheduleListeningRestart(600)
                                 } else {
                                     showSpeechError(
                                         "Não foi reconhecida nenhuma frase."
                                     )
                                 }
+                                return
                             }
+
+                            if (handsFreeEnabled) {
+
+                                val normalized = text
+                                    .lowercase(Locale.ROOT)
+                                    .replace("jávis", "jarvis")
+                                    .replace("járvis", "jarvis")
+
+                                val wakeMatch = Regex(
+                                    """\bjarvis\b"""
+                                ).find(normalized)
+
+                                // Já ouviu JARVIS: receber o próximo comando
+                                if (awaitingWakeCommand) {
+                                    awaitingWakeCommand = false
+                                    beginResponseWait()
+
+                                    webView.evaluateJavascript(
+                                        "if (typeof onNativeSpeechResult === 'function') " +
+                                            "onNativeSpeechResult(" +
+                                            "${JSONObject.quote(text)});",
+                                        null
+                                    )
+                                    return
+                                }
+
+                                // Palavra de ativação encontrada
+                                if (wakeMatch != null) {
+
+                                    // Extrair o que foi dito depois de JARVIS
+                                    val command = text
+                                        .substring(
+                                            wakeMatch.range.last + 1
+                                        )
+                                        .trim()
+                                        .trim(',', '.', '!', '?')
+
+                                    // Apenas "JARVIS"
+                                    if (command.isBlank()) {
+                                        awaitingWakeCommand = true
+
+                                        respond(
+                                            "Sim, estou aqui. Em que posso ajudar?"
+                                        )
+                                        return
+                                    }
+
+                                    // "JARVIS, abre o YouTube"
+                                    beginResponseWait()
+
+                                    webView.evaluateJavascript(
+                                        "if (typeof onNativeSpeechResult === 'function') " +
+                                            "onNativeSpeechResult(" +
+                                            "${JSONObject.quote(command)});",
+                                        null
+                                    )
+                                    return
+                                }
+
+                                // Não executar frases sem a palavra JARVIS
+                                showStatus(
+                                    "A aguardar a palavra JARVIS..."
+                                )
+                                scheduleListeningRestart(500)
+                                return
+                            }
+
+                            // Reconhecimento manual normal
+                            webView.evaluateJavascript(
+                                "if (typeof onNativeSpeechResult === 'function') " +
+                                    "onNativeSpeechResult(" +
+                                    "${JSONObject.quote(text)});",
+                                null
+                            )
                         }
 
                         override fun onPartialResults(
@@ -1060,7 +1129,6 @@ class MainActivity : Activity() {
             return null
         }
 
-        // Extrair o título do comando.
         var title = command.trim()
 
         val prefixes = listOf(
@@ -1089,7 +1157,6 @@ class MainActivity : Activity() {
             }
         }
 
-        // Retirar a data e a hora do título.
         title = title
             .replace(
                 Regex("""\bamanhã\b|\bamanha\b|\bhoje\b""", RegexOption.IGNORE_CASE),
@@ -1109,14 +1176,12 @@ class MainActivity : Activity() {
             title = "Lembrete do JARVIS"
         }
 
-        // Definir hoje ou amanhã.
         val start = Calendar.getInstance()
 
         if (cmd.contains("amanhã") || cmd.contains("amanha")) {
             start.add(Calendar.DAY_OF_YEAR, 1)
         }
 
-        // Reconhecer horas como 15:30, 15h30 ou 15 horas.
         val timeMatch = Regex(
             """\b([01]?\d|2[0-3])(?:\s*[:h]\s*([0-5]\d)|\s+horas?)\b"""
         ).find(cmd)
@@ -1132,7 +1197,6 @@ class MainActivity : Activity() {
             start.set(Calendar.HOUR_OF_DAY, hour)
             start.set(Calendar.MINUTE, minute)
         } else {
-            // Hora sugerida quando o utilizador não especifica uma.
             start.set(Calendar.HOUR_OF_DAY, 9)
             start.set(Calendar.MINUTE, 0)
         }
@@ -1193,10 +1257,8 @@ class MainActivity : Activity() {
     private fun handleExtraAndroidCommand(command: String): String? {
         val cmd = command.lowercase(Locale.ROOT).trim()
 
-        // Verificar primeiro se é um pedido de lembrete.
         handleReminderCommand(command)?.let { return it }
 
-        // Estado da bateria e carregamento
         if (
             cmd.contains("está a carregar") ||
             cmd.contains("esta a carregar") ||
@@ -1229,7 +1291,6 @@ class MainActivity : Activity() {
             }
         }
 
-        // Abrir câmara
         if (cmd.contains("câmara") || cmd.contains("camera")) {
             return launchAndroidIntent(
                 Intent(MediaStore.ACTION_IMAGE_CAPTURE),
@@ -1238,7 +1299,6 @@ class MainActivity : Activity() {
             )
         }
 
-        // Abrir calculadora
         if (cmd.contains("calculadora")) {
             val calculatorIntent = Intent(Intent.ACTION_MAIN).apply {
                 addCategory(Intent.CATEGORY_APP_CALCULATOR)
@@ -1248,7 +1308,6 @@ class MainActivity : Activity() {
                 startActivity(calculatorIntent)
                 return "A abrir a calculadora."
             } catch (_: Exception) {
-                // Tentar outros pacotes.
             }
 
             val packages = listOf(
@@ -1269,14 +1328,12 @@ class MainActivity : Activity() {
                         return "A abrir a calculadora."
                     }
                 } catch (_: Exception) {
-                    // Continua a procurar.
                 }
             }
 
             return "Não encontrei uma calculadora compatível."
         }
 
-        // Abrir mapas
         if (
             cmd.contains("google maps") ||
             cmd.contains("mapas") ||
@@ -1293,7 +1350,6 @@ class MainActivity : Activity() {
             )
         }
 
-        // Abrir definições de Wi-Fi
         if (cmd.contains("wi-fi") || cmd.contains("wifi")) {
             return launchAndroidIntent(
                 Intent(Settings.ACTION_WIFI_SETTINGS),
@@ -1302,7 +1358,6 @@ class MainActivity : Activity() {
             )
         }
 
-        // Abrir definições de Bluetooth
         if (cmd.contains("bluetooth")) {
             return launchAndroidIntent(
                 Intent(Settings.ACTION_BLUETOOTH_SETTINGS),
@@ -1311,7 +1366,6 @@ class MainActivity : Activity() {
             )
         }
 
-        // Volume multimédia
         if (
             cmd.contains("aumenta o volume") ||
             cmd.contains("aumentar o volume") ||
@@ -1352,7 +1406,6 @@ class MainActivity : Activity() {
             return "A reativar o som multimédia."
         }
 
-        // Criar alarme com hora: 07:30 ou 07h30
         val alarmTime = Regex(
             """\b([01]?\d|2[0-3])[:h]([0-5]\d)\b"""
         ).find(cmd)
@@ -1395,7 +1448,6 @@ class MainActivity : Activity() {
             )
         }
 
-        // Abrir aplicações conhecidas por voz
         val isOpenRequest =
             cmd.contains("abre ") ||
             cmd.startsWith("abrir ") ||
@@ -1426,7 +1478,6 @@ class MainActivity : Activity() {
             }
         }
 
-        // Abrir contactos
         if (
             cmd.contains("abre contactos") ||
             cmd.contains("abrir contactos") ||
@@ -1445,7 +1496,6 @@ class MainActivity : Activity() {
             )
         }
 
-        // Abrir o marcador sem iniciar uma chamada
         if (
             cmd.contains("abre o telefone") ||
             cmd.contains("abrir telefone") ||
@@ -1460,7 +1510,6 @@ class MainActivity : Activity() {
             )
         }
 
-        // Abrir calendário
         if (
             cmd.contains("abre o calendário") ||
             cmd.contains("abre o calendario") ||
@@ -1478,7 +1527,6 @@ class MainActivity : Activity() {
             )
         }
 
-        // Definições do ecrã
         if (
             cmd.contains("definições do ecrã") ||
             cmd.contains("definicoes do ecra") ||
@@ -1494,7 +1542,6 @@ class MainActivity : Activity() {
             )
         }
 
-        // Definições das notificações da aplicação
         if (
             cmd.contains("definições de notificações") ||
             cmd.contains("definicoes de notificacoes") ||
@@ -1513,7 +1560,6 @@ class MainActivity : Activity() {
             )
         }
 
-        // Definições de poupança de bateria
         if (
             cmd.contains("definições da bateria") ||
             cmd.contains("definicoes da bateria") ||
@@ -1566,7 +1612,6 @@ class MainActivity : Activity() {
     private fun processCommand(prompt: String) {
         val text = prompt.lowercase(Locale.ROOT).trim()
 
-        // Passar o texto original para preservar o título do lembrete.
         val extraAnswer = handleExtraAndroidCommand(prompt)
 
         if (extraAnswer != null) {
@@ -1811,6 +1856,7 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         handsFreeEnabled = false
         waitingForResponse = false
+        awaitingWakeCommand = false
 
         cancelResponseTimeout()
         stopRecognitionInternal()

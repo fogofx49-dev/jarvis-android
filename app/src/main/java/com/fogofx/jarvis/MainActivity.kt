@@ -94,6 +94,8 @@ class MainActivity : Activity() {
         private const val RESPONSE_TIMEOUT_MS = 60000L
     }
 
+    // INICIALIZAÇÃO
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -102,13 +104,24 @@ class MainActivity : Activity() {
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+
             webChromeClient = WebChromeClient()
 
             webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView?, url: String?) {
-                    val modelFile = File(filesDir, "model.litertlm")
 
-                    if (modelFile.exists() && modelFile.length() > 0L) {
+                override fun onPageFinished(
+                    view: WebView?,
+                    url: String?
+                ) {
+                    val modelFile = File(
+                        filesDir,
+                        "model.litertlm"
+                    )
+
+                    if (
+                        modelFile.exists() &&
+                        modelFile.length() > 0L
+                    ) {
                         showStatus("A preparar o Gemma local...")
 
                         if (!isModelLoaded && !isLoadingModel) {
@@ -124,61 +137,100 @@ class MainActivity : Activity() {
                 }
             }
 
-            addJavascriptInterface(AndroidBridge(), "AndroidVoice")
+            addJavascriptInterface(
+                AndroidBridge(),
+                "AndroidVoice"
+            )
         }
 
         setContentView(webView)
-        webView.loadUrl("file:///android_asset/index.html")
+
+        webView.loadUrl(
+            "file:///android_asset/index.html"
+        )
     }
 
     // TEXT TO SPEECH
 
     private fun initializeTts() {
+
         tts = TextToSpeech(this) { status ->
+
             mainHandler.post {
+
                 if (status == TextToSpeech.SUCCESS) {
-                    val languageResult = tts.setLanguage(Locale("pt", "BR"))
+
+                    val languageResult = tts.setLanguage(
+                        Locale("pt", "BR")
+                    )
 
                     tts.setSpeechRate(0.96f)
                     tts.setPitch(0.92f)
 
                     tts.setOnUtteranceProgressListener(
+
                         object : UtteranceProgressListener() {
 
-                            override fun onStart(utteranceId: String?) {
+                            override fun onStart(
+                                utteranceId: String?
+                            ) {
                                 mainHandler.post {
-                                    if (utteranceId == "JARVIS_VOICE") {
+
+                                    if (
+                                        utteranceId == "JARVIS_VOICE"
+                                    ) {
                                         isTtsSpeaking = true
+
+                                        // Pausar o microfone enquanto fala.
                                         stopRecognitionInternal()
+
                                         showStatus("A falar...")
                                     }
                                 }
                             }
 
-                            override fun onDone(utteranceId: String?) {
+                            override fun onDone(
+                                utteranceId: String?
+                            ) {
                                 mainHandler.post {
-                                    if (utteranceId == "JARVIS_VOICE") {
+
+                                    if (
+                                        utteranceId == "JARVIS_VOICE"
+                                    ) {
                                         isTtsSpeaking = false
-                                        showStatus("Resposta pronta.")
+
+                                        showStatus(
+                                            "Resposta concluída. Estou a ouvir..."
+                                        )
+
                                         notifySpeechFinished()
 
                                         if (handsFreeEnabled) {
-                                            scheduleListeningRestart(700)
+                                            scheduleListeningRestart(900)
                                         }
                                     }
                                 }
                             }
 
                             @Suppress("OVERRIDE_DEPRECATION")
-                            override fun onError(utteranceId: String?) {
+                            override fun onError(
+                                utteranceId: String?
+                            ) {
                                 mainHandler.post {
-                                    if (utteranceId == "JARVIS_VOICE") {
+
+                                    if (
+                                        utteranceId == "JARVIS_VOICE"
+                                    ) {
                                         isTtsSpeaking = false
-                                        showStatus("Não foi possível concluir a fala.")
+
+                                        showStatus(
+                                            "Não foi possível concluir a fala."
+                                        )
+
                                         notifySpeechFinished()
 
                                         if (handsFreeEnabled) {
-                                            scheduleListeningRestart(700)
+                                            scheduleListeningRestart(900)
                                         }
                                     }
                                 }
@@ -189,16 +241,23 @@ class MainActivity : Activity() {
                                 interrupted: Boolean
                             ) {
                                 mainHandler.post {
-                                    if (utteranceId == "JARVIS_VOICE") {
+
+                                    if (
+                                        utteranceId == "JARVIS_VOICE"
+                                    ) {
                                         isTtsSpeaking = false
+
                                         notifySpeechFinished()
 
                                         if (interrupted) {
                                             showStatus("Interrompido.")
                                         }
 
-                                        if (handsFreeEnabled && !interrupted) {
-                                            scheduleListeningRestart(700)
+                                        if (
+                                            handsFreeEnabled &&
+                                            !interrupted
+                                        ) {
+                                            scheduleListeningRestart(900)
                                         }
                                     }
                                 }
@@ -218,21 +277,30 @@ class MainActivity : Activity() {
                         }
                     )
 
-                    if (ttsReady && pendingSpeech.isNotBlank()) {
+                    if (
+                        ttsReady &&
+                        pendingSpeech.isNotBlank()
+                    ) {
                         val text = pendingSpeech
                         pendingSpeech = ""
                         speakText(text)
                     }
+
                 } else {
                     ttsReady = false
-                    showStatus("Não foi possível iniciar a voz Android.")
+
+                    showStatus(
+                        "Não foi possível iniciar a voz Android."
+                    )
                 }
             }
         }
     }
 
     private fun notifySpeechFinished() {
+
         mainHandler.post {
+
             if (!::webView.isInitialized) return@post
 
             webView.evaluateJavascript(
@@ -244,6 +312,7 @@ class MainActivity : Activity() {
     }
 
     private fun speakText(text: String) {
+
         val clean = text.trim()
 
         if (clean.isBlank()) {
@@ -252,12 +321,14 @@ class MainActivity : Activity() {
         }
 
         mainHandler.post {
+
             if (!ttsReady) {
                 pendingSpeech = clean
                 return@post
             }
 
             try {
+
                 isTtsSpeaking = true
 
                 val result = tts.speak(
@@ -268,20 +339,31 @@ class MainActivity : Activity() {
                 )
 
                 if (result == TextToSpeech.ERROR) {
+
                     isTtsSpeaking = false
-                    showStatus("Não foi possível reproduzir a voz.")
+
+                    showStatus(
+                        "Não foi possível reproduzir a voz."
+                    )
+
                     notifySpeechFinished()
                 }
+
             } catch (_: Exception) {
+
                 isTtsSpeaking = false
+
                 showStatus("Erro ao reproduzir a voz.")
+
                 notifySpeechFinished()
             }
         }
     }
 
     private fun stopSpeaking() {
+
         mainHandler.post {
+
             try {
                 if (::tts.isInitialized) {
                     tts.stop()
@@ -289,32 +371,39 @@ class MainActivity : Activity() {
 
                 pendingSpeech = ""
                 isTtsSpeaking = false
+
             } catch (_: Exception) {
             }
         }
     }
 
     private fun finishResponseWithoutSpeech() {
+
         mainHandler.post {
+
             clearResponseWait()
 
             if (handsFreeEnabled) {
-                scheduleListeningRestart(700)
+                scheduleListeningRestart(900)
             }
         }
     }
 
-    // MODO MÃOS-LIVRES
+    // MODO MÃOS-LIVRES AUTOMÁTICO
 
     private fun startHandsFree() {
+
         mainHandler.post {
+
             if (handsFreeEnabled) {
-                showStatus("O modo mãos-livres já está ativo.")
+                showStatus("Modo mãos-livres já ativo.")
                 return@post
             }
 
             if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-                showStatus("O reconhecimento de voz não está disponível.")
+                showStatus(
+                    "Reconhecimento de voz indisponível."
+                )
                 return@post
             }
 
@@ -322,7 +411,10 @@ class MainActivity : Activity() {
             waitingForResponse = false
             awaitingWakeCommand = false
 
-            notifyHandsFreeState(true, "Modo mãos-livres ativado.")
+            notifyHandsFreeState(
+                true,
+                "Modo mãos-livres ativado."
+            )
 
             if (
                 ActivityCompat.checkSelfPermission(
@@ -330,29 +422,39 @@ class MainActivity : Activity() {
                     Manifest.permission.RECORD_AUDIO
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
-                showStatus("É necessária a permissão do microfone.")
+
+                showStatus(
+                    "É necessária a permissão do microfone."
+                )
 
                 ActivityCompat.requestPermissions(
                     this,
                     arrayOf(Manifest.permission.RECORD_AUDIO),
                     MIC_PERMISSION
                 )
+
                 return@post
             }
 
-            showStatus("Modo mãos-livres ativado. A preparar o microfone...")
-            scheduleListeningRestart(250)
+            showStatus(
+                "J.A.R.V.I.S. pronto. Estou a ouvir..."
+            )
+
+            scheduleListeningRestart(700)
         }
     }
 
     private fun stopHandsFree() {
+
         mainHandler.post {
+
             handsFreeEnabled = false
             waitingForResponse = false
             pendingManualListen = false
             awaitingWakeCommand = false
 
             cancelResponseTimeout()
+
             stopRecognitionInternal()
 
             try {
@@ -363,25 +465,41 @@ class MainActivity : Activity() {
             isTtsSpeaking = false
             pendingSpeech = ""
 
-            notifyHandsFreeState(false, "Modo mãos-livres desligado.")
-            showStatus("Modo mãos-livres desligado.")
+            notifyHandsFreeState(
+                false,
+                "Modo mãos-livres desligado."
+            )
+
+            showStatus(
+                "Modo mãos-livres desligado."
+            )
         }
     }
 
-    private fun notifyHandsFreeState(enabled: Boolean, message: String) {
+    private fun notifyHandsFreeState(
+        enabled: Boolean,
+        message: String
+    ) {
+
         mainHandler.post {
+
             if (!::webView.isInitialized) return@post
 
             webView.evaluateJavascript(
                 "if (typeof onNativeHandsFreeState === 'function') " +
-                    "onNativeHandsFreeState($enabled, ${JSONObject.quote(message)});",
+                    "onNativeHandsFreeState($enabled, " +
+                    "${JSONObject.quote(message)});",
                 null
             )
         }
     }
 
-    private fun scheduleListeningRestart(delayMs: Long) {
+    private fun scheduleListeningRestart(
+        delayMs: Long
+    ) {
+
         mainHandler.post {
+
             restartListeningRunnable?.let {
                 mainHandler.removeCallbacks(it)
             }
@@ -389,6 +507,7 @@ class MainActivity : Activity() {
             if (!handsFreeEnabled) return@post
 
             val task = Runnable {
+
                 if (
                     handsFreeEnabled &&
                     !waitingForResponse &&
@@ -400,11 +519,16 @@ class MainActivity : Activity() {
             }
 
             restartListeningRunnable = task
-            mainHandler.postDelayed(task, delayMs)
+
+            mainHandler.postDelayed(
+                task,
+                delayMs
+            )
         }
     }
 
     private fun cancelResponseTimeout() {
+
         responseTimeoutRunnable?.let {
             mainHandler.removeCallbacks(it)
         }
@@ -413,26 +537,45 @@ class MainActivity : Activity() {
     }
 
     private fun beginResponseWait() {
+
         waitingForResponse = true
+
         cancelResponseTimeout()
 
         val task = Runnable {
-            if (handsFreeEnabled && waitingForResponse) {
+
+            if (
+                handsFreeEnabled &&
+                waitingForResponse
+            ) {
+
                 waitingForResponse = false
-                showStatus("A resposta está a demorar. Continuo a aguardar.")
+
+                showStatus(
+                    "A resposta está a demorar. Vou voltar a ouvir."
+                )
+
+                scheduleListeningRestart(1200)
             }
         }
 
         responseTimeoutRunnable = task
-        mainHandler.postDelayed(task, RESPONSE_TIMEOUT_MS)
+
+        mainHandler.postDelayed(
+            task,
+            RESPONSE_TIMEOUT_MS
+        )
     }
 
     private fun clearResponseWait() {
+
         waitingForResponse = false
+
         cancelResponseTimeout()
     }
 
     private fun stopRecognitionInternal() {
+
         restartListeningRunnable?.let {
             mainHandler.removeCallbacks(it)
         }
@@ -446,14 +589,18 @@ class MainActivity : Activity() {
         }
 
         recognizer = null
+
         recognitionInProgress = false
     }
 
     // RECONHECIMENTO DE VOZ
 
     private fun startListeningManual() {
+
         if (handsFreeEnabled) {
-            showStatus("O modo mãos-livres já controla o microfone.")
+            showStatus(
+                "O modo mãos-livres já controla o microfone."
+            )
             return
         }
 
@@ -463,6 +610,7 @@ class MainActivity : Activity() {
                 Manifest.permission.RECORD_AUDIO
             ) != PackageManager.PERMISSION_GRANTED
         ) {
+
             pendingManualListen = true
 
             ActivityCompat.requestPermissions(
@@ -470,16 +618,29 @@ class MainActivity : Activity() {
                 arrayOf(Manifest.permission.RECORD_AUDIO),
                 MIC_PERMISSION
             )
+
             return
         }
 
         startRecognitionSession(false)
     }
 
-    private fun startRecognitionSession(handsFree: Boolean) {
+    private fun startRecognitionSession(
+        handsFree: Boolean
+    ) {
+
         mainHandler.post {
-            if (handsFree && !handsFreeEnabled) return@post
-            if (handsFree && (waitingForResponse || isTtsSpeaking)) return@post
+
+            if (handsFree && !handsFreeEnabled) {
+                return@post
+            }
+
+            if (
+                handsFree &&
+                (waitingForResponse || isTtsSpeaking)
+            ) {
+                return@post
+            }
 
             if (
                 ActivityCompat.checkSelfPermission(
@@ -487,35 +648,59 @@ class MainActivity : Activity() {
                     Manifest.permission.RECORD_AUDIO
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
+
                 if (handsFree) {
-                    showStatus("A permissão do microfone foi retirada.")
+
+                    showStatus(
+                        "A permissão do microfone foi retirada."
+                    )
+
                     stopHandsFree()
+
                 } else {
                     startListeningManual()
                 }
+
                 return@post
             }
 
             if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+
                 if (handsFree) {
-                    showStatus("Reconhecimento de voz indisponível.")
+
+                    showStatus(
+                        "Reconhecimento de voz indisponível."
+                    )
+
                     stopHandsFree()
+
                 } else {
-                    showSpeechError("Reconhecimento de voz indisponível.")
+
+                    showSpeechError(
+                        "Reconhecimento de voz indisponível."
+                    )
                 }
+
                 return@post
             }
 
             stopRecognitionInternal()
 
             try {
-                recognizer = SpeechRecognizer.createSpeechRecognizer(this)
+
+                recognizer =
+                    SpeechRecognizer.createSpeechRecognizer(this)
 
                 recognizer?.setRecognitionListener(
+
                     object : RecognitionListener {
 
-                        override fun onReadyForSpeech(params: Bundle?) {
+                        override fun onReadyForSpeech(
+                            params: Bundle?
+                        ) {
+
                             recognitionInProgress = true
+
                             showStatus("A ouvir...")
                         }
 
@@ -523,14 +708,24 @@ class MainActivity : Activity() {
                             showStatus("A ouvir...")
                         }
 
-                        override fun onRmsChanged(rmsdB: Float) {}
-                        override fun onBufferReceived(buffer: ByteArray?) {}
+                        override fun onRmsChanged(
+                            rmsdB: Float
+                        ) {
+                        }
+
+                        override fun onBufferReceived(
+                            buffer: ByteArray?
+                        ) {
+                        }
 
                         override fun onEndOfSpeech() {
-                            showStatus("A processar a voz...")
+                            showStatus(
+                                "A processar a voz..."
+                            )
                         }
 
                         override fun onError(error: Int) {
+
                             recognitionInProgress = false
 
                             try {
@@ -541,14 +736,20 @@ class MainActivity : Activity() {
                             recognizer = null
 
                             if (handsFreeEnabled) {
+
                                 if (
                                     error == SpeechRecognizer.ERROR_NO_MATCH ||
                                     error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
                                 ) {
-                                    showStatus("Não percebi. Vou voltar a ouvir...")
-                                } else {
+
                                     showStatus(
-                                        "O reconhecimento foi interrompido. A tentar novamente..."
+                                        "Não percebi. Vou voltar a ouvir..."
+                                    )
+
+                                } else {
+
+                                    showStatus(
+                                        "Reconhecimento interrompido. A tentar novamente..."
                                     )
                                 }
 
@@ -556,16 +757,25 @@ class MainActivity : Activity() {
                                     if (
                                         error == SpeechRecognizer.ERROR_NO_MATCH ||
                                         error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
-                                    ) 500 else 1200
+                                    ) {
+                                        600
+                                    } else {
+                                        1200
+                                    }
                                 )
+
                             } else {
+
                                 showSpeechError(
                                     "Reconhecimento de voz terminado (código $error)."
                                 )
                             }
                         }
 
-                        override fun onResults(results: Bundle?) {
+                        override fun onResults(
+                            results: Bundle?
+                        ) {
+
                             recognitionInProgress = false
 
                             val text = results
@@ -583,6 +793,7 @@ class MainActivity : Activity() {
                             recognizer = null
 
                             if (text.isNullOrBlank()) {
+
                                 if (handsFreeEnabled) {
                                     scheduleListeningRestart(600)
                                 } else {
@@ -590,72 +801,79 @@ class MainActivity : Activity() {
                                         "Não foi reconhecida nenhuma frase."
                                     )
                                 }
+
                                 return
                             }
+
+                            // MODO MÃOS-LIVRES:
+                            // Não precisa dizer JARVIS.
+                            // Qualquer frase reconhecida é enviada ao Gemma.
 
                             if (handsFreeEnabled) {
-                                val normalized = text
-                                    .lowercase(Locale.ROOT)
-                                    .replace("jávis", "jarvis")
-                                    .replace("járvis", "jarvis")
 
-                                val wakeMatch = Regex("""\bjarvis\b""")
-                                    .find(normalized)
+                                awaitingWakeCommand = false
 
-                                if (awaitingWakeCommand) {
-                                    awaitingWakeCommand = false
-                                    beginResponseWait()
-                                    sendSpeechToInterface(text)
-                                    return
-                                }
+                                beginResponseWait()
 
-                                if (wakeMatch != null) {
-                                    val command = text
-                                        .substring(wakeMatch.range.last + 1)
-                                        .trim()
-                                        .trim(',', '.', '!', '?')
+                                sendSpeechToInterface(text)
 
-                                    if (command.isBlank()) {
-                                        awaitingWakeCommand = true
-                                        respond("Sim, estou aqui. Em que posso ajudar?")
-                                        return
-                                    }
-
-                                    beginResponseWait()
-                                    sendSpeechToInterface(command)
-                                    return
-                                }
-
-                                showStatus("A aguardar a palavra JARVIS...")
-                                scheduleListeningRestart(500)
                                 return
                             }
+
+                            // Modo manual.
 
                             sendSpeechToInterface(text)
                         }
 
-                        override fun onPartialResults(partialResults: Bundle?) {}
-                        override fun onEvent(eventType: Int, params: Bundle?) {}
+                        override fun onPartialResults(
+                            partialResults: Bundle?
+                        ) {
+                        }
+
+                        override fun onEvent(
+                            eventType: Int,
+                            params: Bundle?
+                        ) {
+                        }
                     }
                 )
 
                 val intent = Intent(
                     RecognizerIntent.ACTION_RECOGNIZE_SPEECH
                 ).apply {
+
                     putExtra(
                         RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                         RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
                     )
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
-                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "pt-BR")
-                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+
+                    putExtra(
+                        RecognizerIntent.EXTRA_LANGUAGE,
+                        "pt-BR"
+                    )
+
+                    putExtra(
+                        RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
+                        "pt-BR"
+                    )
+
+                    putExtra(
+                        RecognizerIntent.EXTRA_MAX_RESULTS,
+                        1
+                    )
+
+                    putExtra(
+                        RecognizerIntent.EXTRA_PARTIAL_RESULTS,
+                        false
+                    )
                 }
 
                 recognitionInProgress = true
+
                 recognizer?.startListening(intent)
 
             } catch (e: Exception) {
+
                 recognitionInProgress = false
 
                 try {
@@ -666,11 +884,15 @@ class MainActivity : Activity() {
                 recognizer = null
 
                 if (handsFreeEnabled) {
+
                     showStatus(
                         "Não consegui iniciar o microfone. A tentar novamente..."
                     )
+
                     scheduleListeningRestart(1200)
+
                 } else {
+
                     showSpeechError(
                         "Não foi possível iniciar o reconhecimento: ${e.message}"
                     )
@@ -680,7 +902,9 @@ class MainActivity : Activity() {
     }
 
     private fun sendSpeechToInterface(text: String) {
+
         mainHandler.post {
+
             if (!::webView.isInitialized) return@post
 
             webView.evaluateJavascript(
@@ -696,7 +920,12 @@ class MainActivity : Activity() {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        super.onRequestPermissionsResult(
+            requestCode,
+            permissions,
+            grantResults
+        )
 
         if (requestCode != MIC_PERMISSION) return
 
@@ -705,21 +934,32 @@ class MainActivity : Activity() {
             grantResults[0] == PackageManager.PERMISSION_GRANTED
 
         if (!granted) {
+
             pendingManualListen = false
 
             if (handsFreeEnabled) {
                 stopHandsFree()
             }
 
-            showStatus("Permissão do microfone recusada.")
+            showStatus(
+                "Permissão do microfone recusada."
+            )
+
             return
         }
 
         if (handsFreeEnabled) {
-            showStatus("Permissão concedida. A iniciar a escuta...")
-            scheduleListeningRestart(250)
+
+            showStatus(
+                "Permissão concedida. A iniciar a escuta..."
+            )
+
+            scheduleListeningRestart(500)
+
         } else if (pendingManualListen) {
+
             pendingManualListen = false
+
             startListeningManual()
         }
     }
@@ -727,16 +967,31 @@ class MainActivity : Activity() {
     // SELETOR E CÓPIA DO MODELO
 
     private fun openModelFileSelector() {
+
         mainHandler.post {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+
+            val intent = Intent(
+                Intent.ACTION_OPEN_DOCUMENT
+            ).apply {
+
                 addCategory(Intent.CATEGORY_OPENABLE)
+
                 type = "*/*"
             }
 
             try {
-                startActivityForResult(intent, PICK_MODEL_REQUEST)
-                showStatus("Seleciona o ficheiro .litertlm...")
+
+                startActivityForResult(
+                    intent,
+                    PICK_MODEL_REQUEST
+                )
+
+                showStatus(
+                    "Seleciona o ficheiro .litertlm..."
+                )
+
             } catch (e: Exception) {
+
                 showModelError(
                     "Não foi possível abrir o seletor: ${e.message}"
                 )
@@ -750,34 +1005,56 @@ class MainActivity : Activity() {
         resultCode: Int,
         data: Intent?
     ) {
-        super.onActivityResult(requestCode, resultCode, data)
+
+        super.onActivityResult(
+            requestCode,
+            resultCode,
+            data
+        )
 
         if (
             requestCode != PICK_MODEL_REQUEST ||
             resultCode != RESULT_OK
         ) {
+
             if (requestCode == PICK_MODEL_REQUEST) {
-                showStatus("Seleção do modelo cancelada.")
+                showStatus(
+                    "Seleção do modelo cancelada."
+                )
             }
+
             return
         }
 
         val uri = data?.data ?: return
 
         backgroundExecutor.execute {
+
             try {
+
                 val originalName = getDisplayName(uri)
 
-                if (!originalName.endsWith(".litertlm", ignoreCase = true)) {
+                if (
+                    !originalName.endsWith(
+                        ".litertlm",
+                        ignoreCase = true
+                    )
+                ) {
+
                     showModelError(
                         "Seleciona um ficheiro com extensão .litertlm."
                     )
+
                     return@execute
                 }
 
-                val destination = File(filesDir, "model.litertlm")
+                val destination = File(
+                    filesDir,
+                    "model.litertlm"
+                )
 
                 contentResolver.openInputStream(uri).use { input ->
+
                     if (input == null) {
                         throw IllegalStateException(
                             "Não foi possível ler o ficheiro."
@@ -789,16 +1066,22 @@ class MainActivity : Activity() {
                     }
                 }
 
-                if (!destination.exists() || destination.length() == 0L) {
+                if (
+                    !destination.exists() ||
+                    destination.length() == 0L
+                ) {
+
                     throw IllegalStateException(
                         "O ficheiro copiado está vazio."
                     )
                 }
 
                 activeModelName = originalName
+
                 initializeLocalModel(destination)
 
             } catch (e: Exception) {
+
                 showModelError(
                     "Falha ao copiar ou carregar o modelo: " +
                         (e.message ?: "erro desconhecido")
@@ -808,6 +1091,7 @@ class MainActivity : Activity() {
     }
 
     private fun getDisplayName(uri: Uri): String {
+
         return contentResolver.query(
             uri,
             null,
@@ -815,19 +1099,24 @@ class MainActivity : Activity() {
             null,
             null
         )?.use { cursor ->
-            val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+
+            val index = cursor.getColumnIndex(
+                OpenableColumns.DISPLAY_NAME
+            )
 
             if (cursor.moveToFirst() && index >= 0) {
                 cursor.getString(index)
             } else {
                 "model.litertlm"
             }
+
         } ?: "model.litertlm"
     }
 
     // GEMMA LOCAL
 
     private fun initializeLocalModel(file: File) {
+
         if (isLoadingModel) {
             showStatus("O modelo já está a carregar.")
             return
@@ -836,7 +1125,9 @@ class MainActivity : Activity() {
         isLoadingModel = true
         isModelLoaded = false
 
-        showStatus("A inicializar o Gemma local. Aguarda...")
+        showStatus(
+            "A inicializar o Gemma local. Aguarda..."
+        )
 
         try {
             modelConversation?.close()
@@ -853,17 +1144,22 @@ class MainActivity : Activity() {
         modelEngine = null
 
         try {
+
             val config = EngineConfig(
                 modelPath = file.absolutePath,
                 backend = Backend.CPU()
             )
 
             val newEngine = Engine(config)
+
             newEngine.initialize()
 
             val newConversation = newEngine.createConversation(
+
                 ConversationConfig(
+
                     systemInstruction = Contents.of(
+
                         """
                         Tu és J.A.R.V.I.S., um assistente virtual útil,
                         educado, inteligente e conciso.
@@ -890,24 +1186,32 @@ class MainActivity : Activity() {
 
             modelEngine = newEngine
             modelConversation = newConversation
+
             isModelLoaded = true
             isLoadingModel = false
 
             mainHandler.post {
+
                 if (!::webView.isInitialized) return@post
 
                 webView.evaluateJavascript(
+
                     "if (typeof onNativeModelLoaded === 'function') " +
                         "onNativeModelLoaded(" +
                         "${JSONObject.quote("Gemma local pronto: $activeModelName")}" +
                         ");",
+
                     null
                 )
 
                 showStatus("Gemma local pronto.")
+
+                // INICIAR MODO MÃOS-LIVRES AUTOMATICAMENTE.
+                startHandsFree()
             }
 
         } catch (e: Exception) {
+
             isLoadingModel = false
             isModelLoaded = false
 
@@ -934,67 +1238,115 @@ class MainActivity : Activity() {
     // BATERIA E LANTERNA
 
     private fun getBatteryLevel(): Int {
+
         val battery = registerReceiver(
             null,
             IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         )
 
-        return battery?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        return battery?.getIntExtra(
+            BatteryManager.EXTRA_LEVEL,
+            -1
+        ) ?: -1
     }
 
-    private fun toggleFlashlight(enable: Boolean): String {
+    private fun toggleFlashlight(
+        enable: Boolean
+    ): String {
+
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             return "A lanterna requer Android 6.0 ou superior."
         }
 
         return try {
+
             val cameraManager =
                 getSystemService(Context.CAMERA_SERVICE) as CameraManager
 
             val cameraId = cameraManager.cameraIdList.firstOrNull { id ->
+
                 cameraManager.getCameraCharacteristics(id)
                     .get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true
+
             } ?: return "Não encontrei uma lanterna disponível."
 
-            cameraManager.setTorchMode(cameraId, enable)
+            cameraManager.setTorchMode(
+                cameraId,
+                enable
+            )
 
-            if (enable) "Lanterna ligada." else "Lanterna desligada."
+            if (enable) {
+                "Lanterna ligada."
+            } else {
+                "Lanterna desligada."
+            }
+
         } catch (e: Exception) {
+
             "Não foi possível controlar a lanterna: ${e.message}"
         }
     }
 
     // ABRIR APLICAÇÕES
 
-    private fun openApplication(appNameInput: String): String {
-        val appName = appNameInput.lowercase(Locale.ROOT).trim()
+    private fun openApplication(
+        appNameInput: String
+    ): String {
+
+        val appName = appNameInput
+            .lowercase(Locale.ROOT)
+            .trim()
 
         val packageName = when (appName) {
-            "youtube" -> "com.google.android.youtube"
-            "whatsapp" -> "com.whatsapp"
-            "chrome", "google chrome" -> "com.android.chrome"
-            "spotify" -> "com.spotify.music"
-            "instagram" -> "com.instagram.android"
-            "facebook" -> "com.facebook.katana"
-            "telegram" -> "org.telegram.messenger"
-            "gmail" -> "com.google.android.gm"
-            "google maps", "maps" -> "com.google.android.apps.maps"
+
+            "youtube" ->
+                "com.google.android.youtube"
+
+            "whatsapp" ->
+                "com.whatsapp"
+
+            "chrome", "google chrome" ->
+                "com.android.chrome"
+
+            "spotify" ->
+                "com.spotify.music"
+
+            "instagram" ->
+                "com.instagram.android"
+
+            "facebook" ->
+                "com.facebook.katana"
+
+            "telegram" ->
+                "org.telegram.messenger"
+
+            "gmail" ->
+                "com.google.android.gm"
+
+            "google maps", "maps" ->
+                "com.google.android.apps.maps"
+
             else -> null
         }
 
         return try {
+
             when (appName) {
+
                 "google" -> {
+
                     startActivity(
                         Intent(
                             Intent.ACTION_VIEW,
                             Uri.parse("https://www.google.com")
                         )
                     )
+
                     return "A abrir o Google."
                 }
 
                 "youtube" -> {
+
                     val intent =
                         packageManager.getLaunchIntentForPackage(
                             "com.google.android.youtube"
@@ -1014,18 +1366,27 @@ class MainActivity : Activity() {
                     return "A abrir o YouTube."
                 }
 
-                "settings", "configurações", "configuracoes" -> {
-                    startActivity(Intent(Settings.ACTION_SETTINGS))
+                "settings",
+                "configurações",
+                "configuracoes" -> {
+
+                    startActivity(
+                        Intent(Settings.ACTION_SETTINGS)
+                    )
+
                     return "A abrir as definições."
                 }
             }
 
             if (packageName != null) {
+
                 val intent =
                     packageManager.getLaunchIntentForPackage(packageName)
 
                 if (intent != null) {
+
                     startActivity(intent)
+
                     return "A abrir $appName."
                 }
 
@@ -1036,20 +1397,31 @@ class MainActivity : Activity() {
                 packageManager.getLaunchIntentForPackage(appNameInput)
 
             if (intent != null) {
+
                 startActivity(intent)
+
                 "A abrir $appName."
+
             } else {
+
                 "Não encontrei o aplicativo $appName instalado."
             }
+
         } catch (_: Exception) {
+
             "Não foi possível abrir $appName."
         }
     }
 
     // LEMBRETES
 
-    private fun handleReminderCommand(command: String): String? {
-        val cmd = command.lowercase(Locale.ROOT).trim()
+    private fun handleReminderCommand(
+        command: String
+    ): String? {
+
+        val cmd = command
+            .lowercase(Locale.ROOT)
+            .trim()
 
         val reminderPhrases = listOf(
             "cria um lembrete",
@@ -1066,7 +1438,9 @@ class MainActivity : Activity() {
             "marca um lembrete"
         )
 
-        if (reminderPhrases.none { cmd.contains(it) }) return null
+        if (
+            reminderPhrases.none { cmd.contains(it) }
+        ) return null
 
         var title = command.trim()
 
@@ -1088,10 +1462,17 @@ class MainActivity : Activity() {
         )
 
         for (prefix in prefixes) {
-            val index = title.indexOf(prefix, ignoreCase = true)
+
+            val index = title.indexOf(
+                prefix,
+                ignoreCase = true
+            )
 
             if (index >= 0) {
-                title = title.substring(index + prefix.length).trim()
+                title = title.substring(
+                    index + prefix.length
+                ).trim()
+
                 break
             }
         }
@@ -1111,15 +1492,26 @@ class MainActivity : Activity() {
                 ),
                 " "
             )
-            .replace(Regex("""\s+"""), " ")
+            .replace(
+                Regex("""\s+"""),
+                " "
+            )
             .trim(' ', '.', ',', '!', '?', ':')
 
-        if (title.isBlank()) title = "Lembrete do JARVIS"
+        if (title.isBlank()) {
+            title = "Lembrete do JARVIS"
+        }
 
         val start = Calendar.getInstance()
 
-        if (cmd.contains("amanhã") || cmd.contains("amanha")) {
-            start.add(Calendar.DAY_OF_YEAR, 1)
+        if (
+            cmd.contains("amanhã") ||
+            cmd.contains("amanha")
+        ) {
+            start.add(
+                Calendar.DAY_OF_YEAR,
+                1
+            )
         }
 
         val timeMatch = Regex(
@@ -1129,14 +1521,18 @@ class MainActivity : Activity() {
         val hasTime = timeMatch != null
 
         if (timeMatch != null) {
+
             val hour = timeMatch.groupValues[1].toInt()
+
             val minute = timeMatch.groupValues[2]
                 .takeIf { it.isNotBlank() }
                 ?.toInt() ?: 0
 
             start.set(Calendar.HOUR_OF_DAY, hour)
             start.set(Calendar.MINUTE, minute)
+
         } else {
+
             start.set(Calendar.HOUR_OF_DAY, 9)
             start.set(Calendar.MINUTE, 0)
         }
@@ -1145,31 +1541,51 @@ class MainActivity : Activity() {
         start.set(Calendar.MILLISECOND, 0)
 
         val end = start.clone() as Calendar
-        end.add(Calendar.MINUTE, 30)
 
-        val calendarIntent = Intent(Intent.ACTION_INSERT).apply {
+        end.add(
+            Calendar.MINUTE,
+            30
+        )
+
+        val calendarIntent = Intent(
+            Intent.ACTION_INSERT
+        ).apply {
+
             data = CalendarContract.Events.CONTENT_URI
-            putExtra(CalendarContract.Events.TITLE, title)
+
+            putExtra(
+                CalendarContract.Events.TITLE,
+                title
+            )
+
             putExtra(
                 CalendarContract.Events.DESCRIPTION,
                 "Criado pelo J.A.R.V.I.S. Android"
             )
+
             putExtra(
                 CalendarContract.EXTRA_EVENT_BEGIN_TIME,
                 start.timeInMillis
             )
+
             putExtra(
                 CalendarContract.EXTRA_EVENT_END_TIME,
                 end.timeInMillis
             )
+
             putExtra(
                 CalendarContract.Events.EVENT_TIMEZONE,
                 TimeZone.getDefault().id
             )
-            putExtra(CalendarContract.Events.ALL_DAY, false)
+
+            putExtra(
+                CalendarContract.Events.ALL_DAY,
+                false
+            )
         }
 
         return try {
+
             startActivity(calendarIntent)
 
             val formattedTime = String.format(
@@ -1180,21 +1596,33 @@ class MainActivity : Activity() {
             )
 
             if (hasTime) {
+
                 "A abrir o calendário para criares o lembrete '$title' às $formattedTime. Confirma e guarda."
+
             } else {
+
                 "A abrir o calendário para criares o lembrete '$title'. Sugeri as 09:00; confirma a data e a hora antes de guardar."
             }
+
         } catch (_: Exception) {
+
             "Não consegui abrir o calendário. Verifica se tens uma aplicação de calendário instalada."
         }
     }
 
     // COMANDOS ANDROID
 
-    private fun handleExtraAndroidCommand(command: String): String? {
-        val cmd = command.lowercase(Locale.ROOT).trim()
+    private fun handleExtraAndroidCommand(
+        command: String
+    ): String? {
 
-        handleReminderCommand(command)?.let { return it }
+        val cmd = command
+            .lowercase(Locale.ROOT)
+            .trim()
+
+        handleReminderCommand(command)?.let {
+            return it
+        }
 
         if (
             cmd.contains("está a carregar") ||
@@ -1202,6 +1630,7 @@ class MainActivity : Activity() {
             cmd.contains("estado do carregamento") ||
             cmd.contains("estado da carga")
         ) {
+
             val battery = registerReceiver(
                 null,
                 IntentFilter(Intent.ACTION_BATTERY_CHANGED)
@@ -1213,6 +1642,7 @@ class MainActivity : Activity() {
             ) ?: -1
 
             return when (status) {
+
                 BatteryManager.BATTERY_STATUS_CHARGING ->
                     "O telemóvel está a carregar."
 
@@ -1228,7 +1658,11 @@ class MainActivity : Activity() {
             }
         }
 
-        if (cmd.contains("câmara") || cmd.contains("camera")) {
+        if (
+            cmd.contains("câmara") ||
+            cmd.contains("camera")
+        ) {
+
             return launchAndroidIntent(
                 Intent(MediaStore.ACTION_IMAGE_CAPTURE),
                 "A abrir a câmara.",
@@ -1237,8 +1671,13 @@ class MainActivity : Activity() {
         }
 
         if (cmd.contains("calculadora")) {
-            val calculatorIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_APP_CALCULATOR)
+
+            val calculatorIntent = Intent(
+                Intent.ACTION_MAIN
+            ).apply {
+                addCategory(
+                    Intent.CATEGORY_APP_CALCULATOR
+                )
             }
 
             try {
@@ -1254,7 +1693,9 @@ class MainActivity : Activity() {
             )
 
             for (calculatorPackage in packages) {
+
                 try {
+
                     val appIntent =
                         packageManager.getLaunchIntentForPackage(
                             calculatorPackage
@@ -1264,6 +1705,7 @@ class MainActivity : Activity() {
                         startActivity(appIntent)
                         return "A abrir a calculadora."
                     }
+
                 } catch (_: Exception) {
                 }
             }
@@ -1277,6 +1719,7 @@ class MainActivity : Activity() {
             cmd.contains("navegação") ||
             cmd.contains("navegacao")
         ) {
+
             return launchAndroidIntent(
                 Intent(
                     Intent.ACTION_VIEW,
@@ -1287,7 +1730,11 @@ class MainActivity : Activity() {
             )
         }
 
-        if (cmd.contains("wi-fi") || cmd.contains("wifi")) {
+        if (
+            cmd.contains("wi-fi") ||
+            cmd.contains("wifi")
+        ) {
+
             return launchAndroidIntent(
                 Intent(Settings.ACTION_WIFI_SETTINGS),
                 "A abrir as definições de Wi-Fi.",
@@ -1296,6 +1743,7 @@ class MainActivity : Activity() {
         }
 
         if (cmd.contains("bluetooth")) {
+
             return launchAndroidIntent(
                 Intent(Settings.ACTION_BLUETOOTH_SETTINGS),
                 "A abrir as definições de Bluetooth.",
@@ -1308,7 +1756,11 @@ class MainActivity : Activity() {
             cmd.contains("aumentar o volume") ||
             cmd.contains("volume mais alto")
         ) {
-            changeMusicVolume(AudioManager.ADJUST_RAISE)
+
+            changeMusicVolume(
+                AudioManager.ADJUST_RAISE
+            )
+
             return "A aumentar o volume."
         }
 
@@ -1318,7 +1770,11 @@ class MainActivity : Activity() {
             cmd.contains("abaixa o volume") ||
             cmd.contains("volume mais baixo")
         ) {
-            changeMusicVolume(AudioManager.ADJUST_LOWER)
+
+            changeMusicVolume(
+                AudioManager.ADJUST_LOWER
+            )
+
             return "A diminuir o volume."
         }
 
@@ -1329,7 +1785,11 @@ class MainActivity : Activity() {
             cmd.contains("silencia a música") ||
             cmd.contains("silencia a musica")
         ) {
-            changeMusicVolume(AudioManager.ADJUST_MUTE)
+
+            changeMusicVolume(
+                AudioManager.ADJUST_MUTE
+            )
+
             return "Comando de silêncio executado."
         }
 
@@ -1339,7 +1799,11 @@ class MainActivity : Activity() {
             cmd.contains("tira o silêncio") ||
             cmd.contains("tira o silencio")
         ) {
-            changeMusicVolume(AudioManager.ADJUST_UNMUTE)
+
+            changeMusicVolume(
+                AudioManager.ADJUST_UNMUTE
+            )
+
             return "A reativar o som multimédia."
         }
 
@@ -1347,15 +1811,37 @@ class MainActivity : Activity() {
             """\b([01]?\d|2[0-3])[:h]([0-5]\d)\b"""
         ).find(cmd)
 
-        if (cmd.contains("alarme") && alarmTime != null) {
+        if (
+            cmd.contains("alarme") &&
+            alarmTime != null
+        ) {
+
             val hour = alarmTime.groupValues[1].toInt()
             val minute = alarmTime.groupValues[2].toInt()
 
-            val alarmIntent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
-                putExtra(AlarmClock.EXTRA_HOUR, hour)
-                putExtra(AlarmClock.EXTRA_MINUTES, minute)
-                putExtra(AlarmClock.EXTRA_MESSAGE, "Alarme do JARVIS")
-                putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+            val alarmIntent = Intent(
+                AlarmClock.ACTION_SET_ALARM
+            ).apply {
+
+                putExtra(
+                    AlarmClock.EXTRA_HOUR,
+                    hour
+                )
+
+                putExtra(
+                    AlarmClock.EXTRA_MINUTES,
+                    minute
+                )
+
+                putExtra(
+                    AlarmClock.EXTRA_MESSAGE,
+                    "Alarme do JARVIS"
+                )
+
+                putExtra(
+                    AlarmClock.EXTRA_SKIP_UI,
+                    false
+                )
             }
 
             return launchAndroidIntent(
@@ -1375,6 +1861,7 @@ class MainActivity : Activity() {
             cmd.contains("abre o relógio") ||
             cmd.contains("abre o relogio")
         ) {
+
             return launchAndroidIntent(
                 Intent(AlarmClock.ACTION_SHOW_ALARMS),
                 "A abrir os alarmes.",
@@ -1389,6 +1876,7 @@ class MainActivity : Activity() {
             cmd.startsWith("iniciar ")
 
         if (isOpenRequest) {
+
             val apps = listOf(
                 "google maps",
                 "whatsapp",
@@ -1403,7 +1891,9 @@ class MainActivity : Activity() {
                 "google"
             )
 
-            val requestedApp = apps.firstOrNull { cmd.contains(it) }
+            val requestedApp = apps.firstOrNull {
+                cmd.contains(it)
+            }
 
             if (requestedApp != null) {
                 return openApplication(requestedApp)
@@ -1418,6 +1908,7 @@ class MainActivity : Activity() {
             cmd.contains("abrir contatos") ||
             cmd.contains("abre os contatos")
         ) {
+
             return launchAndroidIntent(
                 Intent(
                     Intent.ACTION_VIEW,
@@ -1435,6 +1926,7 @@ class MainActivity : Activity() {
             cmd.contains("abrir marcador") ||
             cmd.contains("abre chamadas")
         ) {
+
             return launchAndroidIntent(
                 Intent(Intent.ACTION_DIAL),
                 "A abrir o telefone.",
@@ -1448,8 +1940,13 @@ class MainActivity : Activity() {
             cmd.contains("abrir calendário") ||
             cmd.contains("abrir calendario")
         ) {
-            val calendarIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_APP_CALENDAR)
+
+            val calendarIntent = Intent(
+                Intent.ACTION_MAIN
+            ).apply {
+                addCategory(
+                    Intent.CATEGORY_APP_CALENDAR
+                )
             }
 
             return launchAndroidIntent(
@@ -1467,6 +1964,7 @@ class MainActivity : Activity() {
             cmd.contains("brilho do ecrã") ||
             cmd.contains("brilho do ecra")
         ) {
+
             return launchAndroidIntent(
                 Intent(Settings.ACTION_DISPLAY_SETTINGS),
                 "A abrir as definições do ecrã.",
@@ -1480,13 +1978,19 @@ class MainActivity : Activity() {
             cmd.contains("configurações de notificações") ||
             cmd.contains("configuracoes de notificacoes")
         ) {
+
             return launchAndroidIntent(
-                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+
+                Intent(
+                    Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                ).apply {
+
                     putExtra(
                         Settings.EXTRA_APP_PACKAGE,
                         this@MainActivity.packageName
                     )
                 },
+
                 "A abrir as definições de notificações do JARVIS.",
                 "Não consegui abrir as definições de notificações."
             )
@@ -1499,6 +2003,7 @@ class MainActivity : Activity() {
             cmd.contains("configuracoes da bateria") ||
             cmd.contains("economia de bateria")
         ) {
+
             return launchAndroidIntent(
                 Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS),
                 "A abrir as definições de poupança de bateria.",
@@ -1514,16 +2019,25 @@ class MainActivity : Activity() {
         successMessage: String,
         errorMessage: String
     ): String {
+
         return try {
+
             startActivity(intent)
+
             successMessage
+
         } catch (_: Exception) {
+
             errorMessage
         }
     }
 
-    private fun changeMusicVolume(direction: Int) {
+    private fun changeMusicVolume(
+        direction: Int
+    ) {
+
         try {
+
             val audioManager =
                 getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
@@ -1532,32 +2046,47 @@ class MainActivity : Activity() {
                 direction,
                 AudioManager.FLAG_SHOW_UI
             )
+
         } catch (_: Exception) {
-            showStatus("Não consegui alterar o volume.")
+
+            showStatus(
+                "Não consegui alterar o volume."
+            )
         }
     }
 
     // PROCESSAMENTO DE COMANDOS + GEMMA
 
     private fun processCommand(prompt: String) {
+
         val cleanPrompt = prompt.trim()
+
         if (cleanPrompt.isBlank()) return
 
         val generation: Int
 
         synchronized(requestLock) {
+
             if (requestInProgress) {
-                showStatus("Ainda estou a processar o pedido anterior.")
+                showStatus(
+                    "Ainda estou a processar o pedido anterior."
+                )
                 return
             }
 
             requestInProgress = true
+
             requestGeneration++
+
             generation = requestGeneration
         }
 
         mainHandler.post {
-            processCommandOnMainThread(cleanPrompt, generation)
+
+            processCommandOnMainThread(
+                cleanPrompt,
+                generation
+            )
         }
     }
 
@@ -1565,20 +2094,32 @@ class MainActivity : Activity() {
         prompt: String,
         generation: Int
     ) {
+
         if (generation != requestGeneration) return
 
-        val text = prompt.lowercase(Locale.ROOT).trim()
+        val text = prompt
+            .lowercase(Locale.ROOT)
+            .trim()
 
         try {
-            val extraAnswer = handleExtraAndroidCommand(prompt)
+
+            val extraAnswer =
+                handleExtraAndroidCommand(prompt)
 
             if (extraAnswer != null) {
-                respond(extraAnswer, generation)
+
+                respond(
+                    extraAnswer,
+                    generation
+                )
+
                 return
             }
 
             val hardwareAnswer: String? = when {
+
                 text.contains("bateria") -> {
+
                     val level = getBatteryLevel()
 
                     if (level >= 0) {
@@ -1589,14 +2130,25 @@ class MainActivity : Activity() {
                 }
 
                 text.contains("lanterna") &&
-                    (text.contains("liga") || text.contains("acende")) ->
+                    (
+                        text.contains("liga") ||
+                        text.contains("acende")
+                    ) -> {
+
                     toggleFlashlight(true)
+                }
 
                 text.contains("lanterna") &&
-                    (text.contains("desliga") || text.contains("apaga")) ->
+                    (
+                        text.contains("desliga") ||
+                        text.contains("apaga")
+                    ) -> {
+
                     toggleFlashlight(false)
+                }
 
                 text.contains("horas") -> {
+
                     "Agora são ${
                         SimpleDateFormat(
                             "HH:mm",
@@ -1611,6 +2163,7 @@ class MainActivity : Activity() {
                     text == "qual e a data" ||
                     text == "diz-me a data" ||
                     text == "diz a data" -> {
+
                     "Hoje é ${
                         SimpleDateFormat(
                             "dd 'de' MMMM 'de' yyyy",
@@ -1620,47 +2173,68 @@ class MainActivity : Activity() {
                 }
 
                 text == "abre youtube" ||
-                    text == "abre o youtube" ->
+                    text == "abre o youtube" -> {
+
                     openApplication("youtube")
+                }
 
                 text == "abre google" ||
-                    text == "abre o google" ->
+                    text == "abre o google" -> {
+
                     openApplication("google")
+                }
 
                 text == "abre as configurações" ||
-                    text == "abre as configuracoes" ->
-                    openApplication("settings")
+                    text == "abre as configuracoes" -> {
 
-                text.contains("piada") ->
+                    openApplication("settings")
+                }
+
+                text.contains("piada") -> {
+
                     "Porque é que o computador foi ao médico? Porque tinha um vírus!"
+                }
 
                 else -> null
             }
 
             if (hardwareAnswer != null) {
-                respond(hardwareAnswer, generation)
+
+                respond(
+                    hardwareAnswer,
+                    generation
+                )
+
                 return
             }
 
-            if (!isModelLoaded || modelConversation == null) {
+            if (
+                !isModelLoaded ||
+                modelConversation == null
+            ) {
+
                 respond(
                     "O modelo de IA ainda não está pronto. " +
                         "Carrega um ficheiro .litertlm válido e aguarda a inicialização.",
                     generation
                 )
+
                 return
             }
 
             showStatus("A pensar...")
 
             backgroundExecutor.execute {
+
                 try {
+
                     val conversation = modelConversation
                         ?: throw IllegalStateException(
                             "A conversa do modelo não está disponível."
                         )
 
                     val result = conversation.sendMessage(prompt)
+
                     val response = result.toString().trim()
 
                     if (generation != requestGeneration) {
@@ -1668,15 +2242,21 @@ class MainActivity : Activity() {
                     }
 
                     if (response.isBlank()) {
+
                         throw IllegalStateException(
                             "O modelo devolveu uma resposta vazia."
                         )
                     }
 
-                    respond(response, generation)
+                    respond(
+                        response,
+                        generation
+                    )
 
                 } catch (e: Exception) {
+
                     if (generation == requestGeneration) {
+
                         showModelError(
                             "Erro ao gerar resposta: " +
                                 (e.message ?: "erro desconhecido"),
@@ -1687,7 +2267,9 @@ class MainActivity : Activity() {
             }
 
         } catch (e: Exception) {
+
             if (generation == requestGeneration) {
+
                 showModelError(
                     "Erro ao processar o comando: " +
                         (e.message ?: "erro desconhecido"),
@@ -1703,6 +2285,7 @@ class MainActivity : Activity() {
         text: String,
         generation: Int? = null
     ) {
+
         val clean = text.trim()
 
         if (clean.isBlank()) {
@@ -1711,7 +2294,11 @@ class MainActivity : Activity() {
         }
 
         mainHandler.post {
-            if (generation != null && generation != requestGeneration) {
+
+            if (
+                generation != null &&
+                generation != requestGeneration
+            ) {
                 return@post
             }
 
@@ -1720,8 +2307,10 @@ class MainActivity : Activity() {
             releaseRequest(generation)
 
             webView.evaluateJavascript(
+
                 "if (typeof onNativeModelResponse === 'function') " +
                     "onNativeModelResponse(${JSONObject.quote(clean)});",
+
                 null
             )
 
@@ -1729,9 +2318,16 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun releaseRequest(generation: Int? = null) {
+    private fun releaseRequest(
+        generation: Int? = null
+    ) {
+
         synchronized(requestLock) {
-            if (generation == null || generation == requestGeneration) {
+
+            if (
+                generation == null ||
+                generation == requestGeneration
+            ) {
                 requestInProgress = false
             }
         }
@@ -1739,10 +2335,16 @@ class MainActivity : Activity() {
         clearResponseWait()
     }
 
+    // INTERRUPÇÃO TOTAL
+
     private fun interruptEverything() {
+
         mainHandler.post {
+
             synchronized(requestLock) {
+
                 requestGeneration++
+
                 requestInProgress = false
             }
 
@@ -1750,32 +2352,44 @@ class MainActivity : Activity() {
 
             pendingManualListen = false
             awaitingWakeCommand = false
+
             handsFreeEnabled = false
 
             stopRecognitionInternal()
 
             try {
+
                 if (::tts.isInitialized) {
                     tts.stop()
                 }
+
             } catch (_: Exception) {
             }
 
             pendingSpeech = ""
+
             isTtsSpeaking = false
 
-            notifyHandsFreeState(false, "Interrompido.")
+            notifyHandsFreeState(
+                false,
+                "Interrompido."
+            )
+
             showStatus("Interrompido.")
         }
     }
 
     private fun showStatus(message: String) {
+
         mainHandler.post {
+
             if (!::webView.isInitialized) return@post
 
             webView.evaluateJavascript(
+
                 "if (typeof onNativeStatus === 'function') " +
                     "onNativeStatus(${JSONObject.quote(message)});",
+
                 null
             )
         }
@@ -1785,8 +2399,13 @@ class MainActivity : Activity() {
         message: String,
         generation: Int? = null
     ) {
+
         mainHandler.post {
-            if (generation != null && generation != requestGeneration) {
+
+            if (
+                generation != null &&
+                generation != requestGeneration
+            ) {
                 return@post
             }
 
@@ -1795,24 +2414,30 @@ class MainActivity : Activity() {
             if (!::webView.isInitialized) return@post
 
             webView.evaluateJavascript(
+
                 "if (typeof onNativeModelError === 'function') " +
                     "onNativeModelError(${JSONObject.quote(message)});",
+
                 null
             )
 
             if (handsFreeEnabled) {
-                scheduleListeningRestart(900)
+                scheduleListeningRestart(1000)
             }
         }
     }
 
     private fun showSpeechError(message: String) {
+
         mainHandler.post {
+
             if (!::webView.isInitialized) return@post
 
             webView.evaluateJavascript(
+
                 "if (typeof onNativeSpeechError === 'function') " +
                     "onNativeSpeechError(${JSONObject.quote(message)});",
+
                 null
             )
         }
@@ -1854,8 +2479,11 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun speak(text: String) {
+
             mainHandler.post {
+
                 clearResponseWait()
+
                 speakText(text)
             }
         }
@@ -1882,31 +2510,44 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun openApp(appName: String) {
+
             mainHandler.post {
+
                 val result = openApplication(appName)
+
                 respond(result)
             }
         }
     }
 
+    // DESTRUIR A APLICAÇÃO
+
     override fun onDestroy() {
+
         handsFreeEnabled = false
         waitingForResponse = false
         awaitingWakeCommand = false
 
         synchronized(requestLock) {
+
             requestGeneration++
+
             requestInProgress = false
         }
 
         cancelResponseTimeout()
+
         stopRecognitionInternal()
 
         try {
+
             if (::tts.isInitialized) {
+
                 tts.stop()
+
                 tts.shutdown()
             }
+
         } catch (_: Exception) {
         }
 
@@ -1926,7 +2567,11 @@ class MainActivity : Activity() {
         backgroundExecutor.shutdownNow()
 
         if (::webView.isInitialized) {
-            webView.removeJavascriptInterface("AndroidVoice")
+
+            webView.removeJavascriptInterface(
+                "AndroidVoice"
+            )
+
             webView.destroy()
         }
 

@@ -1,3 +1,4 @@
+
 package com.fogofx.jarvis
 
 import android.Manifest
@@ -63,6 +64,9 @@ class MainActivity : Activity() {
 
     @Volatile
     private var requestInProgress = false
+
+    @Volatile
+    private var requestGeneration = 0
 
     @Volatile
     private var isModelLoaded = false
@@ -136,7 +140,7 @@ class MainActivity : Activity() {
                                     if (utteranceId == "JARVIS_VOICE") {
                                         isTtsSpeaking = true
                                         stopRecognitionInternal()
-                                        showStatus("J.A.R.V.I.S. a falar...")
+                                        showStatus("A falar...")
                                     }
                                 }
                             }
@@ -145,6 +149,7 @@ class MainActivity : Activity() {
                                 mainHandler.post {
                                     if (utteranceId == "JARVIS_VOICE") {
                                         isTtsSpeaking = false
+                                        showStatus("Toque no microfone para falar.")
 
                                         if (handsFreeEnabled) {
                                             scheduleListeningRestart(700)
@@ -158,6 +163,7 @@ class MainActivity : Activity() {
                                 mainHandler.post {
                                     if (utteranceId == "JARVIS_VOICE") {
                                         isTtsSpeaking = false
+                                        showStatus("Não foi possível concluir a fala.")
 
                                         if (handsFreeEnabled) {
                                             scheduleListeningRestart(700)
@@ -174,7 +180,11 @@ class MainActivity : Activity() {
                                     if (utteranceId == "JARVIS_VOICE") {
                                         isTtsSpeaking = false
 
-                                        if (handsFreeEnabled) {
+                                        if (interrupted) {
+                                            showStatus("Interrompido.")
+                                        }
+
+                                        if (handsFreeEnabled && !interrupted) {
                                             scheduleListeningRestart(700)
                                         }
                                     }
@@ -400,9 +410,6 @@ class MainActivity : Activity() {
                 showStatus(
                     "A resposta está a demorar. Continuo a aguardar."
                 )
-
-                // Não libertar requestInProgress aqui:
-                // o Gemma pode ainda estar a processar o pedido.
             }
         }
 
@@ -509,14 +516,17 @@ class MainActivity : Activity() {
 
                             showStatus(
                                 if (handsFreeEnabled) {
-                                    "Mãos-livres: a aguardar JARVIS..."
+                                    "A ouvir..."
                                 } else {
                                     "A ouvir..."
                                 }
                             )
                         }
 
-                        override fun onBeginningOfSpeech() {}
+                        override fun onBeginningOfSpeech() {
+                            showStatus("A ouvir...")
+                        }
+
                         override fun onRmsChanged(rmsdB: Float) {}
                         override fun onBufferReceived(buffer: ByteArray?) {}
 
@@ -1575,7 +1585,8 @@ class MainActivity : Activity() {
 
         if (cleanPrompt.isBlank()) return
 
-        // Impede que dois pedidos sejam enviados ao mesmo tempo.
+        val generation: Int
+
         synchronized(requestLock) {
             if (requestInProgress) {
                 showStatus("Ainda estou a processar o pedido anterior.")
@@ -1583,22 +1594,28 @@ class MainActivity : Activity() {
             }
 
             requestInProgress = true
+            requestGeneration++
+            generation = requestGeneration
         }
 
-        // Os comandos Android são executados na thread principal.
         mainHandler.post {
-            processCommandOnMainThread(cleanPrompt)
+            processCommandOnMainThread(cleanPrompt, generation)
         }
     }
 
-    private fun processCommandOnMainThread(prompt: String) {
+    private fun processCommandOnMainThread(
+        prompt: String,
+        generation: Int
+    ) {
+        if (generation != requestGeneration) return
+
         val text = prompt.lowercase(Locale.ROOT).trim()
 
         try {
             val extraAnswer = handleExtraAndroidCommand(prompt)
 
             if (extraAnswer != null) {
-                respond(extraAnswer)
+                respond(extraAnswer, generation)
                 return
             }
 
@@ -1663,19 +1680,20 @@ class MainActivity : Activity() {
             }
 
             if (hardwareAnswer != null) {
-                respond(hardwareAnswer)
+                respond(hardwareAnswer, generation)
                 return
             }
 
             if (!isModelLoaded || modelConversation == null) {
                 respond(
                     "O modelo de IA ainda não está pronto. " +
-                        "Carrega um ficheiro .litertlm válido e aguarda a inicialização."
+                        "Carrega um ficheiro .litertlm válido e aguarda a inicialização.",
+                    generation
                 )
                 return
             }
 
-            showStatus("A processar no Gemma local...")
+            showStatus("A pensar...")
 
             backgroundExecutor.execute {
                 try {
@@ -1687,27 +1705,35 @@ class MainActivity : Activity() {
                     val result = conversation.sendMessage(prompt)
                     val response = result.toString().trim()
 
+                    if (generation != requestGeneration) {
+                        return@execute
+                    }
+
                     if (response.isBlank()) {
                         throw IllegalStateException(
                             "O modelo devolveu uma resposta vazia."
                         )
                     }
 
-                    respond(response)
+                    respond(response, generation)
 
                 } catch (e: Exception) {
-                    showModelError(
-                        "Erro ao gerar resposta: " +
-                            (e.message ?: "erro desconhecido")
-                    )
+                    if (generation == requestGeneration) {
+                        showModelError(
+                            "Erro ao gerar resposta: " +
+                                (e.message ?: "erro desconhecido")
+                        )
+                    }
                 }
             }
 
         } catch (e: Exception) {
-            showModelError(
-                "Erro ao processar o comando: " +
-                    (e.message ?: "erro desconhecido")
-            )
+            if (generation == requestGeneration) {
+                showModelError(
+                    "Erro ao processar o comando: " +
+                        (e.message ?: "erro desconhecido")
+                )
+            }
         }
     }
 
@@ -1715,7 +1741,10 @@ class MainActivity : Activity() {
     // RESPOSTAS E ESTADOS
     // ---------------------------------------------------------
 
-    private fun respond(text: String) {
+    private fun respond(
+        text: String,
+        generation: Int? = null
+    ) {
         val clean = text.trim()
 
         if (clean.isBlank()) {
@@ -1723,12 +1752,14 @@ class MainActivity : Activity() {
             return
         }
 
-        // Não existe filtro por texto repetido:
-        // a mesma pergunta pode receber a mesma resposta novamente.
-        releaseRequest()
-
         mainHandler.post {
+            if (generation != null && generation != requestGeneration) {
+                return@post
+            }
+
             if (!::webView.isInitialized) return@post
+
+            releaseRequest()
 
             webView.evaluateJavascript(
                 "if (typeof onNativeModelResponse === 'function') " +
@@ -1746,6 +1777,41 @@ class MainActivity : Activity() {
         }
 
         clearResponseWait()
+    }
+
+    private fun interruptEverything() {
+        mainHandler.post {
+
+            synchronized(requestLock) {
+                requestGeneration++
+                requestInProgress = false
+            }
+
+            clearResponseWait()
+
+            pendingManualListen = false
+            awaitingWakeCommand = false
+
+            stopRecognitionInternal()
+
+            try {
+                if (::tts.isInitialized) {
+                    tts.stop()
+                }
+            } catch (_: Exception) {
+            }
+
+            pendingSpeech = ""
+            isTtsSpeaking = false
+            handsFreeEnabled = false
+
+            notifyHandsFreeState(
+                false,
+                "Interrompido."
+            )
+
+            showStatus("Interrompido.")
+        }
     }
 
     private fun showStatus(message: String) {
@@ -1840,6 +1906,16 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
+        fun stopListening() {
+            interruptEverything()
+        }
+
+        @JavascriptInterface
+        fun stopEverything() {
+            interruptEverything()
+        }
+
+        @JavascriptInterface
         fun openApp(appName: String) {
             mainHandler.post {
                 val result = openApplication(appName)
@@ -1856,6 +1932,11 @@ class MainActivity : Activity() {
         handsFreeEnabled = false
         waitingForResponse = false
         awaitingWakeCommand = false
+
+        synchronized(requestLock) {
+            requestGeneration++
+            requestInProgress = false
+        }
 
         cancelResponseTimeout()
         stopRecognitionInternal()

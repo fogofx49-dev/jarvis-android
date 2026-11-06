@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -342,7 +341,7 @@ header {
       </div>
 
       <div id="status" role="status" aria-live="polite">
-        Toque no microfone para falar
+        A preparar o J.A.R.V.I.S...
       </div>
     </div>
 
@@ -394,6 +393,10 @@ let suppressNextSpeech = false;
 let lastSubmittedText = "";
 let lastSubmittedTime = 0;
 
+/* CONTROLO DO ARRANQUE AUTOMÁTICO */
+let startupGreetingStarted = false;
+let startupGreetingCancelled = false;
+
 const userInput = document.getElementById("userInput");
 const micButton = document.getElementById("micButton");
 const stopButton = document.getElementById("stopButton");
@@ -428,14 +431,16 @@ function setWaiting(value) {
   if (waitingForModel) {
     setState("thinking", "A pensar...");
   } else {
-    setState("idle", "Toque no microfone para falar");
+    setState("idle", "J.A.R.V.I.S. pronto");
   }
 }
 
 function notifyNativeResponseFinished() {
   try {
-    if (window.AndroidVoice &&
-        typeof window.AndroidVoice.responseFinished === "function") {
+    if (
+      window.AndroidVoice &&
+      typeof window.AndroidVoice.responseFinished === "function"
+    ) {
       window.AndroidVoice.responseFinished();
     }
   } catch (error) {
@@ -449,8 +454,7 @@ function speak(text) {
   const clean = String(text || "").trim();
 
   if (!clean || !voiceEnabled || suppressNextSpeech) {
-    suppressNextSpeech = false;
-    setState("idle", "Toque no microfone para falar");
+    setState("idle", "J.A.R.V.I.S. pronto");
     notifyNativeResponseFinished();
     return;
   }
@@ -458,8 +462,10 @@ function speak(text) {
   setState("speaking", "A falar...");
 
   try {
-    if (window.AndroidVoice &&
-        typeof window.AndroidVoice.speak === "function") {
+    if (
+      window.AndroidVoice &&
+      typeof window.AndroidVoice.speak === "function"
+    ) {
       window.AndroidVoice.speak(clean);
       return;
     }
@@ -476,12 +482,10 @@ function speak(text) {
 
       utterance.onend = function() {
         onNativeSpeechFinished();
-        notifyNativeResponseFinished();
       };
 
       utterance.onerror = function() {
         onNativeSpeechFinished();
-        notifyNativeResponseFinished();
       };
 
       window.speechSynthesis.speak(utterance);
@@ -492,11 +496,11 @@ function speak(text) {
   }
 
   onNativeSpeechFinished();
-  notifyNativeResponseFinished();
 }
 
 function stopEverything() {
   suppressNextSpeech = true;
+  startupGreetingCancelled = true;
 
   waitingForModel = false;
   recognitionActive = false;
@@ -514,20 +518,28 @@ function stopEverything() {
   }
 
   try {
-    if (window.AndroidVoice &&
-        typeof window.AndroidVoice.stopEverything === "function") {
+    if (
+      window.AndroidVoice &&
+      typeof window.AndroidVoice.stopEverything === "function"
+    ) {
       window.AndroidVoice.stopEverything();
-    } else if (window.AndroidVoice &&
-               typeof window.AndroidVoice.cancelPendingRequest === "function") {
+    } else if (
+      window.AndroidVoice &&
+      typeof window.AndroidVoice.cancelPendingRequest === "function"
+    ) {
       window.AndroidVoice.cancelPendingRequest();
     } else {
-      if (window.AndroidVoice &&
-          typeof window.AndroidVoice.stopListening === "function") {
+      if (
+        window.AndroidVoice &&
+        typeof window.AndroidVoice.stopListening === "function"
+      ) {
         window.AndroidVoice.stopListening();
       }
 
-      if (window.AndroidVoice &&
-          typeof window.AndroidVoice.stopSpeaking === "function") {
+      if (
+        window.AndroidVoice &&
+        typeof window.AndroidVoice.stopSpeaking === "function"
+      ) {
         window.AndroidVoice.stopSpeaking();
       }
     }
@@ -550,8 +562,10 @@ function updateHandsFreeState(enabled) {
 
 function chooseModel() {
   try {
-    if (window.AndroidVoice &&
-        typeof window.AndroidVoice.chooseModel === "function") {
+    if (
+      window.AndroidVoice &&
+      typeof window.AndroidVoice.chooseModel === "function"
+    ) {
       window.AndroidVoice.chooseModel();
     } else {
       setState("idle", "Seletor de modelo indisponível.");
@@ -621,8 +635,10 @@ function handleExplicitCommand(text) {
   if (!app) return false;
 
   try {
-    if (window.AndroidVoice &&
-        typeof window.AndroidVoice.openApp === "function") {
+    if (
+      window.AndroidVoice &&
+      typeof window.AndroidVoice.openApp === "function"
+    ) {
       setWaiting(true);
       setState("thinking", "A executar comando...");
       window.AndroidVoice.openApp(app);
@@ -647,8 +663,10 @@ function send(text) {
 
   const now = Date.now();
 
-  if (text === lastSubmittedText &&
-      now - lastSubmittedTime < 1200) {
+  if (
+    text === lastSubmittedText &&
+    now - lastSubmittedTime < 1200
+  ) {
     return;
   }
 
@@ -666,8 +684,10 @@ function send(text) {
     return;
   }
 
-  if (!window.AndroidVoice ||
-      typeof window.AndroidVoice.askModel !== "function") {
+  if (
+    !window.AndroidVoice ||
+    typeof window.AndroidVoice.askModel !== "function"
+  ) {
     speak("O modelo de inteligência artificial não está disponível. Verifica a integração com o Gemma local.");
     return;
   }
@@ -689,8 +709,10 @@ function startMic() {
 
   suppressNextSpeech = false;
 
-  if (window.AndroidVoice &&
-      typeof window.AndroidVoice.startListening === "function") {
+  if (
+    window.AndroidVoice &&
+    typeof window.AndroidVoice.startListening === "function"
+  ) {
     try {
       recognitionActive = true;
       micButton.disabled = true;
@@ -750,9 +772,11 @@ function startMic() {
       micButton.disabled = false;
       browserRecognition = null;
 
-      if (!waitingForModel &&
-          !orb.classList.contains("speaking")) {
-        setState("idle", "Toque no microfone para falar");
+      if (
+        !waitingForModel &&
+        !orb.classList.contains("speaking")
+      ) {
+        setState("idle", "J.A.R.V.I.S. pronto");
       }
     };
 
@@ -822,7 +846,7 @@ function onNativeSpeechFinished() {
   micButton.disabled = false;
 
   if (!waitingForModel) {
-    setState("idle", "Toque no microfone para falar");
+    setState("idle", "J.A.R.V.I.S. pronto");
   }
 }
 
@@ -836,30 +860,84 @@ function onNativeHandsFreeState(enabled, message) {
   }
 }
 
+// ESTADOS NATIVOS
+
 function onNativeStatus(message) {
   const value = String(message || "");
 
   if (/ouvindo|a ouvir|escutando/i.test(value)) {
     setState("listening", value);
-  } else if (/pensando|processando|carregando|a processar|a preparar|a inicializar/i.test(value)) {
+
+  } else if (
+    /pensando|processando|carregando|a processar|a preparar|a inicializar/i.test(value)
+  ) {
     setState("thinking", value);
+
   } else if (/falando|a falar/i.test(value)) {
     setState("speaking", value);
-  } else if (/interrompido|toque no microfone|voz android pronta|interface pronta/i.test(value)) {
-    if (!waitingForModel) {
+
+  } else if (
+    /interrompido|toque no microfone|voz android pronta|interface pronta/i.test(value)
+  ) {
+    if (!waitingForModel && !orb.classList.contains("speaking")) {
       setState("idle", value);
     }
   }
 }
 
-function onNativeModelLoaded(message) {
-  setState("idle", message || "Gemma local pronto");
+// ARRANQUE AUTOMÁTICO DO JARVIS
+
+function startAutomaticGreeting() {
+  if (startupGreetingStarted || startupGreetingCancelled) {
+    return;
+  }
+
+  startupGreetingStarted = true;
+
+  if (
+    !window.AndroidVoice ||
+    typeof window.AndroidVoice.askModel !== "function"
+  ) {
+    setState("idle", "Gemma local indisponível.");
+    return;
+  }
+
+  const prompt =
+    "Cumprimente o utilizador como J.A.R.V.I.S. " +
+    "Diga de forma natural e breve que o sistema foi iniciado, " +
+    "que o Gemma local está pronto e que está disponível para ajudar. " +
+    "Use português do Brasil. Não invente informações sobre o telemóvel. " +
+    "Faça uma saudação curta, adequada para ser falada em voz alta.";
+
+  try {
+    setWaiting(true);
+    setState("thinking", "A preparar a saudação...");
+
+    window.AndroidVoice.askModel(prompt);
+
+  } catch (error) {
+    console.warn("Erro ao iniciar a saudação automática:", error);
+    setWaiting(false);
+    setState("idle", "Não foi possível iniciar a saudação.");
+  }
 }
 
-// ARRANQUE
+function onNativeModelLoaded(message) {
+  setState("idle", message || "Gemma local pronto");
+
+  // A saudação só começa depois de o modelo confirmar que está pronto.
+  startAutomaticGreeting();
+}
+
+window.onNativeModelLoaded = onNativeModelLoaded;
+
+// ARRANQUE DA INTERFACE
 
 window.addEventListener("load", function() {
-  setState("idle", "A preparar o J.A.R.V.I.S...");
+  setState("thinking", "A iniciar o J.A.R.V.I.S...");
+
+  // Não inicia o microfone.
+  // O Android carrega o Gemma e chama onNativeModelLoaded.
 });
 </script>
 </body>

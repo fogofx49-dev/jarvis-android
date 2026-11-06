@@ -59,7 +59,6 @@ class MainActivity : Activity() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val backgroundExecutor = Executors.newSingleThreadExecutor()
-
     private val requestLock = Any()
 
     @Volatile
@@ -108,7 +107,21 @@ class MainActivity : Activity() {
 
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
-                    showStatus("Interface pronta. Carrega o modelo de IA.")
+                    val modelFile = File(filesDir, "model.litertlm")
+
+                    if (modelFile.exists() && modelFile.length() > 0L) {
+                        showStatus("A preparar o Gemma local...")
+
+                        if (!isModelLoaded && !isLoadingModel) {
+                            backgroundExecutor.execute {
+                                initializeLocalModel(modelFile)
+                            }
+                        }
+                    } else {
+                        showStatus(
+                            "Toque no título J.A.R.V.I.S. para carregar o modelo."
+                        )
+                    }
                 }
             }
 
@@ -119,9 +132,7 @@ class MainActivity : Activity() {
         webView.loadUrl("file:///android_asset/index.html")
     }
 
-    // ---------------------------------------------------------
     // TEXT TO SPEECH
-    // ---------------------------------------------------------
 
     private fun initializeTts() {
         tts = TextToSpeech(this) { status ->
@@ -150,6 +161,7 @@ class MainActivity : Activity() {
                                     if (utteranceId == "JARVIS_VOICE") {
                                         isTtsSpeaking = false
                                         showStatus("Toque no microfone para falar.")
+                                        notifySpeechFinished()
 
                                         if (handsFreeEnabled) {
                                             scheduleListeningRestart(700)
@@ -164,6 +176,7 @@ class MainActivity : Activity() {
                                     if (utteranceId == "JARVIS_VOICE") {
                                         isTtsSpeaking = false
                                         showStatus("Não foi possível concluir a fala.")
+                                        notifySpeechFinished()
 
                                         if (handsFreeEnabled) {
                                             scheduleListeningRestart(700)
@@ -179,6 +192,7 @@ class MainActivity : Activity() {
                                 mainHandler.post {
                                     if (utteranceId == "JARVIS_VOICE") {
                                         isTtsSpeaking = false
+                                        notifySpeechFinished()
 
                                         if (interrupted) {
                                             showStatus("Interrompido.")
@@ -218,6 +232,15 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun notifySpeechFinished() {
+        if (!::webView.isInitialized) return
+
+        webView.evaluateJavascript(
+            "if (typeof onNativeSpeechFinished === 'function') onNativeSpeechFinished();",
+            null
+        )
+    }
+
     private fun speakText(text: String) {
         val clean = text.trim()
 
@@ -245,6 +268,7 @@ class MainActivity : Activity() {
                 if (result == TextToSpeech.ERROR) {
                     isTtsSpeaking = false
                     showStatus("Não foi possível reproduzir a voz.")
+                    notifySpeechFinished()
 
                     if (handsFreeEnabled) {
                         scheduleListeningRestart(700)
@@ -253,6 +277,7 @@ class MainActivity : Activity() {
             } catch (_: Exception) {
                 isTtsSpeaking = false
                 showStatus("Erro ao reproduzir a voz.")
+                notifySpeechFinished()
 
                 if (handsFreeEnabled) {
                     scheduleListeningRestart(700)
@@ -285,9 +310,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // ---------------------------------------------------------
     // MODO MÃOS-LIVRES
-    // ---------------------------------------------------------
 
     private fun startHandsFree() {
         mainHandler.post {
@@ -351,17 +374,13 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun notifyHandsFreeState(
-        enabled: Boolean,
-        message: String
-    ) {
+    private fun notifyHandsFreeState(enabled: Boolean, message: String) {
         mainHandler.post {
             if (!::webView.isInitialized) return@post
 
             webView.evaluateJavascript(
                 "if (typeof onNativeHandsFreeState === 'function') " +
-                    "onNativeHandsFreeState($enabled, " +
-                    "${JSONObject.quote(message)});",
+                    "onNativeHandsFreeState($enabled, ${JSONObject.quote(message)});",
                 null
             )
         }
@@ -406,10 +425,7 @@ class MainActivity : Activity() {
         val task = Runnable {
             if (handsFreeEnabled && waitingForResponse) {
                 waitingForResponse = false
-
-                showStatus(
-                    "A resposta está a demorar. Continuo a aguardar."
-                )
+                showStatus("A resposta está a demorar. Continuo a aguardar.")
             }
         }
 
@@ -439,9 +455,7 @@ class MainActivity : Activity() {
         recognitionInProgress = false
     }
 
-    // ---------------------------------------------------------
     // RECONHECIMENTO DE VOZ
-    // ---------------------------------------------------------
 
     private fun startListeningManual() {
         if (handsFreeEnabled) {
@@ -471,10 +485,7 @@ class MainActivity : Activity() {
     private fun startRecognitionSession(handsFree: Boolean) {
         mainHandler.post {
             if (handsFree && !handsFreeEnabled) return@post
-
-            if (handsFree && (waitingForResponse || isTtsSpeaking)) {
-                return@post
-            }
+            if (handsFree && (waitingForResponse || isTtsSpeaking)) return@post
 
             if (
                 ActivityCompat.checkSelfPermission(
@@ -488,7 +499,6 @@ class MainActivity : Activity() {
                 } else {
                     startListeningManual()
                 }
-
                 return@post
             }
 
@@ -499,7 +509,6 @@ class MainActivity : Activity() {
                 } else {
                     showSpeechError("Reconhecimento de voz indisponível.")
                 }
-
                 return@post
             }
 
@@ -513,14 +522,7 @@ class MainActivity : Activity() {
 
                         override fun onReadyForSpeech(params: Bundle?) {
                             recognitionInProgress = true
-
-                            showStatus(
-                                if (handsFreeEnabled) {
-                                    "A ouvir..."
-                                } else {
-                                    "A ouvir..."
-                                }
-                            )
+                            showStatus("A ouvir...")
                         }
 
                         override fun onBeginningOfSpeech() {
@@ -603,14 +605,12 @@ class MainActivity : Activity() {
                                     .replace("jávis", "jarvis")
                                     .replace("járvis", "jarvis")
 
-                                val wakeMatch = Regex(
-                                    """\bjarvis\b"""
-                                ).find(normalized)
+                                val wakeMatch = Regex("""\bjarvis\b""")
+                                    .find(normalized)
 
                                 if (awaitingWakeCommand) {
                                     awaitingWakeCommand = false
                                     beginResponseWait()
-
                                     sendSpeechToInterface(text)
                                     return
                                 }
@@ -623,10 +623,7 @@ class MainActivity : Activity() {
 
                                     if (command.isBlank()) {
                                         awaitingWakeCommand = true
-
-                                        respond(
-                                            "Sim, estou aqui. Em que posso ajudar?"
-                                        )
+                                        respond("Sim, estou aqui. Em que posso ajudar?")
                                         return
                                     }
 
@@ -645,11 +642,7 @@ class MainActivity : Activity() {
 
                         override fun onPartialResults(partialResults: Bundle?) {}
 
-                        override fun onEvent(
-                            eventType: Int,
-                            params: Bundle?
-                        ) {
-                        }
+                        override fun onEvent(eventType: Int, params: Bundle?) {}
                     }
                 )
 
@@ -710,11 +703,7 @@ class MainActivity : Activity() {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        super.onRequestPermissionsResult(
-            requestCode,
-            permissions,
-            grantResults
-        )
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         if (requestCode != MIC_PERMISSION) return
 
@@ -742,9 +731,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // ---------------------------------------------------------
     // SELETOR E CÓPIA DO MODELO
-    // ---------------------------------------------------------
 
     private fun openModelFileSelector() {
         mainHandler.post {
@@ -845,9 +832,7 @@ class MainActivity : Activity() {
         } ?: "model.litertlm"
     }
 
-    // ---------------------------------------------------------
     // GEMMA LOCAL
-    // ---------------------------------------------------------
 
     private fun initializeLocalModel(file: File) {
         if (isLoadingModel) {
@@ -916,6 +901,8 @@ class MainActivity : Activity() {
             isLoadingModel = false
 
             mainHandler.post {
+                if (!::webView.isInitialized) return@post
+
                 webView.evaluateJavascript(
                     "if (typeof onNativeModelLoaded === 'function') " +
                         "onNativeModelLoaded(" +
@@ -951,9 +938,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // ---------------------------------------------------------
     // BATERIA E LANTERNA
-    // ---------------------------------------------------------
 
     private fun getBatteryLevel(): Int {
         val battery = registerReceiver(
@@ -961,10 +946,7 @@ class MainActivity : Activity() {
             IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         )
 
-        return battery?.getIntExtra(
-            BatteryManager.EXTRA_LEVEL,
-            -1
-        ) ?: -1
+        return battery?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
     }
 
     private fun toggleFlashlight(enable: Boolean): String {
@@ -989,9 +971,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // ---------------------------------------------------------
     // ABRIR APLICAÇÕES
-    // ---------------------------------------------------------
 
     private fun openApplication(appNameInput: String): String {
         val appName = appNameInput.lowercase(Locale.ROOT).trim()
@@ -1073,9 +1053,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // ---------------------------------------------------------
-    // LEMBRETES - CALENDÁRIO ANDROID
-    // ---------------------------------------------------------
+    // LEMBRETES
 
     private fun handleReminderCommand(command: String): String? {
         val cmd = command.lowercase(Locale.ROOT).trim()
@@ -1095,9 +1073,7 @@ class MainActivity : Activity() {
             "marca um lembrete"
         )
 
-        if (reminderPhrases.none { cmd.contains(it) }) {
-            return null
-        }
+        if (reminderPhrases.none { cmd.contains(it) }) return null
 
         var title = command.trim()
 
@@ -1145,9 +1121,7 @@ class MainActivity : Activity() {
             .replace(Regex("""\s+"""), " ")
             .trim(' ', '.', ',', '!', '?', ':')
 
-        if (title.isBlank()) {
-            title = "Lembrete do JARVIS"
-        }
+        if (title.isBlank()) title = "Lembrete do JARVIS"
 
         val start = Calendar.getInstance()
 
@@ -1182,7 +1156,6 @@ class MainActivity : Activity() {
 
         val calendarIntent = Intent(Intent.ACTION_INSERT).apply {
             data = CalendarContract.Events.CONTENT_URI
-
             putExtra(CalendarContract.Events.TITLE, title)
             putExtra(
                 CalendarContract.Events.DESCRIPTION,
@@ -1223,9 +1196,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // ---------------------------------------------------------
     // COMANDOS ANDROID
-    // ---------------------------------------------------------
 
     private fun handleExtraAndroidCommand(command: String): String? {
         val cmd = command.lowercase(Locale.ROOT).trim()
@@ -1390,10 +1361,7 @@ class MainActivity : Activity() {
             val alarmIntent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
                 putExtra(AlarmClock.EXTRA_HOUR, hour)
                 putExtra(AlarmClock.EXTRA_MINUTES, minute)
-                putExtra(
-                    AlarmClock.EXTRA_MESSAGE,
-                    "Alarme do JARVIS"
-                )
+                putExtra(AlarmClock.EXTRA_MESSAGE, "Alarme do JARVIS")
                 putExtra(AlarmClock.EXTRA_SKIP_UI, false)
             }
 
@@ -1576,13 +1544,10 @@ class MainActivity : Activity() {
         }
     }
 
-    // ---------------------------------------------------------
     // PROCESSAMENTO DE COMANDOS + GEMMA
-    // ---------------------------------------------------------
 
     private fun processCommand(prompt: String) {
         val cleanPrompt = prompt.trim()
-
         if (cleanPrompt.isBlank()) return
 
         val generation: Int
@@ -1721,7 +1686,8 @@ class MainActivity : Activity() {
                     if (generation == requestGeneration) {
                         showModelError(
                             "Erro ao gerar resposta: " +
-                                (e.message ?: "erro desconhecido")
+                                (e.message ?: "erro desconhecido"),
+                            generation
                         )
                     }
                 }
@@ -1731,15 +1697,14 @@ class MainActivity : Activity() {
             if (generation == requestGeneration) {
                 showModelError(
                     "Erro ao processar o comando: " +
-                        (e.message ?: "erro desconhecido")
+                        (e.message ?: "erro desconhecido"),
+                    generation
                 )
             }
         }
     }
 
-    // ---------------------------------------------------------
     // RESPOSTAS E ESTADOS
-    // ---------------------------------------------------------
 
     private fun respond(
         text: String,
@@ -1748,7 +1713,7 @@ class MainActivity : Activity() {
         val clean = text.trim()
 
         if (clean.isBlank()) {
-            releaseRequest()
+            releaseRequest(generation)
             return
         }
 
@@ -1759,7 +1724,7 @@ class MainActivity : Activity() {
 
             if (!::webView.isInitialized) return@post
 
-            releaseRequest()
+            releaseRequest(generation)
 
             webView.evaluateJavascript(
                 "if (typeof onNativeModelResponse === 'function') " +
@@ -1771,9 +1736,11 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun releaseRequest() {
+    private fun releaseRequest(generation: Int? = null) {
         synchronized(requestLock) {
-            requestInProgress = false
+            if (generation == null || generation == requestGeneration) {
+                requestInProgress = false
+            }
         }
 
         clearResponseWait()
@@ -1781,7 +1748,6 @@ class MainActivity : Activity() {
 
     private fun interruptEverything() {
         mainHandler.post {
-
             synchronized(requestLock) {
                 requestGeneration++
                 requestInProgress = false
@@ -1791,6 +1757,7 @@ class MainActivity : Activity() {
 
             pendingManualListen = false
             awaitingWakeCommand = false
+            handsFreeEnabled = false
 
             stopRecognitionInternal()
 
@@ -1803,13 +1770,8 @@ class MainActivity : Activity() {
 
             pendingSpeech = ""
             isTtsSpeaking = false
-            handsFreeEnabled = false
 
-            notifyHandsFreeState(
-                false,
-                "Interrompido."
-            )
-
+            notifyHandsFreeState(false, "Interrompido.")
             showStatus("Interrompido.")
         }
     }
@@ -1826,10 +1788,17 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun showModelError(message: String) {
-        releaseRequest()
-
+    private fun showModelError(
+        message: String,
+        generation: Int? = null
+    ) {
         mainHandler.post {
+            if (generation != null && generation != requestGeneration) {
+                return@post
+            }
+
+            releaseRequest(generation)
+
             if (!::webView.isInitialized) return@post
 
             webView.evaluateJavascript(
@@ -1856,9 +1825,7 @@ class MainActivity : Activity() {
         }
     }
 
-    // ---------------------------------------------------------
     // PONTE ANDROID / JAVASCRIPT
-    // ---------------------------------------------------------
 
     inner class AndroidBridge {
 
@@ -1916,6 +1883,11 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
+        fun cancelPendingRequest() {
+            interruptEverything()
+        }
+
+        @JavascriptInterface
         fun openApp(appName: String) {
             mainHandler.post {
                 val result = openApplication(appName)
@@ -1923,10 +1895,6 @@ class MainActivity : Activity() {
             }
         }
     }
-
-    // ---------------------------------------------------------
-    // DESTRUIR ATIVIDADE
-    // ---------------------------------------------------------
 
     override fun onDestroy() {
         handsFreeEnabled = false

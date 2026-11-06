@@ -1,4 +1,3 @@
-
 package com.fogofx.jarvis
 
 import android.Manifest
@@ -160,7 +159,7 @@ class MainActivity : Activity() {
                                 mainHandler.post {
                                     if (utteranceId == "JARVIS_VOICE") {
                                         isTtsSpeaking = false
-                                        showStatus("Toque no microfone para falar.")
+                                        showStatus("Resposta pronta.")
                                         notifySpeechFinished()
 
                                         if (handsFreeEnabled) {
@@ -233,12 +232,15 @@ class MainActivity : Activity() {
     }
 
     private fun notifySpeechFinished() {
-        if (!::webView.isInitialized) return
+        mainHandler.post {
+            if (!::webView.isInitialized) return@post
 
-        webView.evaluateJavascript(
-            "if (typeof onNativeSpeechFinished === 'function') onNativeSpeechFinished();",
-            null
-        )
+            webView.evaluateJavascript(
+                "if (typeof onNativeSpeechFinished === 'function') " +
+                    "onNativeSpeechFinished();",
+                null
+            )
+        }
     }
 
     private fun speakText(text: String) {
@@ -269,19 +271,11 @@ class MainActivity : Activity() {
                     isTtsSpeaking = false
                     showStatus("Não foi possível reproduzir a voz.")
                     notifySpeechFinished()
-
-                    if (handsFreeEnabled) {
-                        scheduleListeningRestart(700)
-                    }
                 }
             } catch (_: Exception) {
                 isTtsSpeaking = false
                 showStatus("Erro ao reproduzir a voz.")
                 notifySpeechFinished()
-
-                if (handsFreeEnabled) {
-                    scheduleListeningRestart(700)
-                }
             }
         }
     }
@@ -641,7 +635,6 @@ class MainActivity : Activity() {
                         }
 
                         override fun onPartialResults(partialResults: Bundle?) {}
-
                         override fun onEvent(eventType: Int, params: Bundle?) {}
                     }
                 )

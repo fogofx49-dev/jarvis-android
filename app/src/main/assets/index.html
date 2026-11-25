@@ -131,6 +131,26 @@ header {
 .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); padding: 10px 16px; border-radius: 999px; background: #0b2a42; border: 1px solid var(--line); font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 60; }
 .toast.on { opacity: 1; }
 
+.search { width: 100%; padding: 12px 16px; margin-bottom: 8px; border-radius: 999px; border: 1px solid var(--line); background: rgba(4, 22, 38, .8); color: var(--text); font: inherit; font-size: 15px; outline: none; }
+.ico img { width: 100%; height: 100%; border-radius: 11px; object-fit: cover; }
+.ico b { font-size: 18px; font-weight: 600; }
+.node img { width: 62%; height: 62%; border-radius: 50%; object-fit: cover; }
+.modal { position: fixed; inset: 0; z-index: 70; display: none; align-items: flex-end; justify-content: center; background: rgba(0, 0, 0, .62); }
+.modal.open { display: flex; }
+.modal-card { width: 100%; max-width: 480px; max-height: 90dvh; overflow-y: auto; padding: 24px 22px max(22px, env(safe-area-inset-bottom)); border-radius: 28px 28px 0 0;
+  background: #071826; border: 1px solid var(--line); border-bottom: 0; box-shadow: 0 -10px 40px rgba(60, 200, 255, .15); }
+.modal-icons { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.m-dot { width: 40px; height: 40px; border-radius: 50%; background: radial-gradient(circle, #fff 0%, #5fd4ff 35%, rgba(60,200,255,0) 72%); }
+.m-sep { width: 1px; height: 30px; background: var(--line); }
+.modal-card h2 { font-size: 22px; font-weight: 500; margin: 0 0 14px; }
+.modal-card p { font-size: 14px; line-height: 1.5; margin: 0 0 10px; }
+.modal-card ul { margin: 0 0 12px; padding-left: 20px; font-size: 14px; line-height: 1.5; color: var(--muted); }
+.modal-card li { margin-bottom: 6px; }
+.modal-card .muted { color: var(--muted); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.mbtn { padding: 14px 22px; border-radius: 999px; border: 0; font: inherit; font-size: 15px; color: var(--text); background: none; }
+.mbtn.yes { background: rgba(60, 200, 255, .2); border: 1px solid var(--line); }
+
 @media (max-height: 650px) {
   .btn { width: 62px; height: 62px; }
   #status { font-size: 14px; min-height: 40px; margin-bottom: 10px; }
@@ -211,7 +231,8 @@ header {
 
   <div class="pane on" id="pane-connectors">
     <div class="h1">Apps Conectados</div>
-    <div class="sub">Escolha os apps que o J.A.R.V.I.S. abre pelo anel e por voz</div>
+    <div class="sub">Conecte os apps do seu celular para o J.A.R.V.I.S. abrir por voz e pelo anel</div>
+    <input class="search" id="appSearch" type="search" placeholder="Buscar app" autocomplete="off">
     <div class="banner">Para mostrar fotos e vídeos, <a onclick="loadMedia(true)">permita o acesso à galeria</a>.</div>
     <div id="listInstalled"></div>
     <div id="listOthers"></div>
@@ -223,6 +244,22 @@ header {
     <div class="card2"><b>Celular</b><span>“Liga a lanterna”, “aumenta o volume”, “abre o Wi-Fi”, “abre o Bluetooth”, “quanto de bateria”.</span></div>
     <div class="card2"><b>Hora e data</b><span>“Que horas são”, “que dia é hoje”.</span></div>
     <div class="card2"><b>Perguntas livres</b><span>Qualquer outra pergunta vai para o Gemini e, sem internet, para o Gemma local.</span></div>
+  </div>
+</div>
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <div class="modal-icons"><div class="m-dot"></div><div class="m-sep"></div><div class="ico" id="mIcon"></div></div>
+    <h2 id="mTitle"></h2>
+    <p>Para concluir seus comandos, o J.A.R.V.I.S. vai fazer o seguinte:</p>
+    <ul>
+      <li id="mLi"></li>
+      <li>Não compartilhar sua conversa nem outros dados com o app: ele apenas é aberto.</li>
+    </ul>
+    <p class="muted">Você pode desconectar a qualquer momento em Configurações, na aba Conectores.</p>
+    <div class="modal-actions">
+      <button class="mbtn" id="mNo" type="button">Agora não</button>
+      <button class="mbtn yes" id="mYes" type="button">Conectar</button>
+    </div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -620,22 +657,18 @@ const ICONS = {
   pin: "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0zM12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
   clock: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2",
   image: "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21",
+  apps: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
   play: "M6 4l14 8-14 8z",
   send: "M22 2L11 13M22 2l-7 20-4-9-9-4z",
   folder: "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
 };
 
-/* CATÁLOGO DE APPS (conectores) */
-const APP_CATALOG = [
-  { id: "whatsapp",  name: "WhatsApp",  app: "whatsapp",    pkg: "com.whatsapp",                    icon: "chat",   desc: "Abra suas conversas por voz." },
-  { id: "chrome",    name: "Navegador", app: "chrome",      pkg: "com.android.chrome",              icon: "globe",  desc: "Abra o Chrome e a web." },
-  { id: "spotify",   name: "Spotify",   app: "spotify",     pkg: "com.spotify.music",               icon: "music",  desc: "Abra suas músicas e playlists." },
-  { id: "gmail",     name: "Gmail",     app: "gmail",       pkg: "com.google.android.gm",           icon: "mail",   desc: "Abra sua caixa de e-mail." },
-  { id: "maps",      name: "Mapas",     app: "google maps", pkg: "com.google.android.apps.maps",    icon: "pin",    desc: "Abra o Google Maps." },
-  { id: "youtube",   name: "YouTube",   app: "youtube",     pkg: "com.google.android.youtube",      icon: "play",   desc: "Abra vídeos e canais." },
-  { id: "instagram", name: "Instagram", app: "instagram",   pkg: "com.instagram.android",           icon: "camera", desc: "Abra seu feed e mensagens." },
-  { id: "telegram",  name: "Telegram",  app: "telegram",    pkg: "org.telegram.messenger",          icon: "send",   desc: "Abra suas conversas do Telegram." },
-  { id: "facebook",  name: "Facebook",  app: "facebook",    pkg: "com.facebook.katana",             icon: "globe",  desc: "Abra o Facebook." }
+/* APPS DO CELULAR (conectores) */
+
+/* Apps que já vêm conectados na primeira vez, se estiverem instalados */
+const DEFAULT_PKGS = [
+  "com.whatsapp", "com.android.chrome", "com.spotify.music",
+  "com.google.android.gm", "com.google.android.apps.maps", "com.google.android.youtube"
 ];
 
 /* atalhos fixos do sistema; cmd = passa pelos comandos do Kotlin */
@@ -658,14 +691,91 @@ function loadStore(key, fallback) {
 function saveStore(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* sem armazenamento */ }
 }
+function esc(text) {
+  return String(text).replace(/[&<>"']/g, function (c) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  });
+}
 
-let ringApps = loadStore("ringApps", ["whatsapp", "chrome", "spotify", "gmail", "maps"]);
+let allApps = [];                 /* [{pkg, name}] vindos do Android */
+const iconCache = {};             /* pkg -> data URL */
+let connected = loadStore("connectedPkgs", null);
+let ringPkgs = loadStore("ringPkgs", null);
+
+function appByPkg(pkg) {
+  return allApps.find(function (a) { return a.pkg === pkg; });
+}
+
+function refreshApps() {
+  try {
+    if (window.AndroidVoice && typeof window.AndroidVoice.listApps === "function") {
+      allApps = JSON.parse(window.AndroidVoice.listApps());
+      allApps.sort(function (a, b) { return a.name.localeCompare(b.name, "pt-BR"); });
+    }
+  } catch (e) { console.warn(e); }
+
+  const have = {};
+  allApps.forEach(function (a) { have[a.pkg] = true; });
+
+  if (connected === null) {
+    connected = DEFAULT_PKGS.filter(function (p) { return have[p]; });
+    saveStore("connectedPkgs", connected);
+  }
+  if (ringPkgs === null) {
+    ringPkgs = connected.slice(0, MAX_RING_APPS);
+    saveStore("ringPkgs", ringPkgs);
+  }
+
+  /* limpa o que foi desinstalado */
+  if (allApps.length) {
+    connected = connected.filter(function (p) { return have[p]; });
+    ringPkgs = ringPkgs.filter(function (p) { return have[p]; });
+  }
+  syncConnected();
+}
+
+function syncConnected() {
+  try {
+    if (window.AndroidVoice && typeof window.AndroidVoice.setConnectedApps === "function") {
+      const payload = connected.map(function (p) {
+        const a = appByPkg(p);
+        return { pkg: p, name: a ? a.name : "" };
+      }).filter(function (x) { return x.name; });
+      window.AndroidVoice.setConnectedApps(JSON.stringify(payload));
+    }
+  } catch (e) { console.warn(e); }
+}
+
+function requestIcons(pkgs) {
+  const missing = pkgs.filter(function (p) { return !iconCache[p]; });
+  if (!missing.length) return;
+  try {
+    if (window.AndroidVoice && typeof window.AndroidVoice.requestIcons === "function") {
+      window.AndroidVoice.requestIcons(JSON.stringify(missing));
+    }
+  } catch (e) { console.warn(e); }
+}
+
+let ringTimer = null;
+function onNativeAppIcon(pkg, dataUrl) {
+  iconCache[pkg] = dataUrl;
+
+  document.querySelectorAll('[data-icon="' + pkg + '"]').forEach(function (el) {
+    el.innerHTML = '<img alt="" src="' + dataUrl + '">';
+  });
+
+  if (ringPkgs && ringPkgs.indexOf(pkg) >= 0) {
+    clearTimeout(ringTimer);
+    ringTimer = setTimeout(buildRing, 150);
+  }
+}
+window.onNativeAppIcon = onNativeAppIcon;
 
 function ringItems() {
-  const apps = ringApps
-    .map(function (id) { return APP_CATALOG.find(function (a) { return a.id === id; }); })
-    .filter(Boolean)
-    .map(function (a) { return { icon: a.icon, label: a.name, app: a.app }; });
+  const apps = (ringPkgs || []).map(function (p) {
+    const a = appByPkg(p);
+    return a ? { pkg: p, label: a.name, app: p } : null;
+  }).filter(Boolean);
   return [SYSTEM.phone].concat(apps, [SYSTEM.camera, SYSTEM.clock, SYSTEM.gallery, SYSTEM.files]);
 }
 
@@ -682,7 +792,13 @@ function buildRing() {
     b.setAttribute("aria-label", item.label);
     b.style.left = (50 + Math.cos(angle) * 41) + "%";
     b.style.top = (50 + Math.sin(angle) * 41) + "%";
-    b.innerHTML = '<svg viewBox="0 0 24 24"><path d="' + ICONS[item.icon] + '"/></svg>';
+
+    if (item.pkg && iconCache[item.pkg]) {
+      b.innerHTML = '<img alt="" src="' + iconCache[item.pkg] + '">';
+    } else {
+      b.innerHTML = '<svg viewBox="0 0 24 24"><path d="' + ICONS[item.icon || "apps"] + '"/></svg>';
+    }
+
     b.addEventListener("click", function () {
       if (item.app) launchApp(item.app);
       else send(item.cmd);
@@ -690,7 +806,10 @@ function buildRing() {
     stage.appendChild(b);
   });
 }
+
+refreshApps();
 buildRing();
+requestIcons(ringPkgs || []);
 
 /* CONFIGURAÇÕES */
 
@@ -702,9 +821,11 @@ function toast(msg) {
 }
 
 function openSettings() {
+  refreshApps();
   document.getElementById("sheet").classList.add("open");
   renderConnectors();
   renderVoiceState();
+  requestIcons(allApps.map(function (a) { return a.pkg; }));
 }
 function closeSettings() { document.getElementById("sheet").classList.remove("open"); }
 
@@ -727,73 +848,120 @@ function toggleVoice() {
   toast(voiceEnabled ? "Voz ligada" : "Voz desligada");
 }
 
-function installedMap() {
-  const map = {};
-  try {
-    if (window.AndroidVoice && typeof window.AndroidVoice.checkInstalled === "function") {
-      return JSON.parse(window.AndroidVoice.checkInstalled(JSON.stringify(APP_CATALOG.map(function (a) { return a.pkg; }))));
-    }
-  } catch (e) { console.warn(e); }
-  APP_CATALOG.forEach(function (a) { map[a.pkg] = true; });
-  return map;
+function iconHtml(a) {
+  const inner = iconCache[a.pkg]
+    ? '<img alt="" src="' + iconCache[a.pkg] + '">'
+    : "<b>" + esc((a.name || "?").charAt(0).toUpperCase()) + "</b>";
+  return '<div class="ico" data-icon="' + esc(a.pkg) + '">' + inner + "</div>";
 }
 
-function rowHtml(a, installed) {
-  const inRing = ringApps.indexOf(a.id) >= 0;
-  const svg = '<svg viewBox="0 0 24 24"><path d="' + ICONS[a.icon] + '"/></svg>';
-  const btn = installed
-    ? '<button class="more" type="button" data-act="menu" data-id="' + a.id + '" aria-label="Opções">•••</button>'
-    : '<button class="more plus" type="button" data-act="store" data-id="' + a.id + '" aria-label="Instalar">+</button>';
-  const chips = installed
-    ? '<div class="chips" id="chips-' + a.id + '">' +
-        '<button class="chip" type="button" data-act="open" data-id="' + a.id + '">Abrir</button>' +
-        '<button class="chip" type="button" data-act="ring" data-id="' + a.id + '">' + (inRing ? "Remover do anel" : "Adicionar ao anel") + '</button>' +
-      '</div>'
+function rowHtml(a, isConnected) {
+  const inRing = ringPkgs.indexOf(a.pkg) >= 0;
+  const id = esc(a.pkg);
+  const btn = isConnected
+    ? '<button class="more" type="button" data-act="menu" data-pkg="' + id + '" aria-label="Opções">•••</button>'
+    : '<button class="more plus" type="button" data-act="connect" data-pkg="' + id + '" aria-label="Conectar">+</button>';
+  const desc = isConnected ? "Conectado. Abre por voz e pelo anel." : "Toque em + para conectar.";
+  const chips = isConnected
+    ? '<div class="chips" id="chips-' + id + '">' +
+        '<button class="chip" type="button" data-act="open" data-pkg="' + id + '">Abrir</button>' +
+        '<button class="chip" type="button" data-act="ring" data-pkg="' + id + '">' + (inRing ? "Remover do anel" : "Adicionar ao anel") + "</button>" +
+        '<button class="chip" type="button" data-act="disconnect" data-pkg="' + id + '">Desconectar</button>' +
+      "</div>"
     : "";
-  return '<div class="row"><div class="ico">' + svg + '</div><div class="info"><div class="name">' + a.name +
-    '</div><div class="desc">' + a.desc + '</div></div>' + btn + '</div>' + chips;
+  return '<div class="row">' + iconHtml(a) + '<div class="info"><div class="name">' + esc(a.name) +
+    '</div><div class="desc">' + desc + "</div></div>" + btn + "</div>" + chips;
 }
 
 function renderConnectors() {
-  const map = installedMap();
-  const inst = APP_CATALOG.filter(function (a) { return map[a.pkg]; });
-  const others = APP_CATALOG.filter(function (a) { return !map[a.pkg]; });
+  const q = (document.getElementById("appSearch").value || "").trim().toLowerCase();
+  const match = function (a) { return !q || a.name.toLowerCase().indexOf(q) >= 0; };
+
+  const inst = allApps.filter(function (a) { return connected.indexOf(a.pkg) >= 0 && match(a); });
+  const others = allApps.filter(function (a) { return connected.indexOf(a.pkg) < 0 && match(a); });
 
   document.getElementById("listInstalled").innerHTML =
-    '<div class="group">Instalados (' + inst.length + ')</div>' + inst.map(function (a) { return rowHtml(a, true); }).join("");
-  document.getElementById("listOthers").innerHTML = others.length
-    ? '<div class="group">Todos (' + others.length + ')</div>' + others.map(function (a) { return rowHtml(a, false); }).join("")
-    : "";
+    '<div class="group">Conectados (' + inst.length + ")</div>" + inst.map(function (a) { return rowHtml(a, true); }).join("");
+  document.getElementById("listOthers").innerHTML =
+    '<div class="group">Todos (' + others.length + ")</div>" + others.map(function (a) { return rowHtml(a, false); }).join("");
+
+  if (!allApps.length) {
+    document.getElementById("listOthers").innerHTML = '<div class="sub">Não consegui listar os apps. Abra o J.A.R.V.I.S. no Android.</div>';
+  }
 }
+
+document.getElementById("appSearch").addEventListener("input", renderConnectors);
+
+/* janela "Conectar a ...?" */
+
+let pendingPkg = null;
+
+function askConnect(pkg) {
+  const a = appByPkg(pkg);
+  if (!a) return;
+  pendingPkg = pkg;
+  document.getElementById("mTitle").textContent = "Conectar a " + a.name + "?";
+  document.getElementById("mLi").textContent = "Abrir o " + a.name + " quando você pedir por voz ou tocar no atalho.";
+  const ic = document.getElementById("mIcon");
+  ic.innerHTML = iconCache[pkg] ? '<img alt="" src="' + iconCache[pkg] + '">' : "<b>" + esc(a.name.charAt(0).toUpperCase()) + "</b>";
+  document.getElementById("modal").classList.add("open");
+}
+
+function closeModal() {
+  document.getElementById("modal").classList.remove("open");
+  pendingPkg = null;
+}
+
+document.getElementById("mNo").addEventListener("click", closeModal);
+document.getElementById("mYes").addEventListener("click", function () {
+  if (!pendingPkg) return;
+  const a = appByPkg(pendingPkg);
+  if (connected.indexOf(pendingPkg) < 0) connected.push(pendingPkg);
+  saveStore("connectedPkgs", connected);
+  syncConnected();
+  closeModal();
+  renderConnectors();
+  toast((a ? a.name : "App") + " conectado");
+});
 
 document.getElementById("pane-connectors").addEventListener("click", function (ev) {
   const el = ev.target.closest("[data-act]");
   if (!el) return;
-  const a = APP_CATALOG.find(function (x) { return x.id === el.dataset.id; });
+  const pkg = el.dataset.pkg;
+  const a = appByPkg(pkg);
   if (!a) return;
 
-  if (el.dataset.act === "menu") {
-    const chips = document.getElementById("chips-" + a.id);
+  if (el.dataset.act === "connect") {
+    askConnect(pkg);
+
+  } else if (el.dataset.act === "menu") {
+    const chips = document.getElementById("chips-" + pkg);
     if (chips) chips.classList.toggle("on");
+
   } else if (el.dataset.act === "open") {
     closeSettings();
-    launchApp(a.app);
+    launchApp(pkg);
+
   } else if (el.dataset.act === "ring") {
-    const i = ringApps.indexOf(a.id);
-    if (i >= 0) ringApps.splice(i, 1);
-    else if (ringApps.length >= MAX_RING_APPS) { toast("O anel comporta até " + MAX_RING_APPS + " apps."); return; }
-    else ringApps.push(a.id);
-    saveStore("ringApps", ringApps);
+    const i = ringPkgs.indexOf(pkg);
+    if (i >= 0) ringPkgs.splice(i, 1);
+    else if (ringPkgs.length >= MAX_RING_APPS) { toast("O anel comporta até " + MAX_RING_APPS + " apps."); return; }
+    else ringPkgs.push(pkg);
+    saveStore("ringPkgs", ringPkgs);
     buildRing();
     renderConnectors();
-    const chips = document.getElementById("chips-" + a.id);
+    const chips = document.getElementById("chips-" + pkg);
     if (chips) chips.classList.add("on");
-  } else if (el.dataset.act === "store") {
-    try {
-      if (window.AndroidVoice && typeof window.AndroidVoice.openStore === "function") {
-        window.AndroidVoice.openStore(a.pkg);
-      }
-    } catch (e) { console.warn(e); }
+
+  } else if (el.dataset.act === "disconnect") {
+    connected = connected.filter(function (p) { return p !== pkg; });
+    ringPkgs = ringPkgs.filter(function (p) { return p !== pkg; });
+    saveStore("connectedPkgs", connected);
+    saveStore("ringPkgs", ringPkgs);
+    syncConnected();
+    buildRing();
+    renderConnectors();
+    toast(a.name + " desconectado");
   }
 });
 

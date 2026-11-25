@@ -489,13 +489,13 @@ window.onNativeRms = onNativeRms;
 function onNativeStatus(message) {
   const value = String(message || "");
 
-  if (/ouvindo|a ouvir|escutando/i.test(value)) {
+  if (/ouvindo|a ouvir|escutando|pode falar/i.test(value)) {
     setState("listening", value);
   } else if (/pensando|processando|carregando|a processar|a preparar|a inicializar/i.test(value)) {
     setState("thinking", value);
   } else if (/falando|a falar/i.test(value)) {
     setState("speaking", value);
-  } else if (/interrompido|toque no microfone|voz android pronta|interface pronta/i.test(value)) {
+  } else if (/interrompido|toque no microfone|voz android pronta|interface pronta|diga "?jarvis|palavra de ativa/i.test(value)) {
     if (!waitingForModel && uiState !== "speaking") setState("idle", value);
   }
 }
@@ -531,7 +531,7 @@ function startAutomaticGreeting() {
 
 function onNativeModelLoaded(message) {
   setState("idle", message || "Gemma local pronto");
-  startAutomaticGreeting();
+  /* A saudação agora é falada pelo Android ao abrir o app. */
 }
 window.onNativeModelLoaded = onNativeModelLoaded;
 

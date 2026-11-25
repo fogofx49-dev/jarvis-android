@@ -31,11 +31,11 @@ kotlin {
 }
 
 dependencies {
-    // Reconhecimento de voz
+    // Palavra de ativação (ainda não usada no MainActivity)
     implementation("ai.picovoice:porcupine-android:2.1.0")
 
-    // Gemma local
-    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    // Gemma local (versão fixa)
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.0")
 
     // AndroidX
     implementation("androidx.core:core-ktx:1.15.0")
@@ -44,6 +44,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
     implementation("com.google.firebase:firebase-ai")
     implementation("com.google.firebase:firebase-appcheck-debug")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
 
     // Coroutines para chamadas do Gemini
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")

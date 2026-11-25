@@ -2,13 +2,19 @@ package com.fogofx.jarvis
 
 import android.Manifest
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.media.AudioManager
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
@@ -26,11 +32,14 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import android.util.Base64
+import android.util.Size
 import android.webkit.JavascriptInterface
 import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.Conversation
@@ -43,8 +52,10 @@ import com.google.firebase.ai.GenerativeModel
 import com.google.firebase.ai.type.GenerativeBackend
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -65,6 +76,9 @@ class MainActivity : Activity() {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val backgroundExecutor = Executors.newSingleThreadExecutor()
+
+    // Executor separado: o carregamento do Gemma bloqueia o outro por muito tempo.
+    private val mediaExecutor = Executors.newSingleThreadExecutor()
     private val requestLock = Any()
 
     @Volatile
@@ -103,8 +117,26 @@ class MainActivity : Activity() {
     private var restartListeningRunnable: Runnable? = null
     private var responseTimeoutRunnable: Runnable? = null
 
+    // AVISOS FALADOS (carregador e bateria)
+
+    private val powerReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_BATTERY_LOW ->
+                    announce("Atenção. Bateria baixa, ${getBatteryLevel()} por cento.")
+
+                Intent.ACTION_POWER_CONNECTED ->
+                    announce("Carregador conectado.")
+
+                Intent.ACTION_POWER_DISCONNECTED ->
+                    announce("Carregador desconectado.")
+            }
+        }
+    }
+
     companion object {
         private const val MIC_PERMISSION = 101
+        private const val MEDIA_PERMISSION = 102
         private const val PICK_MODEL_REQUEST = 1002
         private const val RESPONSE_TIMEOUT_MS = 60000L
     }
@@ -114,13 +146,18 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // App Check: provedor de depuração.
-        // Registe o token apresentado nos registos do Firebase
-        // na secção App Check do projeto.
+        // App Check: depuração só em build debug; Play Integrity em produção.
         try {
+            val isDebug =
+                (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+
             FirebaseAppCheck.getInstance()
                 .installAppCheckProviderFactory(
-                    DebugAppCheckProviderFactory.getInstance()
+                    if (isDebug) {
+                        DebugAppCheckProviderFactory.getInstance()
+                    } else {
+                        PlayIntegrityAppCheckProviderFactory.getInstance()
+                    }
                 )
 
             showStatus("Proteção Firebase preparada.")
@@ -141,7 +178,21 @@ class MainActivity : Activity() {
                 e.message ?: "Não foi possível inicializar o Gemini."
         }
 
+        // Saudação falada assim que a voz estiver pronta.
+        pendingSpeech = buildGreeting()
+
         initializeTts()
+
+        ContextCompat.registerReceiver(
+            this,
+            powerReceiver,
+            IntentFilter().apply {
+                addAction(Intent.ACTION_BATTERY_LOW)
+                addAction(Intent.ACTION_POWER_CONNECTED)
+                addAction(Intent.ACTION_POWER_DISCONNECTED)
+            },
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
 
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
@@ -173,7 +224,7 @@ class MainActivity : Activity() {
                         }
                     } else {
                         showStatus(
-                            "Toque no título J.A.R.V.I.S. para carregar o modelo."
+                            "Toque na engrenagem para carregar o modelo."
                         )
                     }
                 }
@@ -190,6 +241,54 @@ class MainActivity : Activity() {
         webView.loadUrl(
             "file:///android_asset/index.html"
         )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        loadLatestMedia(false)
+    }
+
+    // SAUDAÇÃO E AVISOS
+
+    private fun buildGreeting(): String {
+
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+
+        val period = when (hour) {
+            in 5..11 -> "Bom dia"
+            in 12..17 -> "Boa tarde"
+            else -> "Boa noite"
+        }
+
+        val level = getBatteryLevel()
+
+        val battery =
+            if (level >= 0) " Bateria em $level por cento." else ""
+
+        return "$period. J.A.R.V.I.S. online.$battery"
+    }
+
+    private fun announce(text: String) {
+
+        mainHandler.post {
+
+            if (waitingForResponse || requestInProgress) return@post
+
+            if (!ttsReady) {
+                pendingSpeech = text
+                return@post
+            }
+
+            try {
+                tts.speak(
+                    text,
+                    TextToSpeech.QUEUE_ADD,
+                    null,
+                    "JARVIS_VOICE"
+                )
+            } catch (_: Exception) {
+            }
+        }
     }
 
     // TEXT TO SPEECH
@@ -671,7 +770,17 @@ class MainActivity : Activity() {
                             showStatus("A ouvir...")
                         }
 
-                        override fun onRmsChanged(rmsdB: Float) {}
+                        // Alimenta a animação do orbe com o nível da voz.
+                        override fun onRmsChanged(rmsdB: Float) {
+                            if (!::webView.isInitialized) return
+
+                            webView.evaluateJavascript(
+                                "if (typeof onNativeRms === 'function') " +
+                                    "onNativeRms($rmsdB);",
+                                null
+                            )
+                        }
+
                         override fun onBufferReceived(buffer: ByteArray?) {}
 
                         override fun onEndOfSpeech() {
@@ -817,6 +926,11 @@ class MainActivity : Activity() {
             grantResults
         )
 
+        if (requestCode == MEDIA_PERMISSION) {
+            loadLatestMedia(false)
+            return
+        }
+
         if (requestCode != MIC_PERMISSION) return
 
         val granted =
@@ -840,6 +954,165 @@ class MainActivity : Activity() {
         } else if (pendingManualListen) {
             pendingManualListen = false
             startListeningManual()
+        }
+    }
+
+    // CARDS DE FOTO E VÍDEO
+
+    private fun mediaPermissions(): Array<String> =
+        if (Build.VERSION.SDK_INT >= 33) {
+            arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VIDEO
+            )
+        } else {
+            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+
+    private fun hasMediaPermission(): Boolean =
+        mediaPermissions().all {
+            ActivityCompat.checkSelfPermission(this, it) ==
+                PackageManager.PERMISSION_GRANTED
+        }
+
+    private fun loadLatestMedia(askPermission: Boolean) {
+
+        if (!hasMediaPermission()) {
+            if (askPermission) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    mediaPermissions(),
+                    MEDIA_PERMISSION
+                )
+            } else {
+                sendMedia("image", "", "", "", "Toque para permitir")
+                sendMedia("video", "", "", "", "Toque para permitir")
+            }
+            return
+        }
+
+        mediaExecutor.execute {
+            queryLatest(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image")
+            queryLatest(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, "video")
+        }
+    }
+
+    private fun queryLatest(collection: Uri, kind: String) {
+
+        try {
+            val isVideo = kind == "video"
+
+            val projection = if (isVideo) {
+                arrayOf(
+                    MediaStore.MediaColumns._ID,
+                    MediaStore.MediaColumns.DISPLAY_NAME,
+                    MediaStore.Video.Media.DURATION
+                )
+            } else {
+                arrayOf(
+                    MediaStore.MediaColumns._ID,
+                    MediaStore.MediaColumns.DISPLAY_NAME
+                )
+            }
+
+            contentResolver.query(
+                collection,
+                projection,
+                null,
+                null,
+                "${MediaStore.MediaColumns.DATE_ADDED} DESC"
+            )?.use { c ->
+
+                if (!c.moveToFirst()) {
+                    sendMedia(kind, "", "", "", "")
+                    return
+                }
+
+                val id = c.getLong(0)
+                val name = c.getString(1) ?: ""
+                val uri = ContentUris.withAppendedId(collection, id)
+
+                var extra = ""
+
+                if (isVideo) {
+                    val seconds = c.getLong(2) / 1000
+                    extra = "%d:%02d".format(seconds / 60, seconds % 60)
+                }
+
+                sendMedia(
+                    kind,
+                    name,
+                    thumbnailBase64(uri, isVideo),
+                    uri.toString(),
+                    extra
+                )
+            }
+
+        } catch (_: Exception) {
+            sendMedia(kind, "", "", "", "Não consegui ler")
+        }
+    }
+
+    private fun thumbnailBase64(uri: Uri, isVideo: Boolean): String {
+
+        var bmp: Bitmap? = null
+
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                bmp = contentResolver.loadThumbnail(uri, Size(480, 300), null)
+
+            } else if (isVideo) {
+                val retriever = MediaMetadataRetriever()
+
+                try {
+                    retriever.setDataSource(this, uri)
+                    bmp = retriever.getFrameAtTime(0)
+                } finally {
+                    retriever.release()
+                }
+
+            } else {
+                bmp = contentResolver.openInputStream(uri)?.use {
+                    BitmapFactory.decodeStream(
+                        it,
+                        null,
+                        BitmapFactory.Options().apply { inSampleSize = 4 }
+                    )
+                }
+            }
+        } catch (_: Exception) {
+            bmp = null
+        }
+
+        if (bmp == null) return ""
+
+        val out = ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.JPEG, 80, out)
+
+        return "data:image/jpeg;base64," +
+            Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+    }
+
+    private fun sendMedia(
+        kind: String,
+        name: String,
+        thumb: String,
+        uri: String,
+        extra: String
+    ) {
+        mainHandler.post {
+
+            if (!::webView.isInitialized) return@post
+
+            webView.evaluateJavascript(
+                "if (typeof onNativeMedia === 'function') onNativeMedia(" +
+                    "${JSONObject.quote(kind)}, " +
+                    "${JSONObject.quote(name)}, " +
+                    "${JSONObject.quote(thumb)}, " +
+                    "${JSONObject.quote(uri)}, " +
+                    "${JSONObject.quote(extra)});",
+                null
+            )
         }
     }
 
@@ -1403,11 +1676,37 @@ class MainActivity : Activity() {
             }
         }
 
-        if (cmd.contains("câmara") || cmd.contains("camera")) {
+        if (
+            cmd.contains("câmara") ||
+            cmd.contains("câmera") ||
+            cmd.contains("camera")
+        ) {
             return launchAndroidIntent(
                 Intent(MediaStore.ACTION_IMAGE_CAPTURE),
-                "A abrir a câmara.",
-                "Não consegui abrir a câmara."
+                "A abrir a câmera.",
+                "Não consegui abrir a câmera."
+            )
+        }
+
+        if (cmd.contains("galeria") || cmd.contains("fotos")) {
+            return launchAndroidIntent(
+                Intent.makeMainSelectorActivity(
+                    Intent.ACTION_MAIN,
+                    Intent.CATEGORY_APP_GALLERY
+                ),
+                "A abrir a galeria.",
+                "Não encontrei um aplicativo de galeria."
+            )
+        }
+
+        if (cmd.contains("arquivos")) {
+            return launchAndroidIntent(
+                Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                },
+                "A abrir os arquivos.",
+                "Não consegui abrir os arquivos."
             )
         }
 
@@ -1642,12 +1941,15 @@ class MainActivity : Activity() {
             cmd.contains("configurações do ecrã") ||
             cmd.contains("configuracoes do ecra") ||
             cmd.contains("brilho do ecrã") ||
-            cmd.contains("brilho do ecra")
+            cmd.contains("brilho do ecra") ||
+            cmd.contains("definições da tela") ||
+            cmd.contains("configurações da tela") ||
+            cmd.contains("brilho da tela")
         ) {
             return launchAndroidIntent(
                 Intent(Settings.ACTION_DISPLAY_SETTINGS),
-                "A abrir as definições do ecrã.",
-                "Não consegui abrir as definições do ecrã."
+                "A abrir as definições da tela.",
+                "Não consegui abrir as definições da tela."
             )
         }
 
@@ -1758,7 +2060,14 @@ class MainActivity : Activity() {
 
             val hardwareAnswer: String? = when {
 
-                text.contains("bateria") -> {
+                text.contains("bateria") &&
+                    (
+                        text.contains("quanto") ||
+                            text.contains("nível") ||
+                            text.contains("nivel") ||
+                            text.contains("porcentagem") ||
+                            text == "bateria"
+                        ) -> {
                     val level = getBatteryLevel()
 
                     if (level >= 0) {
@@ -1778,7 +2087,10 @@ class MainActivity : Activity() {
                     toggleFlashlight(false)
                 }
 
-                text.contains("horas") -> {
+                text.contains("que horas") ||
+                    text.contains("qual a hora") ||
+                    text.contains("qual é a hora") ||
+                    text.contains("as horas") -> {
                     "Agora são ${
                         SimpleDateFormat(
                             "HH:mm",
@@ -2127,6 +2439,32 @@ class MainActivity : Activity() {
                 respond(result)
             }
         }
+
+        @JavascriptInterface
+        fun loadMedia(ask: Boolean) {
+            mainHandler.post {
+                loadLatestMedia(ask)
+            }
+        }
+
+        @JavascriptInterface
+        fun openMedia(uri: String, kind: String) {
+            mainHandler.post {
+                try {
+                    startActivity(
+                        Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(
+                                Uri.parse(uri),
+                                if (kind == "video") "video/*" else "image/*"
+                            )
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                    )
+                } catch (_: Exception) {
+                    showStatus("Não consegui abrir o arquivo.")
+                }
+            }
+        }
     }
 
     // DESTRUIR A APLICAÇÃO
@@ -2144,6 +2482,11 @@ class MainActivity : Activity() {
 
         cancelResponseTimeout()
         stopRecognitionInternal()
+
+        try {
+            unregisterReceiver(powerReceiver)
+        } catch (_: Exception) {
+        }
 
         try {
             if (::tts.isInitialized) {
@@ -2168,6 +2511,7 @@ class MainActivity : Activity() {
         geminiModel = null
 
         backgroundExecutor.shutdownNow()
+        mediaExecutor.shutdownNow()
 
         if (::webView.isInitialized) {
             webView.removeJavascriptInterface("AndroidVoice")

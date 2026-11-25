@@ -2,317 +2,103 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="theme-color" content="#f5dce9">
-<title>J.A.R.V.I.S. | Stark Technology</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#020b14">
+<title>J.A.R.V.I.S.</title>
 <style>
-* {
-  box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
-}
-
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 :root {
-  --state-color: #a88be8;
+  --bg: #020b14;
+  --line: rgba(60, 200, 255, .55);
+  --cyan: #5fd4ff;
+  --text: #d6f1ff;
+  --muted: #6f9cb5;
 }
-
 html, body {
-  margin: 0;
-  width: 100%;
-  min-height: 100%;
-  overflow: hidden;
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0; width: 100%; height: 100%; overflow: hidden;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text); background: var(--bg);
 }
-
 body {
-  min-height: 100dvh;
-  color: #292333;
   background:
-    radial-gradient(ellipse at 5% 10%, #f8d5e5 0%, transparent 48%),
-    radial-gradient(ellipse at 95% 35%, #ccecff 0%, transparent 48%),
-    linear-gradient(145deg, #f9e5ed, #e5e7fa 55%, #f5e5ed);
+    radial-gradient(ellipse at 50% 42%, #0a2a44 0%, transparent 62%),
+    linear-gradient(180deg, #03111d, #01060b);
 }
-
 .app {
-  width: 100%;
-  height: 100dvh;
-  min-height: 500px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  padding: 0 20px;
+  height: 100dvh; min-height: 480px; display: flex; flex-direction: column;
+  align-items: center; padding: 0 18px;
 }
-
 header {
-  width: 100%;
-  text-align: center;
-  padding-top: max(28px, env(safe-area-inset-top));
+  width: 100%; position: relative; text-align: center;
+  padding-top: max(22px, env(safe-area-inset-top));
 }
-
-.brand {
-  font-size: 25px;
-  font-weight: 500;
-  letter-spacing: 2px;
-  color: #292333;
-  cursor: pointer;
-  user-select: none;
+.brand { font-size: 20px; font-weight: 600; letter-spacing: 6px; color: var(--text); }
+.gear {
+  position: absolute; right: 0; top: max(14px, env(safe-area-inset-top));
+  width: 46px; height: 46px; border: 0; background: none; color: var(--cyan); padding: 8px;
 }
+.gear svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 6px rgba(95,212,255,.6)); }
+.gear:active { transform: rotate(40deg); transition: transform .2s; }
 
-.subtitle {
-  margin-top: 7px;
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: #82778d;
-  pointer-events: none;
+.stage-wrap { flex: 1; width: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.stage { position: relative; width: min(94vw, 42dvh, 400px); aspect-ratio: 1; }
+#hud { position: absolute; inset: 0; width: 100%; height: 100%; }
+.node {
+  position: absolute; width: 13%; aspect-ratio: 1; transform: translate(-50%, -50%);
+  display: grid; place-items: center; padding: 0; color: #8fe1ff; cursor: pointer;
+  border-radius: 50%; border: 1px solid var(--line); background: rgba(4, 22, 38, .88);
+  box-shadow: 0 0 14px rgba(60, 200, 255, .25), inset 0 0 10px rgba(60, 200, 255, .12);
+  transition: box-shadow .2s, background .2s;
 }
+.node svg { width: 52%; height: 52%; fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round; }
+.node:active { background: rgba(40, 140, 200, .5); box-shadow: 0 0 24px rgba(95, 212, 255, .8); }
+.node:focus-visible, .btn:focus-visible, .gear:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 
-.orb-area {
-  flex: 1;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 0;
+.bottom { width: 100%; padding-bottom: max(30px, calc(env(safe-area-inset-bottom) + 18px)); }
+#status { min-height: 48px; margin: 0 auto 18px; max-width: 34ch; text-align: center;
+  font-size: 16px; line-height: 1.4; color: var(--muted); }
+.buttons { display: flex; justify-content: space-between; align-items: center; padding: 0 6px; }
+.btn {
+  width: 76px; height: 76px; border-radius: 50%; display: grid; place-items: center; cursor: pointer;
+  background: rgba(4, 22, 38, .85); border: 1px solid var(--line); color: var(--cyan);
+  box-shadow: 0 0 18px rgba(60, 200, 255, .2); transition: transform .15s;
 }
+.btn:active { transform: scale(.92); }
+.btn:disabled { opacity: .45; }
+.btn svg { width: 34px; height: 34px; fill: none; stroke: currentColor; stroke-width: 2.2;
+  stroke-linecap: round; stroke-linejoin: round; }
+.btn.stop { color: #ff6b6b; border-color: rgba(255, 107, 107, .45); box-shadow: 0 0 18px rgba(255, 107, 107, .15); }
 
-.orb {
-  width: min(58vw, 310px);
-  height: min(58vw, 310px);
-  max-width: 310px;
-  max-height: 310px;
-  min-width: 190px;
-  min-height: 190px;
-  border-radius: 50%;
-  position: relative;
-  overflow: hidden;
-
-  background:
-    radial-gradient(ellipse at 28% 35%,
-      rgba(255, 172, 225, .95), transparent 48%),
-    radial-gradient(ellipse at 75% 32%,
-      rgba(166, 192, 255, .95), transparent 50%),
-    radial-gradient(ellipse at 65% 78%,
-      rgba(255, 239, 222, .95), transparent 48%),
-    linear-gradient(135deg, #dba9ed, #c8b7f2 55%, #f2d6e8);
-
-  box-shadow:
-    inset -15px -20px 50px rgba(255,255,255,.35),
-    inset 12px 10px 35px rgba(255,255,255,.42),
-    0 15px 55px rgba(157,116,200,.13);
-
-  animation: orbFloat 6s ease-in-out infinite;
-  transition: filter .5s, transform .5s;
+.cards { width: 100%; max-width: 440px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 auto 14px; }
+.card {
+  padding: 6px; text-align: left; color: var(--text); cursor: pointer; font: inherit;
+  border: 1px solid var(--line); border-radius: 10px; background: rgba(4, 22, 38, .8);
+  box-shadow: 0 0 16px rgba(60, 200, 255, .15), inset 0 0 12px rgba(60, 200, 255, .08);
 }
-
-.orb::before,
-.orb::after {
-  content: "";
-  position: absolute;
-  inset: -20%;
-  border-radius: 50%;
-  filter: blur(24px);
-  opacity: .55;
-  animation: colorFlow 9s ease-in-out infinite alternate;
+.card:active { background: rgba(40, 140, 200, .35); }
+.card-title { display: block; padding: 2px 4px 5px; font-size: 12px; color: var(--cyan); }
+.thumb {
+  position: relative; aspect-ratio: 16 / 10; border-radius: 6px; overflow: hidden;
+  display: grid; place-items: center; font-size: 12px; color: var(--muted);
+  background: #04182a center / cover no-repeat;
 }
-
-.orb::before {
-  background:
-    radial-gradient(circle at 35% 40%,
-      #ff8fd1, transparent 42%);
+.thumb .play {
+  display: none; position: absolute; width: 34px; height: 34px; border-radius: 50%;
+  border: 1.5px solid var(--cyan); background: rgba(2, 11, 20, .55); place-items: center;
 }
+.thumb .play::after { content: ""; border-left: 11px solid var(--cyan); border-top: 7px solid transparent; border-bottom: 7px solid transparent; margin-left: 3px; }
+.thumb.has-media .play { display: grid; }
+.thumb:not(.is-video) .play { display: none !important; }
+.thumb .dur { position: absolute; right: 5px; bottom: 4px; font-size: 11px; color: var(--text); text-shadow: 0 0 4px #000; }
+.card-name { display: block; padding: 6px 4px 2px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.orb::after {
-  background:
-    radial-gradient(circle at 70% 55%,
-      #9bcaff, transparent 45%);
-  animation-delay: -4s;
-}
+@media (max-height: 720px) { .card-title { display: none; } .stage { width: min(94vw, 36dvh, 340px); } }
 
-.orb-inner {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at 50% 45%,
-    transparent 35%,
-    rgba(255,255,255,.15) 100%
-  );
-  z-index: 2;
-}
-
-@keyframes orbFloat {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.025); }
-}
-
-@keyframes colorFlow {
-  from { transform: translate(-8%, -5%) scale(1); }
-  to { transform: translate(9%, 7%) scale(1.2); }
-}
-
-.orb.listening {
-  animation: listening 1.5s ease-in-out infinite;
-  filter: saturate(1.25);
-}
-
-.orb.thinking {
-  animation: thinking 1.1s ease-in-out infinite;
-  filter: hue-rotate(30deg) saturate(1.3);
-}
-
-.orb.speaking {
-  animation: speaking .75s ease-in-out infinite;
-  filter: saturate(1.4) brightness(1.04);
-}
-
-@keyframes listening {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.07); }
-}
-
-@keyframes thinking {
-  0%, 100% { transform: scale(.97) rotate(0deg); }
-  50% { transform: scale(1.055) rotate(5deg); }
-}
-
-@keyframes speaking {
-  0%, 100% { transform: scale(1); }
-  25% { transform: scale(1.055); }
-  50% { transform: scale(1.02); }
-  75% { transform: scale(1.07); }
-}
-
-.bottom-area {
-  width: 100%;
-  padding-bottom: max(45px, calc(env(safe-area-inset-bottom) + 25px));
-}
-
-.indicator {
-  height: 65px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 13px;
-  margin-bottom: 28px;
-}
-
-.dots {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  height: 12px;
-}
-
-.dots span {
-  width: 11px;
-  height: 11px;
-  background: #817a8a;
-  border-radius: 50%;
-  opacity: .8;
-  animation: dotPulse 1.2s infinite ease-in-out;
-}
-
-.dots span:nth-child(2) {
-  animation-delay: .18s;
-}
-
-.dots span:nth-child(3) {
-  animation-delay: .36s;
-}
-
-@keyframes dotPulse {
-  0%, 60%, 100% {
-    transform: translateY(0);
-    opacity: .45;
-  }
-  30% {
-    transform: translateY(-5px);
-    opacity: 1;
-  }
-}
-
-#status {
-  color: #81798b;
-  font-size: 19px;
-  text-align: center;
-  font-weight: 400;
-}
-
-.buttons {
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 5px;
-}
-
-.action-button {
-  width: 100px;
-  height: 100px;
-  border: none;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  transition: transform .2s, background .2s;
-}
-
-.action-button:active {
-  transform: scale(.91);
-}
-
-.mic-button {
-  background: rgba(255,255,255,.88);
-  color: #080808;
-  box-shadow: 0 5px 25px rgba(120,100,140,.07);
-}
-
-.stop-button {
-  background: rgba(180,170,195,.17);
-  color: #f04444;
-}
-
-.action-button svg {
-  width: 43px;
-  height: 43px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.stop-button svg {
-  width: 48px;
-  height: 48px;
-  stroke-width: 3.5;
-}
-
-.action-button:disabled {
-  opacity: .5;
-}
-
-@media(max-height: 650px) {
-  .orb {
-    width: min(48vw, 230px);
-    height: min(48vw, 230px);
-  }
-
-  .action-button {
-    width: 78px;
-    height: 78px;
-  }
-
-  .indicator {
-    margin-bottom: 15px;
-  }
-
-  #status {
-    font-size: 16px;
-  }
+@media (max-height: 650px) {
+  .btn { width: 62px; height: 62px; }
+  #status { font-size: 14px; min-height: 40px; margin-bottom: 10px; }
 }
 </style>
 </head>
@@ -320,61 +106,50 @@ header {
 <body>
 <div class="app">
 
-  <header onclick="chooseModel()" title="Toque para selecionar o modelo">
+  <header>
     <div class="brand">J.A.R.V.I.S.</div>
-    <div class="subtitle">STARK TECHNOLOGY</div>
+    <button class="gear" type="button" onclick="chooseModel()" aria-label="Carregar modelo local">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+      </svg>
+    </button>
   </header>
 
-  <main class="orb-area">
-    <div class="orb" id="orb">
-      <div class="orb-inner"></div>
+  <main class="stage-wrap">
+    <div class="stage" id="stage">
+      <canvas id="hud"></canvas>
     </div>
   </main>
 
-  <section class="bottom-area">
+  <section class="cards">
+    <button class="card" type="button" onclick="openMedia('image')" aria-label="Abrir última foto">
+      <span class="card-title">Foto</span>
+      <div class="thumb" id="thumbImage"><span id="emptyImage">Toque para carregar</span></div>
+      <span class="card-name" id="nameImage">Galeria</span>
+    </button>
+    <button class="card" type="button" onclick="openMedia('video')" aria-label="Abrir último vídeo">
+      <span class="card-title">Vídeo</span>
+      <div class="thumb is-video" id="thumbVideo"><span id="emptyVideo">Toque para carregar</span><i class="play"></i><span class="dur" id="durVideo"></span></div>
+      <span class="card-name" id="nameVideo">Mídia</span>
+    </button>
+  </section>
 
-    <div class="indicator">
-      <div class="dots" id="dots">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-
-      <div id="status" role="status" aria-live="polite">
-        A preparar o J.A.R.V.I.S...
-      </div>
-    </div>
+  <section class="bottom">
+    <div id="status" role="status" aria-live="polite">A preparar o J.A.R.V.I.S...</div>
 
     <div class="buttons">
-
-      <button
-        id="micButton"
-        class="action-button mic-button"
-        type="button"
-        onclick="startMic()"
-        aria-label="Começar a falar">
-
+      <button id="micButton" class="btn" type="button" onclick="startMic()" aria-label="Começar a falar">
         <svg viewBox="0 0 48 48">
-          <rect x="17" y="4" width="14" height="27" rx="7"
-                fill="currentColor" stroke="none"/>
+          <rect x="17" y="4" width="14" height="27" rx="7"/>
           <path d="M10 23v2a14 14 0 0 0 28 0v-2"/>
-          <path d="M24 39v6"/>
-          <path d="M17 45h14"/>
+          <path d="M24 39v6M17 45h14"/>
         </svg>
       </button>
 
-      <button
-        id="stopButton"
-        class="action-button stop-button"
-        type="button"
-        onclick="stopEverything()"
-        aria-label="Interromper">
-
-        <svg viewBox="0 0 48 48">
-          <path d="M10 10L38 38M38 10L10 38"/>
-        </svg>
+      <button id="stopButton" class="btn stop" type="button" onclick="stopEverything()" aria-label="Interromper">
+        <svg viewBox="0 0 48 48"><path d="M10 10L38 38M38 10L10 38"/></svg>
       </button>
-
     </div>
   </section>
 </div>
@@ -392,63 +167,36 @@ let browserRecognition = null;
 let suppressNextSpeech = false;
 let lastSubmittedText = "";
 let lastSubmittedTime = 0;
+let uiState = "idle";
 
-/* CONTROLO DO ARRANQUE AUTOMÁTICO */
 let startupGreetingStarted = false;
 let startupGreetingCancelled = false;
 
-const userInput = document.getElementById("userInput");
 const micButton = document.getElementById("micButton");
-const stopButton = document.getElementById("stopButton");
 const statusElement = document.getElementById("status");
-const orb = document.getElementById("orb");
-const dots = document.getElementById("dots");
+
+/* ESTADOS */
 
 function setState(state, message) {
-  orb.classList.remove("listening", "thinking", "speaking");
-
-  if (state === "listening") {
-    orb.classList.add("listening");
-    dots.style.visibility = "hidden";
-  } else if (state === "thinking") {
-    orb.classList.add("thinking");
-    dots.style.visibility = "visible";
-  } else if (state === "speaking") {
-    orb.classList.add("speaking");
-    dots.style.visibility = "hidden";
-  } else {
-    dots.style.visibility = "visible";
-  }
-
-  if (message) {
-    statusElement.textContent = message;
-  }
+  uiState = state;
+  if (message) statusElement.textContent = message;
 }
 
 function setWaiting(value) {
   waitingForModel = Boolean(value);
-
-  if (waitingForModel) {
-    setState("thinking", "A pensar...");
-  } else {
-    setState("idle", "J.A.R.V.I.S. pronto");
-  }
+  if (waitingForModel) setState("thinking", "A pensar...");
+  else setState("idle", "J.A.R.V.I.S. pronto");
 }
 
 function notifyNativeResponseFinished() {
   try {
-    if (
-      window.AndroidVoice &&
-      typeof window.AndroidVoice.responseFinished === "function"
-    ) {
+    if (window.AndroidVoice && typeof window.AndroidVoice.responseFinished === "function") {
       window.AndroidVoice.responseFinished();
     }
-  } catch (error) {
-    console.warn(error);
-  }
+  } catch (error) { console.warn(error); }
 }
 
-// VOZ
+/* VOZ */
 
 function speak(text) {
   const clean = String(text || "").trim();
@@ -462,37 +210,22 @@ function speak(text) {
   setState("speaking", "A falar...");
 
   try {
-    if (
-      window.AndroidVoice &&
-      typeof window.AndroidVoice.speak === "function"
-    ) {
+    if (window.AndroidVoice && typeof window.AndroidVoice.speak === "function") {
       window.AndroidVoice.speak(clean);
       return;
     }
-  } catch (error) {
-    console.warn("Erro na voz Android:", error);
-  }
+  } catch (error) { console.warn("Erro na voz Android:", error); }
 
   if ("speechSynthesis" in window) {
     try {
       window.speechSynthesis.cancel();
-
       const utterance = new SpeechSynthesisUtterance(clean);
       utterance.lang = "pt-BR";
-
-      utterance.onend = function() {
-        onNativeSpeechFinished();
-      };
-
-      utterance.onerror = function() {
-        onNativeSpeechFinished();
-      };
-
+      utterance.onend = onNativeSpeechFinished;
+      utterance.onerror = onNativeSpeechFinished;
       window.speechSynthesis.speak(utterance);
       return;
-    } catch (error) {
-      console.warn(error);
-    }
+    } catch (error) { console.warn(error); }
   }
 
   onNativeSpeechFinished();
@@ -501,71 +234,36 @@ function speak(text) {
 function stopEverything() {
   suppressNextSpeech = true;
   startupGreetingCancelled = true;
-
   waitingForModel = false;
   recognitionActive = false;
   handsFreeEnabled = false;
-
   micButton.disabled = false;
 
   try {
-    if (browserRecognition) {
-      browserRecognition.abort();
-      browserRecognition = null;
-    }
-  } catch (error) {
-    console.warn(error);
-  }
+    if (browserRecognition) { browserRecognition.abort(); browserRecognition = null; }
+  } catch (error) { console.warn(error); }
 
   try {
-    if (
-      window.AndroidVoice &&
-      typeof window.AndroidVoice.stopEverything === "function"
-    ) {
-      window.AndroidVoice.stopEverything();
-    } else if (
-      window.AndroidVoice &&
-      typeof window.AndroidVoice.cancelPendingRequest === "function"
-    ) {
-      window.AndroidVoice.cancelPendingRequest();
-    } else {
-      if (
-        window.AndroidVoice &&
-        typeof window.AndroidVoice.stopListening === "function"
-      ) {
-        window.AndroidVoice.stopListening();
-      }
-
-      if (
-        window.AndroidVoice &&
-        typeof window.AndroidVoice.stopSpeaking === "function"
-      ) {
-        window.AndroidVoice.stopSpeaking();
-      }
+    const a = window.AndroidVoice;
+    if (a && typeof a.stopEverything === "function") a.stopEverything();
+    else if (a && typeof a.cancelPendingRequest === "function") a.cancelPendingRequest();
+    else {
+      if (a && typeof a.stopListening === "function") a.stopListening();
+      if (a && typeof a.stopSpeaking === "function") a.stopSpeaking();
     }
-  } catch (error) {
-    console.warn(error);
-  }
+  } catch (error) { console.warn(error); }
 
-  if ("speechSynthesis" in window) {
-    window.speechSynthesis.cancel();
-  }
-
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   setState("idle", "Interrompido");
 }
 
-function updateHandsFreeState(enabled) {
-  handsFreeEnabled = Boolean(enabled);
-}
+function updateHandsFreeState(enabled) { handsFreeEnabled = Boolean(enabled); }
 
-// CARREGAR MODELO
+/* MODELO */
 
 function chooseModel() {
   try {
-    if (
-      window.AndroidVoice &&
-      typeof window.AndroidVoice.chooseModel === "function"
-    ) {
+    if (window.AndroidVoice && typeof window.AndroidVoice.chooseModel === "function") {
       window.AndroidVoice.chooseModel();
     } else {
       setState("idle", "Seletor de modelo indisponível.");
@@ -576,15 +274,11 @@ function chooseModel() {
   }
 }
 
-// RESPOSTAS LOCAIS
+/* RESPOSTAS LOCAIS */
 
 function normalizeText(text) {
-  return String(text || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return String(text || "").toLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
 }
 
 function answer(raw) {
@@ -592,53 +286,28 @@ function answer(raw) {
 
   if (/^(ola|oi|bom dia|boa tarde|boa noite|e ai|tudo bem)[!.?]*$/.test(msg))
     return "Olá! Sou o JARVIS. Como posso ajudar-te?";
-
   if (/^(qual e o teu nome|como te chamas|quem es|o que es)[?!.]*$/.test(msg))
     return "Sou o JARVIS, o teu assistente de inteligência artificial.";
-
   if (/^(conta|diz|quero) uma piada[!.?]*$/.test(msg))
     return "Porque é que o computador foi ao médico? Porque tinha um vírus!";
-
   if (/^(da-me|manda-me|quero uma) frase de motivacao[!.?]*$/.test(msg))
     return "Continua a aprender e a melhorar. Cada pequeno passo aproxima-te do teu objetivo!";
-
   if (/^(que horas sao|diz-me as horas|qual e a hora agora)[?!.]*$/.test(msg))
     return "A hora indicada pelo dispositivo é " +
-      new Date().toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit"
-      }) + ".";
-
+      new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) + ".";
   if (/^(que dia e hoje|qual e a data de hoje|diz-me a data)[?!.]*$/.test(msg))
-    return "A data indicada pelo dispositivo é " +
-      new Date().toLocaleDateString("pt-BR") + ".";
+    return "A data indicada pelo dispositivo é " + new Date().toLocaleDateString("pt-BR") + ".";
 
   return null;
 }
 
-// COMANDOS ANDROID
+/* COMANDOS ANDROID */
 
-function handleExplicitCommand(text) {
-  const msg = normalizeText(text);
-
-  let app = null;
-
-  if (/^(abre|abrir|inicia|iniciar|vai para) o? ?youtube$/.test(msg))
-    app = "youtube";
-
-  else if (/^(abre|abrir|inicia|iniciar|vai para) o? ?google$/.test(msg))
-    app = "google";
-
-  else if (/^(abre|abrir|vai para) (as )?(definicoes|configuracoes)$/.test(msg))
-    app = "settings";
-
-  if (!app) return false;
-
+function launchApp(app) {
+  if (waitingForModel) return;
   try {
-    if (
-      window.AndroidVoice &&
-      typeof window.AndroidVoice.openApp === "function"
-    ) {
+    if (window.AndroidVoice && typeof window.AndroidVoice.openApp === "function") {
+      suppressNextSpeech = false;
       setWaiting(true);
       setState("thinking", "A executar comando...");
       window.AndroidVoice.openApp(app);
@@ -650,26 +319,29 @@ function handleExplicitCommand(text) {
     setWaiting(false);
     speak("Não consegui executar esse comando.");
   }
+}
 
+function handleExplicitCommand(text) {
+  const msg = normalizeText(text);
+  let app = null;
+
+  if (/^(abre|abrir|inicia|iniciar|vai para) o? ?youtube$/.test(msg)) app = "youtube";
+  else if (/^(abre|abrir|inicia|iniciar|vai para) o? ?google$/.test(msg)) app = "google";
+  else if (/^(abre|abrir|vai para) (as )?(definicoes|configuracoes)$/.test(msg)) app = "settings";
+
+  if (!app) return false;
+  launchApp(app);
   return true;
 }
 
-// ENVIO PARA O GEMMA
+/* ENVIO PARA O MODELO */
 
 function send(text) {
   text = String(text || "").trim();
-
   if (!text || waitingForModel) return;
 
   const now = Date.now();
-
-  if (
-    text === lastSubmittedText &&
-    now - lastSubmittedTime < 1200
-  ) {
-    return;
-  }
-
+  if (text === lastSubmittedText && now - lastSubmittedTime < 1200) return;
   lastSubmittedText = text;
   lastSubmittedTime = now;
 
@@ -678,16 +350,9 @@ function send(text) {
   if (handleExplicitCommand(text)) return;
 
   const localAnswer = answer(text);
+  if (localAnswer !== null) { speak(localAnswer); return; }
 
-  if (localAnswer !== null) {
-    speak(localAnswer);
-    return;
-  }
-
-  if (
-    !window.AndroidVoice ||
-    typeof window.AndroidVoice.askModel !== "function"
-  ) {
+  if (!window.AndroidVoice || typeof window.AndroidVoice.askModel !== "function") {
     speak("O modelo de inteligência artificial não está disponível. Verifica a integração com o Gemma local.");
     return;
   }
@@ -702,23 +367,17 @@ function send(text) {
   }
 }
 
-// MICROFONE
+/* MICROFONE */
 
 function startMic() {
   if (recognitionActive || waitingForModel) return;
-
   suppressNextSpeech = false;
 
-  if (
-    window.AndroidVoice &&
-    typeof window.AndroidVoice.startListening === "function"
-  ) {
+  if (window.AndroidVoice && typeof window.AndroidVoice.startListening === "function") {
     try {
       recognitionActive = true;
       micButton.disabled = true;
-
       setState("listening", "Estou a ouvir...");
-
       window.AndroidVoice.startListening();
       return;
     } catch (error) {
@@ -728,60 +387,43 @@ function startMic() {
     }
   }
 
-  const SpeechRecognition =
-    window.SpeechRecognition ||
-    window.webkitSpeechRecognition;
-
-  if (!SpeechRecognition) {
-    setState("idle", "Microfone indisponível");
-    return;
-  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { setState("idle", "Microfone indisponível"); return; }
 
   try {
-    browserRecognition = new SpeechRecognition();
+    browserRecognition = new SR();
     browserRecognition.lang = "pt-BR";
     browserRecognition.interimResults = false;
     browserRecognition.maxAlternatives = 1;
 
     recognitionActive = true;
     micButton.disabled = true;
-
     setState("listening", "Estou a ouvir...");
 
-    browserRecognition.onresult = function(event) {
+    browserRecognition.onresult = function (event) {
       const transcript = event.results[0][0].transcript;
-
       recognitionActive = false;
       micButton.disabled = false;
       browserRecognition = null;
-
       send(transcript);
     };
 
-    browserRecognition.onerror = function(event) {
+    browserRecognition.onerror = function (event) {
       recognitionActive = false;
       micButton.disabled = false;
       browserRecognition = null;
-
       setState("idle", "Não consegui ouvir. Tenta novamente.");
       console.warn("Erro de reconhecimento:", event.error);
     };
 
-    browserRecognition.onend = function() {
+    browserRecognition.onend = function () {
       recognitionActive = false;
       micButton.disabled = false;
       browserRecognition = null;
-
-      if (
-        !waitingForModel &&
-        !orb.classList.contains("speaking")
-      ) {
-        setState("idle", "J.A.R.V.I.S. pronto");
-      }
+      if (!waitingForModel && uiState !== "speaking") setState("idle", "J.A.R.V.I.S. pronto");
     };
 
     browserRecognition.start();
-
   } catch (error) {
     recognitionActive = false;
     micButton.disabled = false;
@@ -790,114 +432,81 @@ function startMic() {
   }
 }
 
-// RESPOSTAS NATIVAS
+/* CALLBACKS NATIVOS */
 
 function onNativeModelResponse(text) {
   const response = String(text || "").trim();
-
   if (!waitingForModel) return;
-
   setWaiting(false);
-
-  if (!response) {
-    speak("O modelo não devolveu uma resposta.");
-    return;
-  }
-
+  if (!response) { speak("O modelo não devolveu uma resposta."); return; }
   speak(response);
 }
-
 window.onNativeModelResponse = onNativeModelResponse;
 window.onModelResponse = onNativeModelResponse;
 
 function onNativeModelError(message) {
   if (!waitingForModel) return;
-
   setWaiting(false);
-
-  speak("Ocorreu um erro no modelo: " +
-    String(message || "erro desconhecido"));
+  speak("Ocorreu um erro no modelo: " + String(message || "erro desconhecido"));
 }
-
 window.onNativeModelError = onNativeModelError;
 window.onModelError = onNativeModelError;
 
 function onNativeSpeechResult(text) {
   recognitionActive = false;
   micButton.disabled = false;
-
-  if (text) {
-    send(text);
-  } else {
-    setState("idle", "Não reconheci a frase. Tenta novamente.");
-    notifyNativeResponseFinished();
-  }
+  if (text) send(text);
+  else { setState("idle", "Não reconheci a frase. Tenta novamente."); notifyNativeResponseFinished(); }
 }
 
 function onNativeSpeechError(message) {
   recognitionActive = false;
   micButton.disabled = false;
-
   setState("idle", message || "Erro no reconhecimento de voz");
 }
 
 function onNativeSpeechFinished() {
   recognitionActive = false;
   micButton.disabled = false;
-
-  if (!waitingForModel) {
-    setState("idle", "J.A.R.V.I.S. pronto");
-  }
+  if (!waitingForModel) setState("idle", "J.A.R.V.I.S. pronto");
 }
-
 window.onNativeSpeechFinished = onNativeSpeechFinished;
 
 function onNativeHandsFreeState(enabled, message) {
   updateHandsFreeState(enabled);
-
-  if (message) {
-    setState(enabled ? "listening" : "idle", message);
-  }
+  if (message) setState(enabled ? "listening" : "idle", message);
 }
 
-// ESTADOS NATIVOS
+/* Nível do microfone (dB, aprox. -2 a 10) vindo do onRmsChanged */
+let micLevel = 0;
+let micLevelTime = 0;
+function onNativeRms(db) {
+  micLevel = Math.max(0, Math.min(1, (Number(db) + 2) / 12));
+  micLevelTime = performance.now();
+}
+window.onNativeRms = onNativeRms;
 
 function onNativeStatus(message) {
   const value = String(message || "");
 
   if (/ouvindo|a ouvir|escutando/i.test(value)) {
     setState("listening", value);
-
-  } else if (
-    /pensando|processando|carregando|a processar|a preparar|a inicializar/i.test(value)
-  ) {
+  } else if (/pensando|processando|carregando|a processar|a preparar|a inicializar/i.test(value)) {
     setState("thinking", value);
-
   } else if (/falando|a falar/i.test(value)) {
     setState("speaking", value);
-
-  } else if (
-    /interrompido|toque no microfone|voz android pronta|interface pronta/i.test(value)
-  ) {
-    if (!waitingForModel && !orb.classList.contains("speaking")) {
-      setState("idle", value);
-    }
+  } else if (/interrompido|toque no microfone|voz android pronta|interface pronta/i.test(value)) {
+    if (!waitingForModel && uiState !== "speaking") setState("idle", value);
   }
 }
 
-// ARRANQUE AUTOMÁTICO DO JARVIS
+/* SAUDAÇÃO AUTOMÁTICA */
 
 function startAutomaticGreeting() {
-  if (startupGreetingStarted || startupGreetingCancelled) {
-    return;
-  }
-
+  if (startupGreetingStarted || startupGreetingCancelled) return;
   startupGreetingStarted = true;
 
-  if (
-    !window.AndroidVoice ||
-    typeof window.AndroidVoice.askModel !== "function"
-  ) {
+  if (!window.AndroidVoice || typeof window.AndroidVoice.askModel !== "function") {
     setState("idle", "Gemma local indisponível.");
     return;
   }
@@ -912,9 +521,7 @@ function startAutomaticGreeting() {
   try {
     setWaiting(true);
     setState("thinking", "A preparar a saudação...");
-
     window.AndroidVoice.askModel(prompt);
-
   } catch (error) {
     console.warn("Erro ao iniciar a saudação automática:", error);
     setWaiting(false);
@@ -924,20 +531,228 @@ function startAutomaticGreeting() {
 
 function onNativeModelLoaded(message) {
   setState("idle", message || "Gemma local pronto");
-
-  // A saudação só começa depois de o modelo confirmar que está pronto.
   startAutomaticGreeting();
 }
-
 window.onNativeModelLoaded = onNativeModelLoaded;
 
-// ARRANQUE DA INTERFACE
+/* ANEL DE ATALHOS */
 
-window.addEventListener("load", function() {
+const ICONS = {
+  phone: "M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z",
+  chat: "M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.1A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z",
+  globe: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20",
+  camera: "M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  music: "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z",
+  mail: "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 6l-10 7L2 6",
+  pin: "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0zM12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
+  clock: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2",
+  image: "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21",
+  folder: "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+};
+
+/* app = abre direto pelo openApp; cmd = passa pelos comandos do Kotlin */
+const SHORTCUTS = [
+  { icon: "phone",  label: "Telefone",  cmd: "abre o telefone" },
+  { icon: "chat",   label: "WhatsApp",  app: "whatsapp" },
+  { icon: "globe",  label: "Navegador", app: "chrome" },
+  { icon: "camera", label: "Câmera",    cmd: "abre a camera" },
+  { icon: "music",  label: "Música",    app: "spotify" },
+  { icon: "mail",   label: "E-mail",    app: "gmail" },
+  { icon: "pin",    label: "Mapas",     app: "google maps" },
+  { icon: "clock",  label: "Alarmes",   cmd: "abre os alarmes" },
+  { icon: "image",  label: "Galeria",   cmd: "abre a galeria" },
+  { icon: "folder", label: "Arquivos",  cmd: "abre os arquivos" }
+];
+
+(function buildRing() {
+  const stage = document.getElementById("stage");
+  SHORTCUTS.forEach(function (item, i) {
+    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / SHORTCUTS.length;
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "node";
+    b.setAttribute("aria-label", item.label);
+    b.style.left = (50 + Math.cos(angle) * 41) + "%";
+    b.style.top = (50 + Math.sin(angle) * 41) + "%";
+    b.innerHTML = '<svg viewBox="0 0 24 24"><path d="' + ICONS[item.icon] + '"/></svg>';
+    b.addEventListener("click", function () {
+      if (item.app) launchApp(item.app);
+      else send(item.cmd);
+    });
+    stage.appendChild(b);
+  });
+})();
+
+/* ORBE / HUD (canvas) */
+
+(function hud() {
+  const canvas = document.getElementById("hud");
+  const ctx = canvas.getContext("2d");
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const HUES = { idle: 197, listening: 188, thinking: 222, speaking: 176 };
+
+  let size = 0, dpr = 1, level = 0, hue = 197, t0 = performance.now();
+
+  const RINGS = [
+    { r: .20, w: 3,   sp:  1.2,  segs: [[0, 1.6], [2.4, 1.2]] },
+    { r: .30, w: 2,   sp: -0.8,  segs: [[.5, 2.2], [3.6, 1.4]] },
+    { r: .42, w: 4,   sp:  0.5,  segs: [[0, 2.8], [3.5, 1.8]] },
+    { r: .55, w: 2,   sp: -0.35, segs: [[.8, 1], [2.4, 1], [4, 1], [5.4, .6]] }
+  ];
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    size = rect.width;
+    canvas.width = Math.round(size * dpr);
+    canvas.height = Math.round(size * dpr);
+  }
+  new ResizeObserver(resize).observe(canvas);
+  resize();
+
+  function targetLevel(t) {
+    if (uiState === "listening") {
+      const fresh = performance.now() - micLevelTime < 400;
+      return fresh ? 0.15 + micLevel * 0.85 : 0.22 + 0.1 * Math.sin(t * 4);
+    }
+    if (uiState === "speaking")
+      return 0.4 + 0.3 * Math.sin(t * 9) * Math.sin(t * 5.3);
+    if (uiState === "thinking") return 0.22 + 0.1 * Math.sin(t * 3);
+    return 0.07 + 0.03 * Math.sin(t * 1.4);
+  }
+
+  function arc(cx, cy, r, start, len, w, color) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, start, start + len);
+    ctx.lineWidth = w;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+  }
+
+  function frame(now) {
+    const t = (now - t0) / 1000;
+    const S = size, c = S / 2;
+    const speedMul = reduce ? 0.15 : 1;
+
+    level += (targetLevel(t) - level) * 0.15;
+    hue += (HUES[uiState] - hue) * 0.06;
+
+    const col = function (a, l) { return "hsla(" + hue + ",100%," + (l || 62) + "%," + a + ")"; };
+    const boost = uiState === "thinking" ? 2.2 : 1;
+    const spin = (1 + level * 2.5) * boost * speedMul;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, S, S);
+    ctx.globalCompositeOperation = "lighter";
+    ctx.lineCap = "round";
+
+    /* círculo guia do anel de ícones */
+    ctx.setLineDash([2, 7]);
+    arc(c, c, c * .82, 0, Math.PI * 2, 1, col(.35));
+    ctx.setLineDash([]);
+
+    /* marcas de escala */
+    const ticks = 72, tr = c * .62;
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = col(.4);
+    for (let i = 0; i < ticks; i++) {
+      const a = (i / ticks) * Math.PI * 2 + t * .12 * speedMul;
+      const len = i % 6 === 0 ? 9 : 4;
+      ctx.beginPath();
+      ctx.moveTo(c + Math.cos(a) * tr, c + Math.sin(a) * tr);
+      ctx.lineTo(c + Math.cos(a) * (tr + len), c + Math.sin(a) * (tr + len));
+      ctx.stroke();
+    }
+
+    /* anéis em arco */
+    RINGS.forEach(function (ring, i) {
+      const r = c * ring.r * (1 + level * .03 * (i + 1));
+      const rot = t * ring.sp * spin;
+      ring.segs.forEach(function (s) {
+        arc(c, c, r, s[0] + rot, s[1], ring.w, col(.85));
+        arc(c, c, r, s[0] + rot, s[1], ring.w + 5, col(.12));
+      });
+    });
+
+    /* onda horizontal, forte nas laterais */
+    const amp = level * S * .09;
+    ctx.beginPath();
+    for (let x = 0; x <= S; x += 3) {
+      const u = x / S;
+      const env = Math.pow(Math.abs(2 * u - 1), 2.2);
+      const y = c + Math.sin(u * 38 + t * 11) * amp * env * Math.sin(u * 7 - t * 3);
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = col(.8);
+    ctx.stroke();
+
+    /* núcleo */
+    const cr = c * (.13 + level * .08);
+    const g = ctx.createRadialGradient(c, c, 0, c, c, cr * 3.2);
+    g.addColorStop(0, "hsla(" + hue + ",100%,96%,1)");
+    g.addColorStop(.25, col(.9, 70));
+    g.addColorStop(1, "hsla(" + hue + ",100%,50%,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(c, c, cr * 3.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* CARDS DE FOTO E VÍDEO */
+
+const mediaUri = { image: "", video: "" };
+
+function onNativeMedia(kind, name, thumb, uri, extra) {
+  const k = kind === "video" ? "Video" : "Image";
+  const box = document.getElementById("thumb" + k);
+  const empty = document.getElementById("empty" + k);
+  mediaUri[kind] = uri || "";
+
+  if (!uri) {
+    box.style.backgroundImage = "";
+    box.classList.remove("has-media");
+    empty.style.display = "";
+    empty.textContent = extra || (kind === "video" ? "Sem vídeos" : "Sem fotos");
+    document.getElementById("name" + k).textContent = kind === "video" ? "Mídia" : "Galeria";
+    if (kind === "video") document.getElementById("durVideo").textContent = "";
+    return;
+  }
+
+  if (thumb) box.style.backgroundImage = 'url("' + thumb + '")';
+  box.classList.add("has-media");
+  empty.style.display = "none";
+  document.getElementById("name" + k).textContent = name || "";
+  if (kind === "video") document.getElementById("durVideo").textContent = extra || "";
+}
+window.onNativeMedia = onNativeMedia;
+
+function loadMedia(askPermission) {
+  try {
+    if (window.AndroidVoice && typeof window.AndroidVoice.loadMedia === "function") {
+      window.AndroidVoice.loadMedia(Boolean(askPermission));
+    }
+  } catch (error) { console.warn(error); }
+}
+
+function openMedia(kind) {
+  if (!mediaUri[kind]) { loadMedia(true); return; }
+  try {
+    if (window.AndroidVoice && typeof window.AndroidVoice.openMedia === "function") {
+      window.AndroidVoice.openMedia(mediaUri[kind], kind);
+    }
+  } catch (error) { console.warn(error); }
+}
+
+/* ARRANQUE */
+
+window.addEventListener("load", function () {
   setState("thinking", "A iniciar o J.A.R.V.I.S...");
-
-  // Não inicia o microfone.
-  // O Android carrega o Gemma e chama onNativeModelLoaded.
+  loadMedia(false);
 });
 </script>
 </body>

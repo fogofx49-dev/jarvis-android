@@ -2441,6 +2441,53 @@ class MainActivity : Activity() {
         }
 
         @JavascriptInterface
+        fun checkInstalled(packagesJson: String): String {
+            val result = JSONObject()
+
+            try {
+                val list = org.json.JSONArray(packagesJson)
+
+                for (i in 0 until list.length()) {
+                    val pkg = list.getString(i)
+                    result.put(
+                        pkg,
+                        packageManager.getLaunchIntentForPackage(pkg) != null
+                    )
+                }
+            } catch (_: Exception) {
+            }
+
+            return result.toString()
+        }
+
+        @JavascriptInterface
+        fun openStore(pkg: String) {
+            mainHandler.post {
+                try {
+                    startActivity(
+                        Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse("market://details?id=$pkg")
+                        )
+                    )
+                } catch (_: Exception) {
+                    try {
+                        startActivity(
+                            Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse(
+                                    "https://play.google.com/store/apps/details?id=$pkg"
+                                )
+                            )
+                        )
+                    } catch (_: Exception) {
+                        showStatus("Não consegui abrir a loja.")
+                    }
+                }
+            }
+        }
+
+        @JavascriptInterface
         fun loadMedia(ask: Boolean) {
             mainHandler.post {
                 loadLatestMedia(ask)

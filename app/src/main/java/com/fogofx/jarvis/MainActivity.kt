@@ -105,6 +105,10 @@ class MainActivity : Activity() {
     @Volatile
     private var geminiInitializationError = ""
 
+    // Apps "conectados" na tela de configurações: nome em minúsculas -> pacote
+    @Volatile
+    private var connectedApps: Map<String, String> = emptyMap()
+
     @Volatile
     private var handsFreeEnabled = false
 
@@ -1093,6 +1097,29 @@ class MainActivity : Activity() {
             Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
     }
 
+    private fun appIconBase64(pkg: String): String {
+
+        return try {
+            val drawable = packageManager.getApplicationIcon(pkg)
+            val size = 96
+
+            val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bmp)
+
+            drawable.setBounds(0, 0, size, size)
+            drawable.draw(canvas)
+
+            val out = ByteArrayOutputStream()
+            bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+
+            "data:image/png;base64," +
+                Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
+
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
     private fun sendMedia(
         kind: String,
         name: String,
@@ -1884,6 +1911,14 @@ class MainActivity : Activity() {
             if (requestedApp != null) {
                 return openApplication(requestedApp)
             }
+
+            val connected = connectedApps.entries
+                .sortedByDescending { it.key.length }
+                .firstOrNull { cmd.contains(it.key) }
+
+            if (connected != null) {
+                return openApplication(connected.value)
+            }
         }
 
         if (
@@ -2437,6 +2472,84 @@ class MainActivity : Activity() {
             mainHandler.post {
                 val result = openApplication(appName)
                 respond(result)
+            }
+        }
+
+        @JavascriptInterface
+        fun listApps(): String {
+            val result = org.json.JSONArray()
+
+            try {
+                val launcher = Intent(Intent.ACTION_MAIN)
+                    .addCategory(Intent.CATEGORY_LAUNCHER)
+
+                val seen = HashSet<String>()
+
+                for (info in packageManager.queryIntentActivities(launcher, 0)) {
+                    val pkg = info.activityInfo.packageName
+
+                    if (pkg == packageName || !seen.add(pkg)) continue
+
+                    result.put(
+                        JSONObject()
+                            .put("pkg", pkg)
+                            .put("name", info.loadLabel(packageManager).toString())
+                    )
+                }
+            } catch (_: Exception) {
+            }
+
+            return result.toString()
+        }
+
+        @JavascriptInterface
+        fun requestIcons(packagesJson: String) {
+            mediaExecutor.execute {
+                try {
+                    val list = org.json.JSONArray(packagesJson)
+
+                    for (i in 0 until list.length()) {
+                        val pkg = list.getString(i)
+                        val data = appIconBase64(pkg)
+
+                        if (data.isEmpty()) continue
+
+                        mainHandler.post {
+                            if (!::webView.isInitialized) return@post
+
+                            webView.evaluateJavascript(
+                                "if (typeof onNativeAppIcon === 'function') " +
+                                    "onNativeAppIcon(${JSONObject.quote(pkg)}, " +
+                                    "${JSONObject.quote(data)});",
+                                null
+                            )
+                        }
+                    }
+                } catch (_: Exception) {
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun setConnectedApps(json: String) {
+            try {
+                val list = org.json.JSONArray(json)
+                val map = HashMap<String, String>()
+
+                for (i in 0 until list.length()) {
+                    val item = list.getJSONObject(i)
+
+                    val name = item.getString("name")
+                        .lowercase(Locale.ROOT)
+                        .trim()
+
+                    if (name.length >= 3) {
+                        map[name] = item.getString("pkg")
+                    }
+                }
+
+                connectedApps = map
+            } catch (_: Exception) {
             }
         }
 

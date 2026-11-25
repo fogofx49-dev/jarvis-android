@@ -96,6 +96,41 @@ header {
 
 @media (max-height: 720px) { .card-title { display: none; } .stage { width: min(94vw, 36dvh, 340px); } }
 
+.sheet { position: fixed; inset: 0; z-index: 50; display: none; flex-direction: column; background: linear-gradient(180deg, #03111d, #01060b);
+  padding: max(16px, env(safe-area-inset-top)) 18px 0; }
+.sheet.open { display: flex; }
+.sheet-top { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+.back { width: 44px; height: 44px; border: 0; background: none; color: var(--cyan); display: grid; place-items: center; }
+.back svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sheet-title { font-size: 18px; letter-spacing: 3px; font-weight: 600; }
+.tabs { display: flex; gap: 8px; margin-bottom: 18px; overflow-x: auto; }
+.tab { flex: none; padding: 10px 18px; border-radius: 999px; border: 1px solid transparent; background: none; color: var(--muted); font: inherit; font-size: 15px; }
+.tab.on { background: rgba(60, 200, 255, .12); border-color: var(--line); color: var(--text); }
+.pane { flex: 1; overflow-y: auto; padding-bottom: max(24px, env(safe-area-inset-bottom)); display: none; }
+.pane.on { display: block; }
+.h1 { font-size: 26px; font-weight: 400; margin: 4px 0 4px; }
+.sub { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+.banner { padding: 14px 16px; border-radius: 16px; background: rgba(60, 200, 255, .08); border: 1px solid rgba(60, 200, 255, .2); font-size: 14px; line-height: 1.45; margin-bottom: 20px; }
+.banner a { color: var(--cyan); text-decoration: underline dotted; cursor: pointer; }
+.group { color: var(--muted); font-size: 15px; margin: 18px 0 8px; }
+.row { display: flex; align-items: center; gap: 14px; padding: 10px 0; }
+.ico { flex: none; width: 48px; height: 48px; border-radius: 12px; border: 1px solid var(--line); background: rgba(4, 22, 38, .9); color: #8fe1ff; display: grid; place-items: center; }
+.ico svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.info { flex: 1; min-width: 0; }
+.name { font-size: 16px; }
+.desc { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.more { flex: none; width: 44px; height: 44px; border: 0; background: none; color: var(--text); font-size: 22px; letter-spacing: 1px; }
+.more.plus { font-size: 30px; font-weight: 300; }
+.chips { display: none; gap: 8px; padding: 0 0 10px 62px; flex-wrap: wrap; }
+.chips.on { display: flex; }
+.chip { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(4, 22, 38, .9); color: var(--text); font: inherit; font-size: 13px; }
+.card2 { padding: 16px; border-radius: 16px; border: 1px solid var(--line); background: rgba(4, 22, 38, .7); margin-bottom: 12px; }
+.card2 b { display: block; font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+.card2 span { color: var(--muted); font-size: 13px; line-height: 1.45; display: block; }
+.card2 button { margin-top: 10px; }
+.toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); padding: 10px 16px; border-radius: 999px; background: #0b2a42; border: 1px solid var(--line); font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 60; }
+.toast.on { opacity: 1; }
+
 @media (max-height: 650px) {
   .btn { width: 62px; height: 62px; }
   #status { font-size: 14px; min-height: 40px; margin-bottom: 10px; }
@@ -108,7 +143,7 @@ header {
 
   <header>
     <div class="brand">J.A.R.V.I.S.</div>
-    <button class="gear" type="button" onclick="chooseModel()" aria-label="Carregar modelo local">
+    <button class="gear" type="button" onclick="openSettings()" aria-label="Configurações">
       <svg viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="3"/>
         <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
@@ -153,6 +188,44 @@ header {
     </div>
   </section>
 </div>
+
+<div class="sheet" id="sheet">
+  <div class="sheet-top">
+    <button class="back" type="button" onclick="closeSettings()" aria-label="Voltar"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="sheet-title">CONFIGURAÇÕES</div>
+  </div>
+  <div class="tabs">
+    <button class="tab" data-tab="discover" type="button">Descobrir</button>
+    <button class="tab on" data-tab="connectors" type="button">Conectores</button>
+    <button class="tab" data-tab="skills" type="button">Habilidades</button>
+  </div>
+
+  <div class="pane" id="pane-discover">
+    <div class="card2"><b>Modelo local (Gemma)</b><span>Carregue o arquivo .litertlm para o J.A.R.V.I.S. responder mesmo sem internet.</span>
+      <button class="chip" type="button" onclick="chooseModel()">Escolher arquivo</button></div>
+    <div class="card2"><b>Fotos e vídeos</b><span>Permite mostrar a última foto e o último vídeo nos cards da tela inicial.</span>
+      <button class="chip" type="button" onclick="loadMedia(true)">Permitir acesso</button></div>
+    <div class="card2"><b>Voz do J.A.R.V.I.S.</b><span id="voiceState"></span>
+      <button class="chip" type="button" onclick="toggleVoice()">Alternar voz</button></div>
+  </div>
+
+  <div class="pane on" id="pane-connectors">
+    <div class="h1">Apps Conectados</div>
+    <div class="sub">Escolha os apps que o J.A.R.V.I.S. abre pelo anel e por voz</div>
+    <div class="banner">Para mostrar fotos e vídeos, <a onclick="loadMedia(true)">permita o acesso à galeria</a>.</div>
+    <div id="listInstalled"></div>
+    <div id="listOthers"></div>
+  </div>
+
+  <div class="pane" id="pane-skills">
+    <div class="card2"><b>Abrir apps</b><span>“Abre o WhatsApp”, “abre o Spotify”, “abre a câmera”, “abre a galeria”, “abre os arquivos”.</span></div>
+    <div class="card2"><b>Alarmes e lembretes</b><span>“Alarme às 7:30”, “abre os alarmes”, “cria um lembrete amanhã às 9 horas”.</span></div>
+    <div class="card2"><b>Celular</b><span>“Liga a lanterna”, “aumenta o volume”, “abre o Wi-Fi”, “abre o Bluetooth”, “quanto de bateria”.</span></div>
+    <div class="card2"><b>Hora e data</b><span>“Que horas são”, “que dia é hoje”.</span></div>
+    <div class="card2"><b>Perguntas livres</b><span>Qualquer outra pergunta vai para o Gemini e, sem internet, para o Gemma local.</span></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
 
 <input id="userInput" type="hidden">
 
@@ -547,27 +620,62 @@ const ICONS = {
   pin: "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0zM12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
   clock: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM12 6v6l4 2",
   image: "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21",
+  play: "M6 4l14 8-14 8z",
+  send: "M22 2L11 13M22 2l-7 20-4-9-9-4z",
   folder: "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
 };
 
-/* app = abre direto pelo openApp; cmd = passa pelos comandos do Kotlin */
-const SHORTCUTS = [
-  { icon: "phone",  label: "Telefone",  cmd: "abre o telefone" },
-  { icon: "chat",   label: "WhatsApp",  app: "whatsapp" },
-  { icon: "globe",  label: "Navegador", app: "chrome" },
-  { icon: "camera", label: "Câmera",    cmd: "abre a camera" },
-  { icon: "music",  label: "Música",    app: "spotify" },
-  { icon: "mail",   label: "E-mail",    app: "gmail" },
-  { icon: "pin",    label: "Mapas",     app: "google maps" },
-  { icon: "clock",  label: "Alarmes",   cmd: "abre os alarmes" },
-  { icon: "image",  label: "Galeria",   cmd: "abre a galeria" },
-  { icon: "folder", label: "Arquivos",  cmd: "abre os arquivos" }
+/* CATÁLOGO DE APPS (conectores) */
+const APP_CATALOG = [
+  { id: "whatsapp",  name: "WhatsApp",  app: "whatsapp",    pkg: "com.whatsapp",                    icon: "chat",   desc: "Abra suas conversas por voz." },
+  { id: "chrome",    name: "Navegador", app: "chrome",      pkg: "com.android.chrome",              icon: "globe",  desc: "Abra o Chrome e a web." },
+  { id: "spotify",   name: "Spotify",   app: "spotify",     pkg: "com.spotify.music",               icon: "music",  desc: "Abra suas músicas e playlists." },
+  { id: "gmail",     name: "Gmail",     app: "gmail",       pkg: "com.google.android.gm",           icon: "mail",   desc: "Abra sua caixa de e-mail." },
+  { id: "maps",      name: "Mapas",     app: "google maps", pkg: "com.google.android.apps.maps",    icon: "pin",    desc: "Abra o Google Maps." },
+  { id: "youtube",   name: "YouTube",   app: "youtube",     pkg: "com.google.android.youtube",      icon: "play",   desc: "Abra vídeos e canais." },
+  { id: "instagram", name: "Instagram", app: "instagram",   pkg: "com.instagram.android",           icon: "camera", desc: "Abra seu feed e mensagens." },
+  { id: "telegram",  name: "Telegram",  app: "telegram",    pkg: "org.telegram.messenger",          icon: "send",   desc: "Abra suas conversas do Telegram." },
+  { id: "facebook",  name: "Facebook",  app: "facebook",    pkg: "com.facebook.katana",             icon: "globe",  desc: "Abra o Facebook." }
 ];
 
-(function buildRing() {
+/* atalhos fixos do sistema; cmd = passa pelos comandos do Kotlin */
+const SYSTEM = {
+  phone:   { icon: "phone",  label: "Telefone", cmd: "abre o telefone" },
+  camera:  { icon: "camera", label: "Câmera",   cmd: "abre a camera" },
+  clock:   { icon: "clock",  label: "Alarmes",  cmd: "abre os alarmes" },
+  gallery: { icon: "image",  label: "Galeria",  cmd: "abre a galeria" },
+  files:   { icon: "folder", label: "Arquivos", cmd: "abre os arquivos" }
+};
+
+const MAX_RING_APPS = 5;
+
+function loadStore(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) { return fallback; }
+}
+function saveStore(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* sem armazenamento */ }
+}
+
+let ringApps = loadStore("ringApps", ["whatsapp", "chrome", "spotify", "gmail", "maps"]);
+
+function ringItems() {
+  const apps = ringApps
+    .map(function (id) { return APP_CATALOG.find(function (a) { return a.id === id; }); })
+    .filter(Boolean)
+    .map(function (a) { return { icon: a.icon, label: a.name, app: a.app }; });
+  return [SYSTEM.phone].concat(apps, [SYSTEM.camera, SYSTEM.clock, SYSTEM.gallery, SYSTEM.files]);
+}
+
+function buildRing() {
   const stage = document.getElementById("stage");
-  SHORTCUTS.forEach(function (item, i) {
-    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / SHORTCUTS.length;
+  stage.querySelectorAll(".node").forEach(function (n) { n.remove(); });
+  const items = ringItems();
+
+  items.forEach(function (item, i) {
+    const angle = -Math.PI / 2 + (i * 2 * Math.PI) / items.length;
     const b = document.createElement("button");
     b.type = "button";
     b.className = "node";
@@ -581,7 +689,113 @@ const SHORTCUTS = [
     });
     stage.appendChild(b);
   });
-})();
+}
+buildRing();
+
+/* CONFIGURAÇÕES */
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("on");
+  setTimeout(function () { t.classList.remove("on"); }, 2200);
+}
+
+function openSettings() {
+  document.getElementById("sheet").classList.add("open");
+  renderConnectors();
+  renderVoiceState();
+}
+function closeSettings() { document.getElementById("sheet").classList.remove("open"); }
+
+document.querySelectorAll(".tab").forEach(function (tab) {
+  tab.addEventListener("click", function () {
+    document.querySelectorAll(".tab").forEach(function (t) { t.classList.toggle("on", t === tab); });
+    document.querySelectorAll(".pane").forEach(function (p) {
+      p.classList.toggle("on", p.id === "pane-" + tab.dataset.tab);
+    });
+  });
+});
+
+function renderVoiceState() {
+  document.getElementById("voiceState").textContent =
+    voiceEnabled ? "A voz está ligada: ele responde falando." : "A voz está desligada: ele responde só no texto.";
+}
+function toggleVoice() {
+  voiceEnabled = !voiceEnabled;
+  renderVoiceState();
+  toast(voiceEnabled ? "Voz ligada" : "Voz desligada");
+}
+
+function installedMap() {
+  const map = {};
+  try {
+    if (window.AndroidVoice && typeof window.AndroidVoice.checkInstalled === "function") {
+      return JSON.parse(window.AndroidVoice.checkInstalled(JSON.stringify(APP_CATALOG.map(function (a) { return a.pkg; }))));
+    }
+  } catch (e) { console.warn(e); }
+  APP_CATALOG.forEach(function (a) { map[a.pkg] = true; });
+  return map;
+}
+
+function rowHtml(a, installed) {
+  const inRing = ringApps.indexOf(a.id) >= 0;
+  const svg = '<svg viewBox="0 0 24 24"><path d="' + ICONS[a.icon] + '"/></svg>';
+  const btn = installed
+    ? '<button class="more" type="button" data-act="menu" data-id="' + a.id + '" aria-label="Opções">•••</button>'
+    : '<button class="more plus" type="button" data-act="store" data-id="' + a.id + '" aria-label="Instalar">+</button>';
+  const chips = installed
+    ? '<div class="chips" id="chips-' + a.id + '">' +
+        '<button class="chip" type="button" data-act="open" data-id="' + a.id + '">Abrir</button>' +
+        '<button class="chip" type="button" data-act="ring" data-id="' + a.id + '">' + (inRing ? "Remover do anel" : "Adicionar ao anel") + '</button>' +
+      '</div>'
+    : "";
+  return '<div class="row"><div class="ico">' + svg + '</div><div class="info"><div class="name">' + a.name +
+    '</div><div class="desc">' + a.desc + '</div></div>' + btn + '</div>' + chips;
+}
+
+function renderConnectors() {
+  const map = installedMap();
+  const inst = APP_CATALOG.filter(function (a) { return map[a.pkg]; });
+  const others = APP_CATALOG.filter(function (a) { return !map[a.pkg]; });
+
+  document.getElementById("listInstalled").innerHTML =
+    '<div class="group">Instalados (' + inst.length + ')</div>' + inst.map(function (a) { return rowHtml(a, true); }).join("");
+  document.getElementById("listOthers").innerHTML = others.length
+    ? '<div class="group">Todos (' + others.length + ')</div>' + others.map(function (a) { return rowHtml(a, false); }).join("")
+    : "";
+}
+
+document.getElementById("pane-connectors").addEventListener("click", function (ev) {
+  const el = ev.target.closest("[data-act]");
+  if (!el) return;
+  const a = APP_CATALOG.find(function (x) { return x.id === el.dataset.id; });
+  if (!a) return;
+
+  if (el.dataset.act === "menu") {
+    const chips = document.getElementById("chips-" + a.id);
+    if (chips) chips.classList.toggle("on");
+  } else if (el.dataset.act === "open") {
+    closeSettings();
+    launchApp(a.app);
+  } else if (el.dataset.act === "ring") {
+    const i = ringApps.indexOf(a.id);
+    if (i >= 0) ringApps.splice(i, 1);
+    else if (ringApps.length >= MAX_RING_APPS) { toast("O anel comporta até " + MAX_RING_APPS + " apps."); return; }
+    else ringApps.push(a.id);
+    saveStore("ringApps", ringApps);
+    buildRing();
+    renderConnectors();
+    const chips = document.getElementById("chips-" + a.id);
+    if (chips) chips.classList.add("on");
+  } else if (el.dataset.act === "store") {
+    try {
+      if (window.AndroidVoice && typeof window.AndroidVoice.openStore === "function") {
+        window.AndroidVoice.openStore(a.pkg);
+      }
+    } catch (e) { console.warn(e); }
+  }
+});
 
 /* ORBE / HUD (canvas) */
 
